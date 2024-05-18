@@ -31,15 +31,19 @@ trainPredX = trainPred{:,:}'; testPredX = testPred{:,:}';
 Xtest = testData{:,:}'; 
 
 trainEval.RMSE = rmse(Xtrain(:), trainPredX(:)); 
+%{
 [r,p] = corr(Xtrain', trainPredX'); 
 r = diag(r); p = diag(p); 
 trainEval.CorrMean = mean(r); trainEval.CorrStd = std(r); 
 trainEval.CorrP = 1-prod(1-p);
+%}
 
 testEval.RMSE = rmse(Xtest(:), testPredX(:)); 
+%{
 [r,p] = corr(Xtest', testPredX'); 
 r = diag(r); p = diag(p); 
 testEval.CorrMean = mean(r); testEval.CorrStd = std(r); 
 testEval.CorrP = 1-prod(1-p);
+%}
 
 end
