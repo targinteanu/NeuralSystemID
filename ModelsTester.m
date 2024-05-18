@@ -88,7 +88,10 @@ grid on;
 legend(lgd); 
 Vrng = maxV - minV;
 maxV = maxV + .5*Vrng; minV = minV - .5*Vrng; 
-ylim([minV,maxV]);
+Vrng0 = diff(ylim);
+if Vrng0 > Vrng
+    ylim([minV,maxV]);
+end
 
 figure('Units','normalized', 'Position',[.05,.1,.9,.5]); 
 subplot(121); heatmap(mean(A,3)); title('A mean'); 
