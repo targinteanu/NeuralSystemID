@@ -77,8 +77,8 @@ for trl = 1:length(curEEGlist)
                                 'Color',lnspc{1,lnidx}, ...
                                 'LineWidth',lnspc{3,lnidx});
 
-        lgd = [lgd, ['RMSE = ',num2str(trnE.RMSE,3)], ...
-                    ['RMSE = ',num2str(tstE.RMSE,3)]]; 
+        lgd = [lgd, [num2str(100*(trnE.pRMSE),3),'% RMSE'], ...
+                    [num2str(100*(tstE.pRMSE),3),'% RMSE']]; 
 
         lnidx = lnidx+1;
     end

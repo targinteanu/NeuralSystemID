@@ -31,6 +31,7 @@ trainPredX = trainPred{:,:}'; testPredX = testPred{:,:}';
 Xtest = testData{:,:}'; 
 
 trainEval.RMSE = rmse(Xtrain(:), trainPredX(:)); 
+trainEval.pRMSE = rmse(Xtrain(:), trainPredX(:))/rms(Xtrain(:));
 %{
 [r,p] = corr(Xtrain', trainPredX'); 
 r = diag(r); p = diag(p); 
@@ -39,6 +40,7 @@ trainEval.CorrP = 1-prod(1-p);
 %}
 
 testEval.RMSE = rmse(Xtest(:), testPredX(:)); 
+testEval.pRMSE = rmse(Xtest(:), testPredX(:))/rms(Xtest(:));
 %{
 [r,p] = corr(Xtest', testPredX'); 
 r = diag(r); p = diag(p); 
