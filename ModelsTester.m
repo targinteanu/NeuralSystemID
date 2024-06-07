@@ -13,6 +13,7 @@ load([fp,filesep,fn]);
 %% epoch 
 
 curEEGlist = EEG_table.BaselineOpen('before experiment'); 
+%curEEGlist = EEG_table.PinPrick('after experiment');
 curEEGlist = curEEGlist{:}; 
 
     % Determine the epoch duration and overlap: 
@@ -42,7 +43,7 @@ end
 
 clear curEpoch curEpochs eeg idx lstIdx t 
 
-%% plot
+%% plot fit
 
 plotchan = 'CZ'; 
 lnspc = {'r','b','m';
@@ -96,3 +97,29 @@ end
 figure('Units','normalized', 'Position',[.05,.1,.9,.5]); 
 subplot(121); heatmap(mean(A,3)); title('A mean'); 
 subplot(122); heatmap(std(A,[],3)); title('A SD');
+
+%% plot source-sink
+srcness = sqrt(sum(A.^2,1)); 
+snkness = sqrt(sum(A.^2,2));
+
+chlbl = {eeg.chanlocs.labels};
+T = size(A,3);
+figure;
+for t = 1:T
+    text(srcness(:,:,t)/sum(srcness(:,:,t)), ...
+         snkness(:,:,t)/sum(snkness(:,:,t)), ...
+         chlbl, ...
+         'HorizontalAlignment','center', 'VerticalAlignment','middle', ...
+         'Color',colorwheel(t/T));
+    hold on; 
+end
+grid on; 
+ylabel('Sink-ness'); xlabel('Source-ness');
+
+figure;
+for t = 1:T
+    subplot(2,T,t);
+    topoplot(srcness(:,:,t), eeg.chanlocs, 'maplimits', 'maxmin'); colorbar;
+    subplot(2,T,t+T);
+    topoplot(snkness(:,:,t), eeg.chanlocs, 'maplimits', 'maxmin'); colorbar; 
+end
