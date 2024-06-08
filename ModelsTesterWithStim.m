@@ -12,13 +12,11 @@ load([fp,filesep,fn]);
 
 %% epoch 
 
-%curEEGlist = EEG_table.BaselineOpen('before experiment'); 
-curEEGlist = EEG_table.PinPrick('before experiment');
+curEEGlist = EEG_table.PinPrick('after experiment');
 curEEGlist = curEEGlist{:}; 
 
     % Determine the epoch duration and overlap: 
-    epochT = 5; % s
-    epoch_dt = 5; % s
+    epochT = 1; % s
 
 EpocList = cell(size(curEEGlist));
 for lstIdx = 1:length(curEEGlist)
