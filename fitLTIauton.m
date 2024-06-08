@@ -1,6 +1,10 @@
 function [trainPred, testPred, trainEval, testEval, A] = ...
     fitLTIauton(trainData, testData)
 
+if nargin < 2
+    testData = [];
+end
+
 Xtrain = trainData{:,:}'; 
 X1 = Xtrain(:,1:(end-1)); X2 = Xtrain(:,2:end); 
 A = X2*X1' * (X1*X1')^-1;
@@ -13,6 +17,7 @@ for t = 2:height(trainPred)
     trainPred{t,:} = x';
 end
 
+if ~isempty(testData)
 %testPred = trainData;
 testPred = testData;
 %testPred{1,:} = x';
@@ -26,9 +31,11 @@ end
 %t = testPred.Time; 
 %t = t - t(1) + trainPred.Time(end); 
 %testPred.Time = t;
-
-trainPredX = trainPred{:,:}'; testPredX = testPred{:,:}'; 
+testPredX = testPred{:,:}'; 
 Xtest = testData{:,:}'; 
+end
+
+trainPredX = trainPred{:,:}'; 
 
 trainEval.RMSE = rmse(Xtrain(:), trainPredX(:)); 
 trainEval.pRMSE = rmse(Xtrain(:), trainPredX(:))/rms(Xtrain(:));
@@ -39,6 +46,7 @@ trainEval.CorrMean = mean(r); trainEval.CorrStd = std(r);
 trainEval.CorrP = 1-prod(1-p);
 %}
 
+if ~isempty(testData)
 testEval.RMSE = rmse(Xtest(:), testPredX(:)); 
 testEval.pRMSE = rmse(Xtest(:), testPredX(:))/rms(Xtest(:));
 %{
@@ -47,5 +55,10 @@ r = diag(r); p = diag(p);
 testEval.CorrMean = mean(r); testEval.CorrStd = std(r); 
 testEval.CorrP = 1-prod(1-p);
 %}
+else
+    testPred = [];
+    testEval.RMSE = nan;
+    testEval.pRMSE = nan;
+end
 
 end
