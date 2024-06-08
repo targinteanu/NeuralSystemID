@@ -12,13 +12,12 @@ load([fp,filesep,fn]);
 
 %% epoch 
 
-%curEEGlist = EEG_table.BaselineOpen('before experiment'); 
-curEEGlist = EEG_table.PinPrick('before experiment');
+curEEGlist = EEG_table.BaselineOpen('before experiment'); 
 curEEGlist = curEEGlist{:}; 
 
     % Determine the epoch duration and overlap: 
-    epochT = 5; % s
-    epoch_dt = 5; % s
+    epochT = 30; % s
+    epoch_dt = 30; % s
 
 EpocList = cell(size(curEEGlist));
 for lstIdx = 1:length(curEEGlist)
@@ -44,82 +43,9 @@ end
 clear curEpoch curEpochs eeg idx lstIdx t 
 
 %% plot fit
-
 plotchan = 'CZ'; 
-lnspc = {'r','b','m';
-         '--',':','-';
-         1.25,1.5,1}; 
-lnidx = 1;
-minV = inf; maxV = -inf;
-A = [];
-lgd = {'true'};
-figure; hold on; 
-
-for trl = 1:length(curEEGlist)
-    eeg = curEEGlist(trl); 
-    minV = min(minV, min(eeg.data(:)));
-    maxV = max(maxV, max(eeg.data(:)));
-    plot(eeg2timetable(eeg), plotchan, 'Color','k', 'LineWidth',2);
-    curEpochs = EpocList{trl};
-    for ep = 1:(length(curEpochs)-1)
-        if lnidx > length(lnspc)
-            lnidx = 1;
-        end
-
-        eeg = curEpochs(ep); eeg2 = curEpochs(ep+1);
-        [trnPred, tstPred, trnE, tstE, Atrl] = ...
-            fitLTIauton(eeg2timetable(eeg), eeg2timetable(eeg2));
-        A = cat(3,A,Atrl);
-
-        plot(trnPred, plotchan, 'LineStyle',lnspc{2,lnidx}, ...
-                                'Color',lnspc{1,lnidx}, ...
-                                'LineWidth',lnspc{3,lnidx}); 
-        plot(tstPred, plotchan, 'LineStyle',lnspc{2,lnidx}, ...
-                                'Color',lnspc{1,lnidx}, ...
-                                'LineWidth',lnspc{3,lnidx});
-
-        lgd = [lgd, [num2str(100*(trnE.pRMSE),3),'% RMSE'], ...
-                    [num2str(100*(tstE.pRMSE),3),'% RMSE']]; 
-
-        lnidx = lnidx+1;
-    end
-end
-
-grid on;
-legend(lgd); 
-Vrng = maxV - minV;
-maxV = maxV + .5*Vrng; minV = minV - .5*Vrng; 
-Vrng0 = diff(ylim);
-if Vrng0 > Vrng
-    ylim([minV,maxV]);
-end
-
-figure('Units','normalized', 'Position',[.05,.1,.9,.5]); 
-subplot(121); heatmap(mean(A,3)); title('A mean'); 
-subplot(122); heatmap(std(A,[],3)); title('A SD');
+A = plotModelFit(curEEGlist, EpocList, @(tsTbl, trTbl) fitLTIauton(tsTbl, trTbl), plotchan);
 
 %% plot source-sink
-srcness = sqrt(sum(A.^2,1)); 
-snkness = sqrt(sum(A.^2,2));
-
-chlbl = {eeg.chanlocs.labels};
-T = size(A,3);
-figure;
-for t = 1:T
-    text(srcness(:,:,t)/sum(srcness(:,:,t)), ...
-         snkness(:,:,t)/sum(snkness(:,:,t)), ...
-         chlbl, ...
-         'HorizontalAlignment','center', 'VerticalAlignment','middle', ...
-         'Color',colorwheel(t/T));
-    hold on; 
-end
-grid on; 
-ylabel('Sink-ness'); xlabel('Source-ness');
-
-figure;
-for t = 1:T
-    subplot(2,T,t);
-    topoplot(srcness(:,:,t), eeg.chanlocs, 'maplimits', 'maxmin'); colorbar;
-    subplot(2,T,t+T);
-    topoplot(snkness(:,:,t), eeg.chanlocs, 'maplimits', 'maxmin'); colorbar; 
-end
+chanlocs = curEEGlist(1).chanlocs;
+[srcness,snkness] = SourceSink(A, chanlocs);
