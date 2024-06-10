@@ -1,14 +1,14 @@
+%% start EEGlab 
+    eeglabpath = '/Applications/MATLAB_R2021b.app/toolbox/eeglab2022.0';
+    addpath(eeglabpath);
+    eeglab
+    
 %% load EEG 
 basedir = cd; 
 cd('/Users/torenarginteanu/Desktop/Data_Chronic Pain'); 
 [fn,fp] = uigetfile('.mat', 'Select Pre- or Post-processed EEG');
 cd(basedir); 
 load([fp,filesep,fn]);
-
-%% start EEGlab 
-    eeglabpath = '/Applications/MATLAB_R2021b.app/toolbox/eeglab2022.0';
-    addpath(eeglabpath);
-    eeglab
 
 %% epoch 
 
