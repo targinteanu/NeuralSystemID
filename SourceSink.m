@@ -17,12 +17,26 @@ end
 grid on; 
 ylabel('Sink-ness'); xlabel('Source-ness');
 
-fig(2) = figure;
-for t = 1:T
-    subplot(2,T,t);
-    topoplot(srcness(:,:,t), chanlocs, 'maplimits', 'maxmin'); colorbar;
-    subplot(2,T,t+T);
-    topoplot(snkness(:,:,t), chanlocs, 'maplimits', 'maxmin'); colorbar; 
+fig(2) = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
+if T <= 8
+    for t = 1:T
+        subplot(2,T,t);
+        topoplot(srcness(:,:,t), chanlocs, 'maplimits', 'maxmin'); colorbar;
+        subplot(2,T,t+T);
+        topoplot(snkness(:,:,t), chanlocs, 'maplimits', 'maxmin'); colorbar; 
+    end
+else
+    W = ceil(sqrt(2*T)); 
+    if mod(W,2)
+        W = W+1;
+    end
+    H = ceil(T/W); TT = H*W;
+    for t = 1:T
+        subplot(2*H,W,t); 
+        topoplot(srcness(:,:,t), chanlocs, 'maplimits', 'maxmin'); colorbar;
+        subplot(2*H,W,t+TT);
+        topoplot(snkness(:,:,t), chanlocs, 'maplimits', 'maxmin'); colorbar;
+    end
 end
 
 end

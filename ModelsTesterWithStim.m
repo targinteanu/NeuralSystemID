@@ -23,17 +23,13 @@ EpocList = cell(size(curEEGlist));
 for lstIdx = 1:length(curEEGlist)
     eeg = curEEGlist(lstIdx);
     if ~isempty(eeg)
-        t = (eeg.xmin):epoch_dt:((eeg.xmax)-epochT);
-        curEpochs = repmat(eeg, size(t));
+        curEpochs3D = pop_epoch(eeg, {'11'}, [-epochT, epochT]);
+        t = 1:curEpochs3D.trials; 
+        curEpochs = repmat(curEpochs3D, size(t));
         for idx = 1:length(t)
-            if ~mod(idx/length(t), .05)
-                disp(['Epoch ',num2str(idx),' of ',num2str(length(t)),...
-                    ' (',num2str(100*idx/length(t),3),'%)'])
-            end
-            curEpoch = pop_select(eeg, 'time', t(idx)+[0,epochT]);
-            curEpoch.xmin = curEpoch.xmin + t(idx);
-            curEpoch.xmax = curEpoch.xmax + t(idx);
-            curEpoch.times = curEpoch.times + t(idx)*1000;
+            curEpoch = curEpochs(idx); 
+            curEpoch.trials = 1;
+            curEpoch.data = curEpoch.data(:,:,idx);
             curEpochs(idx) = curEpoch;
         end
         EpocList{lstIdx} = curEpochs;
