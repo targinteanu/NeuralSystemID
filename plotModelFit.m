@@ -1,4 +1,17 @@
 function [A, fig] = plotModelFit(EEGlist, EpocList, fitfun, plotchan)
+% Fit a model to data and plot and return the results. 
+% Inputs: 
+%   EEGlist: array of EEGlab EEG structs corresponding to trials 
+%   EpocList: Cell array of epocs to fit; same size as EEGlist, but cells
+%             can have arrays of epocs of any length 
+%   fitfun: function that takes in (train_data, test_data) as timetables
+%           and outputs: 
+%                   predicted train data [timetable] 
+%                   predicted test data [timetable] 
+%                   train error [struct with field pRMSE] 
+%                   test error [ibid] 
+%                   A matrix list [3D array] 
+%   plotchan: name of channel to plot 
 
 lnspc = {'r','b','m';
          '--',':','-';
