@@ -1,4 +1,17 @@
-function [srcness, snkness, fig] = SourceSink(A, chanlocs)
+function [srcness, snkness, fig] = SourceSink(A, chanlocs, showplot)
+
+if nargin < 2
+    chanlocs = [];
+else
+    if nargin < 3
+        showplot = ~isempty(chanlocs); 
+    end
+end
+    
+
+if ~showplot
+    fig = [];
+end
 
 srcness = sqrt(sum(A.^2,1)); 
 snkness = sqrt(sum(A.^2,2));
@@ -6,6 +19,7 @@ snkness = sqrt(sum(A.^2,2));
 %snkrng = [min(snkness(:)), max(snkness(:))]; 
 srcrng = 'maxmin'; snkrng = 'maxmin';
 
+if showplot & ~isempty(chanlocs)
 chlbl = {chanlocs.labels};
 T = size(A,3);
 fig(1) = figure;
@@ -19,7 +33,9 @@ for t = 1:T
 end
 grid on; 
 ylabel('Sink-ness'); xlabel('Source-ness');
+end
 
+if showplot
 fig(2) = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
 if T <= 8
     for t = 1:T
@@ -40,6 +56,7 @@ else
         subplot(2*H,W,t+TT);
         topoplot(snkness(:,:,t), chanlocs, 'maplimits', snkrng); colorbar;
     end
+end
 end
 
 end
