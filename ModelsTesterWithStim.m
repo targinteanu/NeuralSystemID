@@ -2,7 +2,7 @@
     eeglabpath = '/Applications/MATLAB_R2021b.app/toolbox/eeglab2022.0';
     addpath(eeglabpath);
     eeglab
-    
+
 %% load EEG 
 basedir = cd; 
 cd('/Users/torenarginteanu/Desktop/Data_Chronic Pain'); 
@@ -44,4 +44,6 @@ A = plotModelFit(curEEGlist, EpocList, @(tsTbl, trTbl) fitLTIauton(tsTbl, trTbl)
 
 %% plot source-sink
 chanlocs = curEEGlist(1).chanlocs;
-[srcness,snkness] = SourceSink(A, chanlocs);
+[srcness,snkness,figs] = SourceSink(A, chanlocs);
+figure(figs(2)); 
+sgtitle(fn);
