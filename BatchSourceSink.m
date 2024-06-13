@@ -20,6 +20,7 @@ groupname = {'Control', 'Patient'};
 
 %% get list of all channels and subjects
 chlbl_all = {}; sn = {};
+chloc_all = [];
 for fn_ = fn
     fn_ = fn_{:};
     sn_ = {};
@@ -29,6 +30,7 @@ for fn_ = fn
         eeg = EEG_table.BaselineOpen('before experiment'); 
         eeg = eeg{1}(1); 
         chlbl_all = [chlbl_all, upper({eeg.chanlocs.labels})];
+        chloc_all = [chloc_all, eeg.chanlocs];
 
         subj_name = fn_subj;
         subj_name_end = strfind(subj_name, ' --- ');
@@ -41,8 +43,8 @@ for fn_ = fn
     end
     sn = [sn, {sn_}];
 end
-clear fn_ fn_subj EEG_table eeg sn_
-chlbl_all = unique(chlbl_all);
+[chlbl_all, ui] = unique(chlbl_all); chloc_all = chloc_all(ui);
+clear fn_ fn_subj EEG_table eeg sn_ ui
 
 %% batch computations 
 
@@ -101,7 +103,7 @@ A = plotModelFit(curEEGlist, EpocList, ...
     @(tsTbl, trTbl) fitLTIauton(tsTbl, trTbl), ...
     '');
 chanlocs = curEEGlist(1).chanlocs;
-[srcness,snkness,figs] = SourceSink(A, chanlocs, false);
+[srcness,snkness] = SourceSink(A, chanlocs, false);
 chlbl = upper({chanlocs.labels});
 
 srcAvg = mean(srcness,3); 
@@ -129,22 +131,73 @@ tblsThisGroup{3,2} = [tblsThisGroup{3,2}; snkNum];
 end
 
 %% cumulative results 
-% to do: open all tables in tblsAll 
-% make a cumulative row 
-% for Avg: use mean 
-% for Std: use rms 
-% for Num: use sum 
-% omitnan? 
-% prune nan columns of all tables? 
+
+for subjgroup = 1:length(fn)
+    tblsThisGroup = tblsAll{subjgroup};
+    for m = 1:size(tblsThisGroup,2) % {source, sink}
+        % 1) Avg -- mean 
+        tbl = tblsThisGroup{1,m}; 
+        tbl = addToTable(tbl, {'Cumulative'}, tbl.Properties.VariableNames, ...
+            mean(tbl{:,:})); % omitnan? 
+        tblsThisGroup{1,m} = tbl;
+        % 2) Std -- rms
+        tbl = tblsThisGroup{2,m}; 
+        tbl = addToTable(tbl, {'Cumulative'}, tbl.Properties.VariableNames, ...
+            rms(tbl{:,:})); % omitnan? 
+        tblsThisGroup{2,m} = tbl;
+        % 3) Num -- sum 
+        tblsThisGroup{3,m} = [tblsThisGroup{3,m}; sum(tblsThisGroup{3,m})];
+    end
+    tblsAll{subjgroup} = tblsThisGroup;
+end
 
 %% plot results 
-% to do: open all tables in tblsAll 
+
+srcfig = figure('Units','normalized', 'Position',[.05,.05,.9,.4]);
+sgtitle('Source-ness');
+snkfig = figure('Units','normalized', 'Position',[.05,.5,.9,.4]);
+sgtitle('Sink-ness');
+
 % 4 rows: mean-H, std or SE, mean-P, std or SE
 % last column: cumulative H/P
-% title with subj name or "cumulative"
-% shorten subj name further? (to first space)
+fn_len = cellfun(@(lst) length(lst), fn);
+W = max(fn_len) + 1; H = 4;
+
+for subjgroup = 1:length(fn)
+    tblsThisGroup = tblsAll{subjgroup};
+    for m = 1:size(tblsThisGroup,2) % {source, sink}
+
+        if m==1
+            figure(srcfig); 
+        else
+            figure(snkfig);
+        end
+
+        tblAvg = tblsThisGroup{1,m};
+        tblStd = tblsThisGroup{2,m};
+        N = tblsThisGroup{3,m};
+
+        [tblAvg,keptchan] = pruneNan(tblAvg); 
+        tblStd = pruneNan(tblStd); 
+        chloc = chloc_all(keptchan);
+
+        sn_ = tblAvg.Properties.RowNames;
+        for subj = 1:height(tblAvg)
+            subj_name = sn_{subj};
+            subj_name = subj_name(1:4); % or shorten to first space?
+            r1 = W*2*(subjgroup-1); r2 = r1+W; 
+            subplot(H,W,r1+subj); 
+            topoplot(tblAvg{subj,:}, chloc, 'maplimits', 'maxmin'); 
+            title(subj_name);
+            subplot(H,W,r2+subj); 
+            topoplot(tblStd{subj,:}, chloc, 'maplimits', 'maxmin');
+            title(subj_name);
+        end
+    end
+end
 
 %% helpers 
+
 function tbl = addToTable(tbl, rowNames, colNames, data)
 for r = 1:size(data,1)
     rowName = rowNames{r};
@@ -159,4 +212,11 @@ for r = 1:size(data,1)
         end
     end
 end
+end
+
+function [tbl, keptcols] = pruneNan(tbl)
+data = tbl{:,:}; 
+keptcols = sum(isnan(data)); 
+keptcols = ~(keptcols); 
+tbl = tbl(:,keptcols); 
 end
