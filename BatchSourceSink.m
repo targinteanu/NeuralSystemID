@@ -188,10 +188,10 @@ for subjgroup = 1:length(fn)
             r1 = W*2*(subjgroup-1); r2 = r1+W; 
             subplot(H,W,r1+subj); 
             topoplot(tblAvg{subj,:}, chloc, 'maplimits', 'maxmin'); 
-            title(subj_name);
+            title(subj_name); colorbar; 
             subplot(H,W,r2+subj); 
             topoplot(tblStd{subj,:}, chloc, 'maplimits', 'maxmin');
-            title(subj_name);
+            title(subj_name); colorbar; 
         end
     end
 end
