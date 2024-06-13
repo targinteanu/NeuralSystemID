@@ -18,29 +18,54 @@ fnH = fn(fnH); fnP = fn(fnP);
 fn = {fnH, fnP}; 
 groupname = {'Control', 'Patient'};
 
-%% batch run and plot 
+%% get list of all channels and subjects
+chlbl_all = {}; sn = {};
+for fn_ = fn
+    fn_ = fn_{:};
+    sn_ = {};
+    for fn_subj = fn_
+        fn_subj = fn_subj{:};
+        load([fp,filesep,fn_subj], 'EEG_table');
+        eeg = EEG_table.BaselineOpen('before experiment'); 
+        eeg = eeg{1}(1); 
+        chlbl_all = [chlbl_all, upper({eeg.chanlocs.labels})];
+
+        subj_name = fn_subj;
+        subj_name_end = strfind(subj_name, ' --- ');
+        if ~isempty(subj_name_end)
+            subj_name_end = subj_name_end(1)-1; 
+            subj_name = subj_name(1:subj_name_end);
+        end
+        sn_ = [sn_, subj_name];
+        clear subj_name_end subj_name
+    end
+    sn = [sn, {sn_}];
+end
+clear fn_ fn_subj EEG_table eeg sn_
+chlbl_all = unique(chlbl_all);
+
+%% batch computations 
 
 tblsAll = cell(size(fn));
 
-for subjtype = 1:length(fn)
-    fn_ = fn{subjtype};
-    tblsThisGroup = [repmat({table}, 2, 2); ...
+for subjgroup = 1:length(fn)
+    fn_ = fn{subjgroup};
+    sn_ = sn{subjgroup};
+
+    blanktable = table('Size', [length(fn_), length(chlbl_all)], ...
+        'VariableTypes', repmat("single",size(chlbl_all)), ...
+        'VariableNames', chlbl_all, 'RowNames', sn_);
+    blanktable{:,:} = nan;
+    tblsThisGroup = [repmat({blanktable}, 2, 2); ...
                      cell(1, 2)];
         % rows = {Avg; Std; Num} 
         % cols = {source, sink}
 
     for subj = 1:length(fn_) 
         fn_subj = fn_{subj};
-        load([fp,filesep,fn_subj]);
-        
-        subj_name = fn_subj; 
-        subj_name_end = strfind(subj_name, ' --- ');
-        if ~isempty(subj_name_end)
-            subj_name_end = subj_name_end(1); 
-            subj_name = subj_name(1:subj_name_end);
-        end
-        clear subj_name_end
+        subj_name = sn_{subj};
         disp(['Processing ',subj_name])
+        load([fp,filesep,fn_subj]); 
 
 %% epoch 
 
@@ -100,8 +125,24 @@ tblsThisGroup{2,2} = addToTable(tblsThisGroup{2,2}, ...
 tblsThisGroup{3,2} = [tblsThisGroup{3,2}; snkNum];
 
     end
-    tblsAll{subjtype} = tblsThisGroup;
+    tblsAll{subjgroup} = tblsThisGroup;
 end
+
+%% cumulative results 
+% to do: open all tables in tblsAll 
+% make a cumulative row 
+% for Avg: use mean 
+% for Std: use rms 
+% for Num: use sum 
+% omitnan? 
+% prune nan columns of all tables? 
+
+%% plot results 
+% to do: open all tables in tblsAll 
+% 4 rows: mean-H, std or SE, mean-P, std or SE
+% last column: cumulative H/P
+% title with subj name or "cumulative"
+% shorten subj name further? (to first space)
 
 %% helpers 
 function tbl = addToTable(tbl, rowNames, colNames, data)
