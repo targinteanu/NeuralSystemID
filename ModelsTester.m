@@ -11,36 +11,8 @@ load([fp,filesep,fn]);
     eeglab
 
 %% epoch 
-
-curEEGlist = EEG_table.BaselineOpen('before experiment'); 
-curEEGlist = curEEGlist{:}; 
-
-    % Determine the epoch duration and overlap: 
-    epochT = 30; % s
-    epoch_dt = 30; % s
-
-EpocList = cell(size(curEEGlist));
-for lstIdx = 1:length(curEEGlist)
-    eeg = curEEGlist(lstIdx);
-    if ~isempty(eeg)
-        t = (eeg.xmin):epoch_dt:((eeg.xmax)-epochT);
-        curEpochs = repmat(eeg, size(t));
-        for idx = 1:length(t)
-            if ~mod(idx/length(t), .05)
-                disp(['Epoch ',num2str(idx),' of ',num2str(length(t)),...
-                    ' (',num2str(100*idx/length(t),3),'%)'])
-            end
-            curEpoch = pop_select(eeg, 'time', t(idx)+[0,epochT]);
-            curEpoch.xmin = curEpoch.xmin + t(idx);
-            curEpoch.xmax = curEpoch.xmax + t(idx);
-            curEpoch.times = curEpoch.times + t(idx)*1000;
-            curEpochs(idx) = curEpoch;
-        end
-        EpocList{lstIdx} = curEpochs;
-    end
-end
-
-clear curEpoch curEpochs eeg idx lstIdx t 
+[curEEGlist, EpocList] = epochBaseline(EEG_table,...
+    'BaselineOpen','before experiment',1,1);
 
 %% plot fit
 plotchan = 'CZ'; 

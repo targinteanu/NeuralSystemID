@@ -70,32 +70,7 @@ for subjgroup = 1:length(fn)
         load([fp,filesep,fn_subj]); 
 
 %% epoch 
-
-curEEGlist = [EEG_table.PinPrick('before experiment'), EEG_table.PinPrick('after experiment')];
-curEEGlist = [curEEGlist{:}]; 
-
-    % Determine the epoch duration and overlap: 
-    epochT = 1; % s
-    epochT = .5*epochT;
-
-EpocList = cell(size(curEEGlist));
-for lstIdx = 1:length(curEEGlist)
-    eeg = curEEGlist(lstIdx);
-    if ~isempty(eeg)
-        curEpochs3D = pop_epoch(eeg, {'11'}, [-epochT, epochT]);
-        t = 1:curEpochs3D.trials; 
-        curEpochs = repmat(curEpochs3D, size(t));
-        for idx = 1:length(t)
-            curEpoch = curEpochs(idx); 
-            curEpoch.trials = 1;
-            curEpoch.data = curEpoch.data(:,:,idx);
-            curEpochs(idx) = curEpoch;
-        end
-        EpocList{lstIdx} = curEpochs;
-    end
-end
-
-clear curEpoch curEpochs eeg idx lstIdx t 
+[curEEGlist, EpocList] = epochStim(EEG_table,'PinPrick',1);
 
 %% fit and source-sink 
 
