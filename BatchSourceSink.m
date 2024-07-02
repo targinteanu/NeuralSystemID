@@ -67,10 +67,11 @@ for subjgroup = 1:length(fn)
         fn_subj = fn_{subj};
         subj_name = sn_{subj};
         disp(['Processing ',subj_name])
-        load([fp,filesep,fn_subj]); 
+        load([fp,filesep,fn_subj], 'EEG_table'); 
 
 %% epoch 
-[curEEGlist, EpocList] = epochStim(EEG_table,'PinPrick',1);
+%[curEEGlist, EpocList] = epochStim(EEG_table,'TempStim',1);
+[curEEGlist, EpocList] = epochBaseline(EEG_table,'BaselineClosed','both',1,1);
 
 %% fit and source-sink 
 
