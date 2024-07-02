@@ -1,8 +1,11 @@
 function [trainPred, testPred, trainEval, testEval, A] = ...
-    fitLTIauton(trainData, testData)
+    fitLTIauton(trainData, testData, PredStateVisible)
 
 if nargin < 2
     testData = [];
+end
+if nargin < 3
+    PredStateVisible = true;
 end
 
 Xtrain = table2array(trainData)'; 
@@ -11,8 +14,11 @@ A = X2*X1' * (X1*X1')^-1;
 
 trainPredX = Xtrain; 
 for t = 2:width(trainPredX)
-    %x0 = trainPredX(:,t-1); 
-    x0 = Xtrain(:,t-1);
+    if PredStateVisible
+        x0 = Xtrain(:,t-1);
+    else
+        x0 = trainPredX(:,t-1); 
+    end
     x = A*x0; 
     trainPredX(:,t) = x;
 end
@@ -24,8 +30,11 @@ testPredX = Xtest;
 %testPredX(:,1) = x;
 %testPredX(:,1) = Xtrain(:,end);
 for t = 2:width(testPredX)
-    %x0 = testPredX(:,t-1); 
-    x0 = Xtest(:,t-1);
+    if PredStateVisible
+        x0 = Xtest(:,t-1);
+    else
+        x0 = testPredX(:,t-1); 
+    end
     x = A*x0; 
     testPredX(:,t) = x;
 end
