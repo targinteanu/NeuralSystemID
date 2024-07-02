@@ -1,24 +1,27 @@
-function [trainPred, testPred, trainEval, testEval, A_t] = ...
-    AID_LTI_auton(trainData, testData, Am, KA)
+function [trainPred, testPred, trainEval, testEval, A_t_train, A_t_test] = ...
+    AID_LTI_auton(trainData, testData, Am, KA, shutoff)
 
 % handle incomplete args 
-if nargin < 4
-    KA = [];
-    if nargin < 3
-        Am = [];
-        if nargin < 2
-            testData = trainData; 
-            trainData = [];
+if nargin < 5
+    shutoff = false(1,height(testData));
+    if nargin < 4
+        KA = [];
+        if nargin < 3
+            Am = [];
+            if nargin < 2
+                testData = trainData;
+                trainData = [];
+            end
         end
     end
 end
 
 % handle empty args 
-if isempty(KA)
-    KA = eye(width(testData));
-end
 if isempty(Am)
     Am = -eye(width(testData));
+end
+if isempty(KA)
+    KA = lyap(Am',eye(size(Am)));
 end
 
 % check Am Hurwitz 
@@ -28,19 +31,90 @@ if sum(lambda >= 0)
 end
 % check KA PDS 
 lambda = eig(KA);
-if sum(lambda <= 0) | ~equals(KA,KA')
+if sum(lambda <= 0) | ~isequal(KA,KA')
     error('KA should be PDS.')
 end
 
-% starting estimate of discrete A 
+%% sample rate 
+Time = testData.Time; 
+Th = mean(diff(Time));
+Th = seconds(Th); % seconds 
+
+%% starting estimate of discrete A 
 if isempty(trainData)
     % no starting knowledge 
-    A = zeros(width(testData));
+    A0 = zeros(width(testData));
 else
-    Xtrain = trainData{:,:}'; 
+    Xtrain = table2array(trainData)'; 
     X1 = Xtrain(:,1:(end-1)); X2 = Xtrain(:,2:end); 
-    A = X2*X1' * (X1*X1')^-1;
+    A0 = X2*X1' * (X1*X1')^-1;
 end
 
+%% run "test" data
+
+Xtest = table2array(testData)';
+xtest_est_t = nan(size(Xtest));
+%{
+A_t_test = nan([size(A0),width(Xtest)]);
+A_t_test(:,:,1) = A0;
+%}
+
+x = Xtest(:,1); 
+A = A0;
+xest = x; 
+xtest_est_t(:,1) = xest;
+for t = 2:width(Xtest)
+    dA = -KA*(xest-x)*x';
+    if ~shutoff(t)
+        A = A + dA*Th; 
+        [Ad,Bd] = c2d(Am,A-Am,Th);
+        xest = Ad*xest + Bd*x;
+    else
+        xest = Ad*xest;
+    end
+    xtest_est_t(:,t) = xest;
+    x = Xtest(:,t);
+    %A_t_test(:,:,t) = A;
+end
+
+testPred = testData; 
+testPred{:,:} = xtest_est_t';
+
+%% run "train" data
+if ~isempty(trainData)
+
+xtrain_est_t = nan(size(Xtrain));
+%{
+A_t_train = nan([size(A0),width(Xtrain)]);
+A_t_train(:,:,1) = A0;
+%}
+
+x = Xtrain(:,1); 
+A = A0;
+xest = x; 
+xtrain_est_t(:,1) = xest;
+for t = 2:width(Xtrain)
+    dA = -KA*(xest-x)*x';
+        A = A + dA*Th; 
+        [Ad,Bd] = c2d(Am,A-Am,Th);
+        xest = Ad*xest + Bd*x;
+    xtrain_est_t(:,t) = xest;
+    x = Xtrain(:,t);
+    %A_t_train(:,:,t) = A;
+end
+
+trainPred = trainData; 
+trainPred{:,:} = xtrain_est_t';
+
+end
+
+%% evaluate results 
+testEval.RMSE = rmse(Xtest(:), xtest_est_t(:));
+testEval.pRMSE = (testEval.RMSE)/rms(Xtest(:));
+
+if ~isempty(trainData)
+    trainEval.RMSE = rmse(Xtrain(:), xtrain_est_t(:));
+    trainEval.pRMSE = (trainEval.RMSE)/rms(Xtrain(:));
+end
 
 end
