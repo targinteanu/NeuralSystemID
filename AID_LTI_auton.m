@@ -77,6 +77,8 @@ for t = 2:width(Xtest)
         %[Ad,Bd] = c2d(Am,A-Am,Th);
         Bd = Bd0*(A-Am);
         xest = Ad*xest + Bd*x;
+        %dxest = Am*xest + (A-Am)*x;
+        %xest = xest + dxest*Th;
     else
         xest = Ad*xest;
     end

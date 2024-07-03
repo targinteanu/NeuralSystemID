@@ -14,8 +14,9 @@ dtaBL = dta(ind_bl_str:ind_bl_end,:);
 tic
 [predBL, predAll, trnEval, tstEval, A] = fitLTIauton(dtaBL,dta);
 toc
+tstEval
 
-KA = .000000001*eye(width(dta));
+KA = .0000001*eye(width(dta));
 tic
 [adaptBL,adaptAll,adaptTrnEval,adaptTstEval] = ...
     AID_LTI_auton(dtaBL,dta,[],KA,Tr);
@@ -26,6 +27,7 @@ tic
     AID_LTI_auton([],dtaBL,[],KA);
 toc
 %}
+adaptTstEval
 
 %%
 chtoplot = dta.Properties.VariableNames{59};
