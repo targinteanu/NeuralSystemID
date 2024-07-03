@@ -42,9 +42,13 @@ if sum(lambda <= 0) | ~isequal(dLyap,dLyap')
 end
 
 %% sample rate 
+%{
 Time = testData.Time; 
 Th = mean(diff(Time));
 Th = seconds(Th); % seconds 
+%}
+Fs = testData.Properties.CustomProperties.SampleRateHz;
+Th = 1/Fs; % seconds
 
 %% starting estimate of discrete A 
 if isempty(trainData)

@@ -6,5 +6,7 @@ lbl = {EEG.chanlocs.labels};
 lbl = upper(lbl);
 
 TT = array2timetable(X,"RowTimes",t,"VariableNames",lbl); 
+addprop(TT, 'SampleRateHz');
+TT.Properties.CustomProperties.SampleRateHz = EEG.srate;
 
 end

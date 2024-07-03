@@ -8,4 +8,7 @@ lbl = upper(lbl);
 
 TT = array2timetable(X,"RowTimes",t,"VariableNames",lbl); 
 
+addprop(TT, 'SampleRateHz');
+TT.Properties.CustomProperties.SampleRateHz = NS.MetaTags.SamplingFreq;
+
 end
