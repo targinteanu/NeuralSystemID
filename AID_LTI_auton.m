@@ -34,6 +34,12 @@ lambda = eig(KA);
 if sum(lambda <= 0) | ~isequal(KA,KA')
     error('KA should be PDS.')
 end
+% check lyap deriv NDS
+dLyap = Am'*KA + KA*Am; 
+lambda = eig(-dLyap);
+if sum(lambda <= 0) | ~isequal(dLyap,dLyap')
+    error('KA produces unstable system.')
+end
 
 %% sample rate 
 Time = testData.Time; 
@@ -63,11 +69,13 @@ x = Xtest(:,1);
 A = A0;
 xest = x; 
 xtest_est_t(:,1) = xest;
+[Ad,Bd0] = c2d(Am,eye(size(Am)),Th);
 for t = 2:width(Xtest)
     dA = -KA*(xest-x)*x';
     if ~shutoff(t)
         A = A + dA*Th; 
-        [Ad,Bd] = c2d(Am,A-Am,Th);
+        %[Ad,Bd] = c2d(Am,A-Am,Th);
+        Bd = Bd0*(A-Am);
         xest = Ad*xest + Bd*x;
     else
         xest = Ad*xest;
@@ -93,10 +101,12 @@ x = Xtrain(:,1);
 A = A0;
 xest = x; 
 xtrain_est_t(:,1) = xest;
+[Ad,Bd0] = c2d(Am,eye(size(Am)),Th);
 for t = 2:width(Xtrain)
     dA = -KA*(xest-x)*x';
         A = A + dA*Th; 
-        [Ad,Bd] = c2d(Am,A-Am,Th);
+        %[Ad,Bd] = c2d(Am,A-Am,Th);
+        Bd = Bd0*(A-Am);
         xest = Ad*xest + Bd*x;
     xtrain_est_t(:,t) = xest;
     x = Xtrain(:,t);
@@ -106,6 +116,8 @@ end
 trainPred = trainData; 
 trainPred{:,:} = xtrain_est_t';
 
+else
+    trainPred = [];
 end
 
 %% evaluate results 
@@ -115,6 +127,8 @@ testEval.pRMSE = (testEval.RMSE)/rms(Xtest(:));
 if ~isempty(trainData)
     trainEval.RMSE = rmse(Xtrain(:), xtrain_est_t(:));
     trainEval.pRMSE = (trainEval.RMSE)/rms(Xtrain(:));
+else
+    trainEval = [];
 end
 
 end
