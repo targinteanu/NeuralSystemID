@@ -16,7 +16,7 @@ function TTfilt = FilterTimetable(FiltFun, FiltObj, TTunfilt)
 
 %% sample rate check
 fs_Filter = FiltObj.SampleRate; 
-fs_Signal = TTunfilt.Properties.CustomProperties.SampleRateHz;
+fs_Signal = TTunfilt.Properties.SampleRate;
 Time_Signal = TTunfilt.Time; 
 dT = seconds(diff(Time_Signal));
 dTmax = max(dT); dTmin = min(dT);

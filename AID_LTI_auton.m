@@ -47,7 +47,7 @@ Time = testData.Time;
 Th = mean(diff(Time));
 Th = seconds(Th); % seconds 
 %}
-Fs = testData.Properties.CustomProperties.SampleRateHz;
+Fs = testData.Properties.SampleRate;
 Th = 1/Fs; % seconds
 
 %% starting estimate of discrete A 

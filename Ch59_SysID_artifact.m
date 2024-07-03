@@ -7,6 +7,7 @@ ind_rec_end = 2e6; % exclude dbs stim that is not
 Tr=NS2.Data(64,:);
 Tr = Tr > 1e4;
 Tr = Tr(1:ind_rec_end);
+Fs = NS2.MetaTags.SamplingFreq;
 
 dta = ns2timetable(NS2); 
 dta = dta(:,1:63); % exclude stim (analog in)
@@ -14,7 +15,7 @@ dta = dta(1:ind_rec_end,:);
 
 %% preprocess 
 
-Fs = dta.Properties.CustomProperties.SampleRateHz;
+%Fs = dta.Properties.SampleRate;
 hpf = designfilt('highpassiir', 'SampleRate',Fs, 'DesignMethod','butter', ...
     'StopbandFrequency',.5, 'PassbandFrequency',1.5, ...
     'StopbandAttenuation',60, 'PassbandRipple',1);
