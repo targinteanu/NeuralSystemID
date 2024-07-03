@@ -32,7 +32,7 @@ tstEval
 KA = .0000001*eye(width(dta));
 tic
 [adaptBL,adaptAll,adaptTrnEval,adaptTstEval] = ...
-    AID_LTI_auton(dtaBL,dta,[],KA,Tr);
+    AID_LTI_auton([],dta,[],KA,Tr);
 toc
 %{
 tic
@@ -44,7 +44,8 @@ adaptTstEval
 
 %% plot chan 59
 chtoplot = dta.Properties.VariableNames{59};
-figure; plot(dta, chtoplot, 'LineWidth',1); 
+figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
 hold on; grid on; 
 plot(predAll, chtoplot); plot(adaptAll, chtoplot);
-legend('orig', 'fit', 'adapt')
+legend('orig', 'fit', 'adapt'); title(chtoplot);
+ylim(ybnd); 
