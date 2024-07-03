@@ -23,7 +23,7 @@ for t = 2:width(trainPredX)
     trainPredX(:,t) = x;
 end
 
-if ~isempty(testData)
+if ~isempty(testData) % consider consolidating by replacing this with projLTIauton
 Xtest = table2array(testData)';
 testPredX = Xtest;
 %testPredX = Xtrain;

@@ -26,13 +26,15 @@ dtaBL = dta(ind_bl_str:ind_bl_end,:);
 
 tic
 [predBL, predAll, trnEval, tstEval, A] = fitLTIauton(dtaBL,dta);
+[predSO,evalSO] = projLTIauton(A,dta,Tr);
 toc
 tstEval
+evalSO
 
 KA = .0000001*eye(width(dta));
 tic
 [adaptBL,adaptAll,adaptTrnEval,adaptTstEval] = ...
-    AID_LTI_auton([],dta,[],KA,Tr);
+    AID_LTI_auton(dtaBL,dta,[],KA,Tr);
 toc
 %{
 tic
@@ -46,6 +48,6 @@ adaptTstEval
 chtoplot = dta.Properties.VariableNames{59};
 figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
 hold on; grid on; 
-plot(predAll, chtoplot); plot(adaptAll, chtoplot);
-legend('orig', 'fit', 'adapt'); title(chtoplot);
+plot(predAll, chtoplot); plot(predSO,chtoplot); plot(adaptAll, chtoplot);
+legend('orig', 'fit', 'proj', 'adapt'); title(chtoplot);
 ylim(ybnd); 
