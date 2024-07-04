@@ -31,10 +31,11 @@ toc
 tstEval
 evalSO
 
-KA = .0000001*eye(width(dta));
+KA = (1e-10)*eye(width(dta));
+Am = (-1e10)*eye(width(dta));
 tic
 [adaptBL,adaptAll,adaptTrnEval,adaptTstEval] = ...
-    AID_LTI_auton(dtaBL,dta,[],KA,Tr);
+    AID_LTI_auton(dtaBL,dta,Am,KA,Tr);
 toc
 %{
 tic
