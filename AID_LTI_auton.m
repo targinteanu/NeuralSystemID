@@ -53,7 +53,7 @@ Th = 1/Fs; % seconds
 %% starting estimate of discrete A 
 if isempty(trainData)
     % no starting knowledge 
-    A0 = zeros(width(testData));
+    A0 = eye(width(testData)); % discrete 
 else
     Xtrain = table2array(trainData)'; 
     X1 = Xtrain(:,1:(end-1)); X2 = Xtrain(:,2:end); 
