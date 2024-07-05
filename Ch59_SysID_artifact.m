@@ -32,7 +32,7 @@ tstEval
 evalSO
 %%
 KA = (1e-4)*eye(width(dta));
-Am = (-1e2)*eye(width(dta));
+Am = (-1e3)*eye(width(dta));
 tic
 [adaptBL,adaptAll,adaptTrnEval,adaptTstEval] = ...
     AID_LTI_auton(dtaBL,dta,Am,KA,Tr,true);
