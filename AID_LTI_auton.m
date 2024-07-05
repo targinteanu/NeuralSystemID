@@ -1,14 +1,17 @@
 function [trainPred, testPred, trainEval, testEval, A_t_train, A_t_test] = ...
-    AID_LTI_auton(trainData, testData, Am, KA, shutoff)
+    AID_LTI_auton(trainData, testData, Am, KA, shutoff, showfit)
 
 % handle incomplete args 
-if nargin < 4
-    KA = [];
-    if nargin < 3
-        Am = [];
-        if nargin < 2
-            testData = trainData;
-            trainData = [];
+if nargin < 5
+    showfit = false;
+    if nargin < 4
+        KA = [];
+        if nargin < 3
+            Am = [];
+            if nargin < 2
+                testData = trainData;
+                trainData = [];
+            end
         end
     end
 end
@@ -75,6 +78,15 @@ xest = x;
 xtest_est_t(:,1) = xest;
 [Ad,Bd0] = c2d(Am,eye(size(Am)),Th);
 Ac0 = d2c(A,zeros(size(A,1),1),Th);
+if showfit 
+    figure('Units','Normalized','Position',[.1 .3 .8 .4]); 
+    subplot(121); imagesc(Ac0); colorbar; 
+    title('Cont A LSQ fit');
+    Ac0 = zeros(size(Ac0)); % reset 
+    subplot(122); img = imagesc(Ac0); colorbar;
+    ttxt = title('Cont A Adapt: 0%');
+    pause(1e-9);
+end
 Ac = Ac0;
 for t = 2:width(Xtest)
     dA = -KA*(xest-x)*x';
@@ -86,11 +98,16 @@ for t = 2:width(Xtest)
         %dxest = Am*xest + (Ac-Am)*x;
         %xest = xest + dxest*Th;
     else
-        xest = Ad*xest;
+        xest = Bd*xest; % at start of shutoff, should xest be manually set to last reliable x??
     end
     xtest_est_t(:,t) = xest;
     x = Xtest(:,t);
     %A_t_test(:,:,t) = Ac;
+    if showfit
+        img.CData = Ac;
+        ttxt.String = ['Cont A Estimate: ',num2str(100*t/width(Xtest),3),'%'];
+        pause(1e-9);
+    end
 end
 
 testPred = testData; 
