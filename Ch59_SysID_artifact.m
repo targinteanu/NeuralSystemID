@@ -45,14 +45,16 @@ adaptTstEval
 dta59 = dta(1000000:end,59);
 g = diff(double(Tr))'; g = g.*(g > 1e4); g = g((1000000-1):end);
 dtaLMS  = filterLMS(g,dta59,1,16,[],100,false,true);
-dtaLMSd = filterLMS(double(Tr(1000000:end))',dta59,.01,32,[],100,true, true);
+%dtaLMSd = filterLMS(double(Tr(1000000:end))',dta59,.01,32,[],100,true, true);
 
 %% plot chan 59
 chtoplot = dta.Properties.VariableNames{59};
 figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
 hold on; grid on; 
 %plot(predAll, chtoplot); 
-plot(predSO,chtoplot); plot(adaptAll, chtoplot);
-plot(dtaLMS, chtoplot); plot(dtaLMSd, chtoplot);
-legend('orig', 'fit', 'AID', 'LMS', 'LMSd'); title(chtoplot);
+%plot(predSO,chtoplot); 
+plot(adaptAll, chtoplot);
+plot(dtaLMS, chtoplot); 
+%plot(dtaLMSd, chtoplot);
+legend('orig', 'AID', 'LMS'); title(chtoplot);
 ylim(ybnd); 
