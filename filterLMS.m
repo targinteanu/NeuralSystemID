@@ -68,7 +68,7 @@ for idx = 1:numchan
         end
         pause(.5);
     end
-    Gprev = zeros(1,N); Eprev = zeros(1,N);
+    Gprev = zeros(1,N); Eprev = 0;
     for ep = (N:dlen)-N+1
         Gidx = g((1:N)+ep-1)';
         E = d(ep+N-1,idx) - Gidx*w(:,idx);
