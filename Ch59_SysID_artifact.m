@@ -5,8 +5,8 @@ ind_bl_str = 4.5e5; ind_bl_end = 9.5e5; % no-stim baseline
 ind_rec_end = 2e6; % exclude dbs stim that is not 
 
 Tr=NS2.Data(64,:);
-Tr = Tr > 1e4;
 Tr = Tr(1:ind_rec_end);
+Tr_thr = Tr > 1e4;
 Fs = NS2.MetaTags.SamplingFreq;
 
 dta = ns2timetable(NS2); 
@@ -22,27 +22,35 @@ hpf = designfilt('highpassiir', 'SampleRate',Fs, 'DesignMethod','butter', ...
 dta = FilterTimetable(@(d,x) filtfilt(d,x), hpf, dta);
 dtaBL = dta(ind_bl_str:ind_bl_end,:);
 
-%% sys ID 
+%% LTI fit sys ID 
 
 tic
 [predBL, predAll, trnEval, tstEval, A] = fitLTIauton(dtaBL,dta);
-[predSO,evalSO] = projLTIauton(A,dta,Tr);
+[predSO,evalSO] = projLTIauton(A,dta,Tr_thr);
 toc
 tstEval
 evalSO
-%%
+
+%% adaptive Sys ID
+
 KA = (1e-4)*eye(width(dta));
 Am = (-1e3)*eye(width(dta));
 tic
 [adaptBL,adaptAll,adaptTrnEval,adaptTstEval] = ...
-    AID_LTI_auton(dtaBL,dta,Am,KA,Tr,false);
+    AID_LTI_auton(dtaBL,dta,Am,KA,Tr_thr,false);
 toc
 adaptTstEval
+
+%% LMS filter artifact removal 
+dta59 = dta(:,58:60);
+dtaLMS  = filterLMS(double(Tr)',dta59,.5,64,[],100,false,true);
 
 %% plot chan 59
 chtoplot = dta.Properties.VariableNames{59};
 figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
 hold on; grid on; 
-plot(predAll, chtoplot); plot(predSO,chtoplot); plot(adaptAll, chtoplot);
-legend('orig', 'fit', 'proj', 'adapt'); title(chtoplot);
+%plot(predAll, chtoplot); 
+plot(predSO,chtoplot); plot(adaptAll, chtoplot);
+plot(dtaLMS, chtoplot);
+legend('orig', 'fit', 'AID', 'LMS'); title(chtoplot);
 ylim(ybnd); 
