@@ -78,22 +78,22 @@ xest = x;
 xtest_est_t(:,1) = xest;
 [Ad,Bd0] = c2d(Am,eye(size(Am)),Th);
 Ac0 = d2c(A,zeros(size(A,1),1),Th);
+Ac = Ac0;
 
 if showfit 
     figure('Units','Normalized','Position',[.1 .3 .8 .4]); 
-    subplot(121); imgL = imagesc(Ac0); colorbar; 
+    subplot(121); imgL = imagesc(Ac); colorbar; 
     title('Cont A LSQ fit');
-    cmin = min(Ac0(:)); cmax = max(Ac0(:)); cdiff = cmax-cmin; 
+    cmin = min(Ac(:)); cmax = max(Ac(:)); cdiff = cmax-cmin; 
     cmin = cmin - .05*cdiff; cmax = cmax + .05*cdiff;
     imgL.Parent.CLim = [cmin, cmax];
-    Ac0 = zeros(size(Ac0)); % reset 
-    subplot(122); img = imagesc(Ac0, [cmin,cmax]); colorbar;
+    Ac = zeros(size(Ac)); % reset 
+    subplot(122); img = imagesc(Ac, [cmin,cmax]); colorbar;
     ttxt = title('Cont A Adapt: 0%');
     pause(1e-9);
     prog_curr = 0; prog_prev = 0; prog_updTick = 1; % percent progress
 end
 
-Ac = Ac0;
 for t = 2:width(Xtest)
     dA = -KA*(xest-x)*x';
     if ~shutoff(t)
@@ -143,6 +143,21 @@ A = A0;
 xest = x; 
 xtrain_est_t(:,1) = xest;
 Ac = Ac0;
+
+if showfit 
+    figure('Units','Normalized','Position',[.1 .3 .8 .4]); 
+    subplot(121); imgL = imagesc(Ac); colorbar; 
+    title('Cont A LSQ fit');
+    cmin = min(Ac(:)); cmax = max(Ac(:)); cdiff = cmax-cmin; 
+    cmin = cmin - .05*cdiff; cmax = cmax + .05*cdiff;
+    imgL.Parent.CLim = [cmin, cmax];
+    Ac = zeros(size(Ac)); % reset 
+    subplot(122); img = imagesc(Ac, [cmin,cmax]); colorbar;
+    ttxt = title('Cont A Adapt: 0%');
+    pause(1e-9);
+    prog_curr = 0; prog_prev = 0; prog_updTick = 1; % percent progress
+end
+
 for t = 2:width(Xtrain)
     dA = -KA*(xest-x)*x';
         Ac = Ac + dA*Th; 
@@ -152,6 +167,21 @@ for t = 2:width(Xtrain)
     xtrain_est_t(:,t) = xest;
     x = Xtrain(:,t);
     %A_t_train(:,:,t) = Ac;
+    if showfit
+        prog_curr = 100*t/width(Xtrain); 
+        if prog_curr - prog_prev > prog_updTick
+            prog_prev = prog_curr;
+            [cmin,chg_min] = min([cmin, min(Ac(:))]); chg_min = chg_min-1;
+            [cmax,chg_max] = max([cmax, max(Ac(:))]); chg_max = chg_max-1;
+            img.CData = Ac;
+            if chg_max | chg_min
+                img.Parent.CLim = [cmin, cmax];
+                imgL.Parent.CLim = [cmin, cmax];
+            end
+            ttxt.String = ['Cont A Estimate: ',num2str(prog_curr,3),'%'];
+            pause(1e-9);
+        end
+    end
 end
 
 trainPred = trainData; 
