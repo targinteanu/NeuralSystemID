@@ -104,7 +104,8 @@ for t = 2:width(Xtest)
         %dxest = Am*xest + (Ac-Am)*x;
         %xest = xest + dxest*Th;
     else
-        xest = Bd*xest; % at start of shutoff, should xest be manually set to last reliable x??
+        Ad2 = expm(Ac*Th);
+        xest = Ad2*xest; % at start of shutoff, should xest be manually set to last reliable x??
     end
     xtest_est_t(:,t) = xest;
     x = Xtest(:,t);
