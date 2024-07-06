@@ -42,10 +42,10 @@ toc
 adaptTstEval
 
 %% LMS filter artifact removal 
-dta59 = dta(:,58:60);
-g = (double(Tr).*Tr_thr)';
-dtaLMS  = filterLMS(g,dta59,.1,64,[],100,false,true);
-dtaLMSd = filterLMS(g,dta59,.1,64,[],100,true, true);
+dta59 = dta(1000000:end,59);
+g = (double(Tr).*Tr_thr)'; g = diff(g); g = g((1000000-1):end);
+dtaLMS  = filterLMS(g,dta59,1e-9,16,[],100,false,false);
+%dtaLMSd = filterLMS(g,dta59,.01,16,[],100,true, true);
 
 %% plot chan 59
 chtoplot = dta.Properties.VariableNames{59};
@@ -53,6 +53,6 @@ figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
 hold on; grid on; 
 %plot(predAll, chtoplot); 
 plot(predSO,chtoplot); plot(adaptAll, chtoplot);
-plot(dtaLMS, chtoplot); plot(dtaLMSd, chtoplot);
+plot(dtaLMS, chtoplot); %plot(dtaLMSd, chtoplot);
 legend('orig', 'fit', 'AID', 'LMS', 'LMSd'); title(chtoplot);
 ylim(ybnd); 
