@@ -42,9 +42,22 @@ toc
 adaptTstEval
 
 %% LMS filter artifact removal 
-dta59 = dta(1000000:end,59);
-g = diff(double(Tr))'; g = g.*(g > 1e4); g = g((1000000-1):end);
-dtaLMS  = filterLMS(g,dta59,1,16,[],100,false,true);
+
+dta59 = dta(:,59);
+g = diff(double(Tr))'; g = g.*(g > 1e4); 
+
+% find the optimal weights 
+ind_stim_str = find(Tr_thr); 
+ind_stim_end = ind_stim_str(end); ind_stim_str = ind_stim_str(1);
+ind_stim_str = max(1, ind_stim_str-16);
+ind_stim_end = min(ind_rec_end, ind_stim_end+16);
+g_noise_train = g(ind_stim_str:ind_stim_end);
+dta_noise_train = dta59(ind_stim_str:ind_stim_end,:);
+w0 = preTrainWtsLMS(g_noise_train,dta_noise_train,16,2,false);
+
+dta59 = dta59(1000000:end,:);
+g = g((1000000-1):end);
+dtaLMS  = filterLMS(g,dta59,1,16,w0,100,false,true);
 %dtaLMSd = filterLMS(double(Tr(1000000:end))',dta59,.01,32,[],100,true, true);
 
 %% plot chan 59
