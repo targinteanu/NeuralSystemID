@@ -41,6 +41,11 @@ tic
 toc
 adaptTstEval
 
+%% neural sys ID 
+nss_str = idNeuralStateSpace(width(dta));
+nss_str.OutputName = dtaBL.Properties.VariableNames;
+nss_trn = nlssest(dtaBL,nss_str);
+
 %% LMS filter artifact removal 
 
 dta59 = dta(:,59);
