@@ -2,7 +2,7 @@ function [trainPred, testPred, trainEval, testEval, A_t_train, A_t_test] = ...
     AID_LTI_auton(trainData, testData, Am, KA, shutoff, showfit)
 
 % handle incomplete args 
-if nargin < 5
+if nargin < 6
     showfit = false;
     if nargin < 4
         KA = [];
