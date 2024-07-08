@@ -42,9 +42,15 @@ toc
 adaptTstEval
 
 %% neural sys ID 
+%{
+dta_nssTrain = dtaBL;
+dta_nssTrian = resample(dta_nssTrain, 1, 4); % downsample
+dta_nssTrain = dta_nssTrian(50000:100000,:);
 nss_str = idNeuralStateSpace(width(dta));
 nss_str.OutputName = dtaBL.Properties.VariableNames;
-nss_trn = nlssest(dtaBL,nss_str);
+nss_trn = nlssest(dta_nssTrain,nss_str);
+%}
+load('NeuralSysID.mat');
 
 %% LMS filter artifact removal 
 
