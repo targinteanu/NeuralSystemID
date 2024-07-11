@@ -50,8 +50,11 @@ Time = testData.Time;
 Th = mean(diff(Time));
 Th = seconds(Th); % seconds 
 %}
+%{
 Fs = testData.Properties.SampleRate;
 Th = 1/Fs; % seconds
+%}
+Th = seconds(testData.Properties.TimeStep);
 
 %% starting estimate of discrete A 
 if isempty(trainData)
@@ -85,6 +88,9 @@ if showfit
     subplot(121); imgL = imagesc(Ac); colorbar; 
     title('Cont A LSQ fit');
     cmin = min(Ac(:)); cmax = max(Ac(:)); cdiff = cmax-cmin; 
+    if cdiff == 0
+        cdiff = .01;
+    end
     cmin = cmin - .05*cdiff; cmax = cmax + .05*cdiff;
     imgL.Parent.CLim = [cmin, cmax];
     Ac = zeros(size(Ac)); % reset 

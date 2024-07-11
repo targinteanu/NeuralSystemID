@@ -32,7 +32,7 @@ if nargin < 8
     end
 end
 if isempty(w)
-    w = zeros(N,size(d,2));
+    w = zeros(N,width(d));
 end
 
 if nUpdates
