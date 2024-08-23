@@ -173,7 +173,7 @@ for subjgroup = 1:length(fn)
                              ((std0.^4)./((N0-1).*(N0.^2))) );
 
             subplot(H,W,r1+subj); 
-            topoplot(T, chloc, 'maplimits', 'absmax'); 
+            topoplot(T, chloc, 'maplimits', [-5 5]); 
             title(subj_name); colorbar; 
             %{
             subplot(H,W,r2+subj); 
