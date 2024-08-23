@@ -1,4 +1,4 @@
-function [A, fig] = plotModelFit(EEGlist, EpocList, fitfun, plotchan)
+function [A, fig] = plotModelFit(EEGlist, EpocList, fitfun, plotchan, fbnd)
 % Fit a model to data and plot and return the results. 
 % Inputs: 
 %   EEGlist: array of EEGlab EEG structs corresponding to trials 
@@ -15,6 +15,19 @@ function [A, fig] = plotModelFit(EEGlist, EpocList, fitfun, plotchan)
 
 if nargin < 4
     plotchan = '';
+end
+if nargin < 5
+    fbnd = [];
+end
+
+dofilt = ~isempty(fbnd);
+if dofilt
+    fs = EEGlist(1).srate;
+    bpf = designfilt('bandpassiir', ...
+        'SampleRate',fs, ...
+        'HalfpowerFrequency1',fbnd(1), 'HalfpowerFrequency2',fbnd(2), ...
+        'FilterOrder',20, ...
+        'DesignMethod', 'butter');
 end
 
 lnspc = {'r','b','m';
@@ -34,8 +47,12 @@ for trl = 1:length(EEGlist)
     eeg = EEGlist(trl); 
     minV = min(minV, min(eeg.data(:)));
     maxV = max(maxV, max(eeg.data(:)));
+    eeg_ = eeg2timetable(eeg);
+    if dofilt
+        eeg_ = FilterTimetable(@(d,x)filtfilt(d,x), bpf, eeg_);
+    end
     if ~isempty(plotchan)
-        plot(eeg2timetable(eeg), plotchan, 'Color','k', 'LineWidth',2);
+        plot(eeg_, plotchan, 'Color','k', 'LineWidth',2);
     end
     curEpochs = EpocList{trl};
     curEpochs = [curEpochs, curEpochs(1)];
@@ -45,8 +62,12 @@ for trl = 1:length(EEGlist)
         end
 
         eeg = curEpochs(ep); eeg2 = curEpochs(ep+1);
+        eeg_ = eeg2timetable(eeg);
+        if dofilt
+            eeg_ = FilterTimetable(@(d,x)filtfilt(d,x), bpf, eeg_);
+        end
         [trnPred, tstPred, trnE, tstE, Atrl] = ...
-            fitfun(eeg2timetable(eeg), eeg2timetable(eeg2));
+            fitfun(eeg_, eeg2timetable(eeg2));
         A = cat(3,A,Atrl);
 
         if ~isempty(plotchan)

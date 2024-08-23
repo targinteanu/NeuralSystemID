@@ -16,7 +16,7 @@ load([fp,filesep,fn]);
 
 %% plot fit
 plotchan = 'CZ'; 
-A = plotModelFit(curEEGlist, EpocList, @(tsTbl, trTbl) fitLTIauton(tsTbl, trTbl), plotchan);
+A = plotModelFit(curEEGlist, EpocList, @(tsTbl, trTbl) fitLTIauton(tsTbl, trTbl), plotchan, [13 30]);
 
 %% plot source-sink
 chanlocs = curEEGlist(1).chanlocs;
