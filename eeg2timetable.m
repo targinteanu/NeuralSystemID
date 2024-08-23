@@ -1,7 +1,7 @@
 function TT = eeg2timetable(EEG)
 
 t = milliseconds(EEG.times');
-X = EEG.data'; 
+X = EEG.data'; X = double(X);
 lbl = {EEG.chanlocs.labels};
 lbl = upper(lbl);
 
