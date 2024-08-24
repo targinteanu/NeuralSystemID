@@ -1,4 +1,4 @@
-function [A, fig] = plotModelFit(EEGlist, EpocList, fitfun, plotchan, fbnd)
+function [A, trainEval, testEval, fig] = plotModelFit(EEGlist, EpocList, fitfun, plotchan, fbnd)
 % Fit a model to data and plot and return the results. 
 % Inputs: 
 %   EEGlist: array of EEGlab EEG structs corresponding to trials 
@@ -35,7 +35,8 @@ lnspc = {'r','b','m';
          1.25,1.5,1}; 
 lnidx = 1;
 minV = inf; maxV = -inf;
-A = [];
+A = []; 
+trainEval = []; testEval = [];
 lgd = {'true'};
 if isempty(plotchan)
     fig = [];
@@ -69,6 +70,7 @@ for trl = 1:length(EEGlist)
         [trnPred, tstPred, trnE, tstE, Atrl] = ...
             fitfun(eeg_, eeg2timetable(eeg2));
         A = cat(3,A,Atrl);
+        trainEval = [trainEval, trnE]; testEval = [testEval, tstE];
 
         if ~isempty(plotchan)
             plot(trnPred, plotchan, 'LineStyle',lnspc{2,lnidx}, ...
