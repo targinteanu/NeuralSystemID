@@ -39,7 +39,7 @@ channelDataFields = {'BitResolution', 'Gain'};
 svloc = [fp,filesep,'Saved To Table',filesep,'Table Data ',...
     datestr(datetime, 'yyyy-mm-dd HH.MM.SS')];
 svN = 1;
-sizethresh = 1.5e9; % size (bytes) at which to save and clear
+sizethresh = 1e9; % size (bytes) at which to save and clear
 pause(1)
 mkdir(svloc); 
 
@@ -56,6 +56,14 @@ for f = filelist'
         fn1 = string(fn1); fn2 = string(fn2);
         if strcmpi(fe, '.mat')
             load(fnfull)
+
+            sz = whos('Tbls'); sz = sz.bytes;
+            if sz + f.bytes > sizethresh
+                save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls","channelNames");
+                svN = svN+1;
+                clear Tbls
+                Tbls = Tbls0;
+            end
 
             FileData = varnames2struct(fileDataFields, '');
             for ID_name = Channel_ID_Name_Map'
