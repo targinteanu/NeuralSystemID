@@ -51,6 +51,7 @@ for trl = 1:length(EEGlist)
     eeg_ = eeg2timetable(eeg);
     if dofilt
         eeg_ = FilterTimetable(@(d,x)filtfilt(d,x), bpf, eeg_);
+        eeg_.Variables = envelope(eeg_.Variables);
     end
     if ~isempty(plotchan)
         plot(eeg_, plotchan, 'Color','k', 'LineWidth',2);
@@ -66,6 +67,7 @@ for trl = 1:length(EEGlist)
         eeg_ = eeg2timetable(eeg);
         if dofilt
             eeg_ = FilterTimetable(@(d,x)filtfilt(d,x), bpf, eeg_);
+            eeg_.Variables = envelope(eeg_.Variables);
         end
         [trnPred, tstPred, trnE, tstE, Atrl] = ...
             fitfun(eeg_, eeg2timetable(eeg2));
