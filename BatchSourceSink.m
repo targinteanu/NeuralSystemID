@@ -77,7 +77,7 @@ for subjgroup = 1:length(fn)
 
 A = plotModelFit(curEEGlist, EpocList, ...
     @(tsTbl, trTbl) fitLTIauton(tsTbl, trTbl), ...
-    '');
+    '', [8,13]);
 chanlocs = curEEGlist(1).chanlocs;
 [srcness,snkness] = SourceSink(A, chanlocs, false);
 chlbl = upper({chanlocs.labels});
