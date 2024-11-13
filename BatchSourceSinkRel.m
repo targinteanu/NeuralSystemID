@@ -78,7 +78,7 @@ for subjgroup = 1:length(fn)
 
 A1= plotModelFit(EEGlist1, EpoList1, ...
     @(tsTbl, trTbl) fitLTIauton(tsTbl, trTbl), ...
-    '', [13,30]);
+    '', [4,8]);
 chanlocs = EEGlist1(1).chanlocs;
 [srcness,snkness] = SourceSink(A1, chanlocs, false);
 chlbl = upper({chanlocs.labels});
@@ -89,7 +89,7 @@ tblsThisGroup(:,:,2) = tbls;
 
 A0= plotModelFit(EEGlist0, EpoList0, ...
     @(tsTbl, trTbl) fitLTIauton(tsTbl, trTbl), ...
-    '', [13,30]);
+    '', [4,8]);
 [srcness,snkness] = SourceSink(A0, chanlocs, false);
 
 tbls = tblsThisGroup(:,:,1); 

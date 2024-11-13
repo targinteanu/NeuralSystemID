@@ -41,6 +41,7 @@ EEGlist = [EEGlist{:}];
 EpochList = cell(size(EEGlist));
 for lstIdx = 1:length(EEGlist)
     eeg = EEGlist(lstIdx);
+    rmfieldlist = {'datfile'}; % EEGlab version incompatibility: remove these
     if ~isempty(eeg)
         t = (eeg.xmin):epoch_dt:((eeg.xmax)-epoch_T);
         curEpochs = repmat(eeg, size(t));
@@ -53,6 +54,9 @@ for lstIdx = 1:length(EEGlist)
             curEpoch.xmin = curEpoch.xmin + t(idx);
             curEpoch.xmax = curEpoch.xmax + t(idx);
             curEpoch.times = curEpoch.times + t(idx)*1000;
+            rmfieldlist_ = isfield(curEpoch, rmfieldlist);
+            rmfieldlist_ = rmfieldlist(rmfieldlist_);
+            curEpoch = rmfield(curEpoch, rmfieldlist_);
             curEpochs(idx) = curEpoch;
         end
         EpochList{lstIdx} = curEpochs;

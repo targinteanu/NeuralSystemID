@@ -1,4 +1,5 @@
-function [A, trainEval, testEval, fig] = plotModelFit(EEGlist, EpocList, fitfun, plotchan, fbnd)
+function [A, trainEval, testEval, fig] = plotModelFit(...
+    EEGlist, EpocList, fitfun, plotchan, fbnd, doEnvelope)
 % Fit a model to data and plot and return the results. 
 % Inputs: 
 %   EEGlist: array of EEGlab EEG structs corresponding to trials 
@@ -12,6 +13,21 @@ function [A, trainEval, testEval, fig] = plotModelFit(EEGlist, EpocList, fitfun,
 %                   test error [ibid] 
 %                   A matrix list [3D array] 
 %   plotchan: name of channel to plot. If empty, no plot shown. 
+%   fbnd: [ low cutoff , high cutoff ] frequency (Hz) to use for band-pass
+%         filtering. If omitted or empty, the signal will not be filtered. 
+%   doEnvelope: (true/false) take the envelope of the signal before fitting
+%               the model, only if the signal is band-pass filtered. If
+%               omitted, default is true if the signal is band-pass
+%               filtered. 
+% Outputs: 
+%   A: state transition "A" matrix/matrices returned by fitfun. If there
+%      are multiple epochs/trials with different A matrices, they will be
+%      concatenated along the third dimension, i.e. A(:,:,trl) is the A
+%      matrix from trial trl. 
+%   trainEval: training evaluation (goodness-of-fit) statistics, including
+%              fractional RMSE (pRMSE)
+%   testEval: testing accuracy statistics in same format as above 
+%   fig: figure handle(s) 
 
 if nargin < 4
     plotchan = '';
@@ -19,8 +35,11 @@ end
 if nargin < 5
     fbnd = [];
 end
-
 dofilt = ~isempty(fbnd);
+if nargin < 6
+    doEnvelope = dofilt;
+end
+
 if dofilt
     fs = EEGlist(1).srate;
     bpf = designfilt('bandpassiir', ...
@@ -51,6 +70,9 @@ for trl = 1:length(EEGlist)
     eeg_ = eeg2timetable(eeg);
     if dofilt
         eeg_ = FilterTimetable(@(d,x)filtfilt(d,x), bpf, eeg_);
+        if doEnvelope
+            eeg_.Variables = envelope(eeg_.Variables);
+        end
     end
     if ~isempty(plotchan)
         plot(eeg_, plotchan, 'Color','k', 'LineWidth',2);
@@ -66,6 +88,9 @@ for trl = 1:length(EEGlist)
         eeg_ = eeg2timetable(eeg);
         if dofilt
             eeg_ = FilterTimetable(@(d,x)filtfilt(d,x), bpf, eeg_);
+            if doEnvelope
+                eeg_.Variables = envelope(eeg_.Variables);
+            end
         end
         [trnPred, tstPred, trnE, tstE, Atrl] = ...
             fitfun(eeg_, eeg2timetable(eeg2));
