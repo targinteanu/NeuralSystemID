@@ -1,28 +1,11 @@
 %% setup
 
+% find files and determine data fields 
 fp = uigetdir;
 filelist = dir(fp);
 file1 = filelist(~[filelist.isdir]);
 file1 = file1(arrayfun(@(f) f.bytes > 0, file1));
 file1 = file1(1); load(fullfile(file1.folder, file1.name));
-%{
-channelNames = {...
-    'ANALOG_IN_1', ...
-    'ANALOG_IN_2', ...
-    'LFP_01', ...
-    'LFP_02', ...
-    'Macro_LFP_01', ...
-    'Macro_LFP_02', ...
-    'Macro_RAW_01', ...
-    'Macro_RAW_02', ...
-    'RAW_01', ...
-    'RAW_02', ...
-    'SEG_01', ...
-    'SEG_02', ...
-    'SPK_01', ...
-    'SPK_02' ...
-    };
-%}
 channelNames = {Channel_ID_Name_Map.Name};
 Tbls0 = cell(size(channelNames));
 Tbls = Tbls0;
@@ -36,6 +19,26 @@ fileDataFields = {...
     }; 
 channelDataFields = {'BitResolution', 'Gain'};
 
+% group channels by sampling rate 
+Fs = nan(size(channelNames));
+for CHNAME = channelNames
+    chName = CHNAME{:};
+    try 
+        fs = eval([chName,'_KHz'])*1000; % Hz
+    catch ME
+        warning(['On ',chName,': ',ME.message])
+    end
+end
+clear CHNAME chName
+FsGrouped = unique(Fs);
+channelNamesGrouped = cell(size(FsGrouped));
+for grp = 1:length(FsGrouped)
+    grpInds = Fs == FsGrouped(grp);
+    channelNamesGrouped{grp} = channelNames(grpInds);
+end
+clear grp grpInds
+
+% set file saving location
 svloc = [fp,filesep,'Saved To Table',filesep,'Table Data ',...
     datestr(datetime, 'yyyy-mm-dd HH.MM.SS')];
 svN = 1;
@@ -46,8 +49,10 @@ mkdir(svloc);
 %% run1 - populate "horizontal" 
 
 for f = filelist'
-    clearvars -except Tbls Tbls0 channelNames channelDataFields fileDataFields ...
-        f filelist svloc svN sizethresh
+    clearvars -except ...
+        Tbls Tbls0 channelNames channelDataFields fileDataFields ...
+        f filelist svloc svN sizethresh ...
+        Fs FsGrouped channelNamesGrouped
     if (~f.isdir) && (f.bytes > 0)
         fnfull = fullfile(f.folder, f.name); 
         [fp,fn,fe] = fileparts(fnfull);
@@ -57,17 +62,25 @@ for f = filelist'
         if strcmpi(fe, '.mat')
             load(fnfull)
 
+            % anticipate if the memory will become full; 
+            % if so, save and clear 
             sz = whos('Tbls'); sz = sz.bytes;
-            if sz + f.bytes > sizethresh
+            if (sz + f.bytes > sizethresh) && (f.bytes < sizethresh)
                 save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls","channelNames");
                 svN = svN+1;
                 clear Tbls
                 Tbls = Tbls0;
             end
 
+            % look at channels 
+            if ~strcmpwrapper(chNames, {Channel_ID_Name_Map.Name})
+                warning(['On ',fn,': channel names do not match'])
+            end
             FileData = varnames2struct(fileDataFields, '');
-            for ID_name = Channel_ID_Name_Map'
-                chName = ID_name.Name;
+            for CHNAMESGRP = channelNamesGrouped
+                chNamesGrp = CHNAMESGRP{:};
+                for CHNAME = chNamesGrp
+                chName = CHNAME{:};
                 try
                 t1 = eval([chName,'_TimeBegin']); % s
                 t2 = eval([chName,'_TimeEnd']); % s
@@ -93,6 +106,7 @@ for f = filelist'
                 Ti = find(strcmp(channelNames, chName));
                 Tbls{Ti} = [Tbls{Ti}; T];
 
+                % if the memory is getting full, save and clear 
                 sz = whos('Tbls'); sz = sz.bytes 
                 if sz > sizethresh
                     save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls","channelNames");
@@ -105,6 +119,7 @@ for f = filelist'
                     warning(['On ',fn,' - ',chName,': ',ME.message])
                 end
                 clear chName t1 t2 t Data err GroupName FileName ChannelData T Ti
+                end
             end
             clear FileData
         end
@@ -159,4 +174,11 @@ if nargin < 2
 end
 vars = cellfun(@(vn) evalin('base',[header,vn]), varnames, 'UniformOutput', false);
 S = cell2struct(vars, varnames, 2);
+end
+
+function yn = strcmpwrapper(strs1, strs2)
+yn = length(strs1) == length(strs2); 
+if yn 
+    yn = prod(strcmp(strs1, strs2));
+end
 end
