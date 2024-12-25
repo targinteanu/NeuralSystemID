@@ -23,6 +23,7 @@ EEGlist = [EEGlist{:}];
 EpochList = cell(size(EEGlist));
 for lstIdx = 1:length(EEGlist)
     eeg = EEGlist(lstIdx);
+    rmfieldlist = {'datfile'}; % EEGlab version incompatibility: remove these
     if ~isempty(eeg)
         curEpochs3D = pop_epoch(eeg, {stimnum}, [-epochT, epochT]);
         t = 1:curEpochs3D.trials; 
@@ -31,6 +32,9 @@ for lstIdx = 1:length(EEGlist)
             curEpoch = curEpochs(idx); 
             curEpoch.trials = 1;
             curEpoch.data = curEpoch.data(:,:,idx);
+            rmfieldlist_ = isfield(curEpoch, rmfieldlist);
+            rmfieldlist_ = rmfieldlist(rmfieldlist_);
+            %curEpoch = rmfield(curEpoch, rmfieldlist_);
             curEpochs(idx) = curEpoch;
         end
         EpochList{lstIdx} = curEpochs;

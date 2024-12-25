@@ -70,14 +70,14 @@ for subjgroup = 1:length(fn)
         load([fp,filesep,fn_subj], 'EEG_table'); 
 
 %% epoch 
-%[curEEGlist, EpocList] = epochStim(EEG_table,'TempStim',1);
-[curEEGlist, EpocList] = epochBaseline(EEG_table,'BaselineClosed','both',1,1);
+[curEEGlist, EpocList] = epochStim(EEG_table,'PinPrick',1);
+%[curEEGlist, EpocList] = epochBaseline(EEG_table,'BaselineClosed','both',1,1);
 
 %% fit and source-sink 
 
 A = plotModelFit(curEEGlist, EpocList, ...
     @(tsTbl, trTbl) fitLTIauton(tsTbl, trTbl), ...
-    '', [8,13]);
+    '', [13,30]);
 chanlocs = curEEGlist(1).chanlocs;
 [srcness,snkness] = SourceSink(A, chanlocs, false);
 chlbl = upper({chanlocs.labels});
