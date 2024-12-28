@@ -1,4 +1,4 @@
-function [hPlt, hAx] = myStackedPlot(tbl, vars)
+function [hPlt, hAx] = myStackedPlot(tbl, vars, IsOutlier)
 % can be used like stackedplot() or plot() with one table <tbl> and
 % variable(s) <vars>, but variables can be input as numeric indexes OR
 % names, and names can be partial (i.e. 'AINP1' for 'AINP1   '). If no or
@@ -6,6 +6,9 @@ function [hPlt, hAx] = myStackedPlot(tbl, vars)
 
 evt = tbl.Properties.Events;
 
+if nargin < 3
+    IsOutlier = [];
+end
 if nargin < 2
     vars = [];
 end
@@ -24,8 +27,11 @@ for c = 1:N
         v = vars(c);
     end
     if isnumeric(v)
-        v = tbl.Properties.VariableNames{v};
+        if ~isempty(IsOutlier)
+            io = IsOutlier(:,v);
+        end
         u = tbl.Properties.VariableUnits{v};
+        v = tbl.Properties.VariableNames{v};
     else
         if ~sum(strcmp(tbl.Properties.VariableNames, v))
             iv = find(contains(tbl.Properties.VariableNames, v));
@@ -42,6 +48,9 @@ for c = 1:N
         iv = find(strcmp(tbl.Properties.VariableNames, v));
         iv = iv(1); 
         u = tbl.Properties.VariableUnits{iv};
+        if ~isempty(IsOutlier)
+            io = IsOutlier(:,iv);
+        end
     end
 
     % plot timed data
@@ -49,6 +58,14 @@ for c = 1:N
     y = tbl.(v);
     hAx(c,1) = subplot(N,1,c); 
     hPlt(c,1) = plot(x, y);
+
+    % plot outliers 
+    if ~isempty(IsOutlier)
+        if sum(io)
+            hold on;
+            hPlt(c,4) = plot(x(io), y(io), 'o');
+        end
+    end
 
     % axis labeling 
     grid on; axis tight;
