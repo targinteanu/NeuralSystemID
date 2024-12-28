@@ -1,5 +1,6 @@
 %% user selects folder; necessary files are pulled 
 folder = uigetdir; 
+[~,pName] = fileparts(folder)
 NS2files = dir([folder,filesep,'*.ns2']);
 NEVfiles = dir([folder,filesep,'*.nev']);
 
@@ -25,6 +26,8 @@ clear f fNS fEV fTbl ft0 ftRel fTime NEVtime
 
 %% get details on stimulus and recording 
 
+tblDur = @(T) T.Time(end) - T.Time(1);
+
 % assume stim pulse train is ainp1 - can change this to user selection 
 channelIndexStimTrain = find(contains(NS2tbl.Properties.VariableNames, 'AINP1'));
 if isempty(channelIndexStimTrain)
@@ -40,11 +43,14 @@ NS2tbl = [NS2tbl, table(StimTrig)];
 Stim1 = find(StimTrig);
 if ~isempty(Stim1)
     Stim1 = Stim1(1);
-    PreStimEnd = max(0, Stim1-5000)
+    PreStimEnd = max(0, Stim1-5000);
 else
-    PreStimEnd = height(NS2tbl)
+    PreStimEnd = height(NS2tbl);
 end
 tblPreStim = NS2tbl(1:PreStimEnd,:);
+disp(['Pre Stim: ',...
+    char(tblDur(tblPreStim)),' (',num2str(PreStimEnd),' samples) out of '...
+    char(tblDur(NS2tbl)),' (',num2str(height(NS2tbl)),' samples)'])
 
 % summary channel data
 % might need to change this if multiple NS2 files with break in between,
@@ -57,6 +63,7 @@ xticks(1:width(BetaPower)); xticklabels(NS2tbl.Properties.VariableNames);
 subplot(2,1,2); boxplot(tblPreStim.Variables, 'PlotStyle','compact', 'Symbol','.');
 ylabel('Box Plot'); xlabel('Channel Name');
 xticks(1:width(BetaPower)); xticklabels(NS2tbl.Properties.VariableNames);
+sgtitle(pName);
 
 %% inspect or reject channels 
 
@@ -70,7 +77,7 @@ channelIndexInspect = listdlg("PromptString","Inspect Channel(s)", ...
 
 chanSelInds = unique([channelIndexRec, channelIndexStim, ...
     channelIndexInspect, channelIndexStimTrain]);
-figure; stackedplot(NS2tbl(:,chanSelInds)); grid on;
+figure; stackedplot(NS2tbl(:,chanSelInds)); grid on; sgtitle(pName);
 
 % user selects bad channels 
 channelIndexRem = listdlg("PromptString","Remove Channel(s)", ...
