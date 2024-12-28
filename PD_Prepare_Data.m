@@ -56,7 +56,7 @@ disp(['Pre Stim: ',...
 % might need to change this if multiple NS2 files with break in between,
 % i.e. non-uniform sampling 
 BetaPower = bandpower(tblPreStim.Variables, tblPreStim.Properties.SampleRate, [13, 30]);
-figure; 
+fig1 = figure; 
 subplot(2,1,1); stem(BetaPower); 
 ylabel('Beta Band Power'); title('Channels Summary Data (Pre-Stim)');
 xticks(1:width(BetaPower)); xticklabels(NS2tbl.Properties.VariableNames);
@@ -77,7 +77,7 @@ channelIndexInspect = listdlg("PromptString","Inspect Channel(s)", ...
 
 chanSelInds = unique([channelIndexRec, channelIndexStim, ...
     channelIndexInspect, channelIndexStimTrain]);
-figure; myStackedPlot(NS2tbl(:,chanSelInds)); grid on; sgtitle(pName);
+fig2 = figure; myStackedPlot(NS2tbl(:,chanSelInds)); grid on; sgtitle(pName);
 
 % user selects bad channels 
 channelIndexRem = listdlg("PromptString","Remove Channel(s)", ...
@@ -85,3 +85,9 @@ channelIndexRem = listdlg("PromptString","Remove Channel(s)", ...
 channelIndexKeep = true(1,width(NS2tbl)); 
 channelIndexKeep(channelIndexRem) = false;
 tblSel = NS2tbl(:,channelIndexKeep); 
+
+%% saving 
+saveas(fig1, [folder,filesep,pName,'_ChannelSummary'],'fig'); 
+saveas(fig1, [folder,filesep,pName,'_ChannelSummary'],'png'); 
+saveas(fig2, [folder,filesep,pName,'_Data'],'fig'); 
+saveas(fig2, [folder,filesep,pName,'_Data'],'png'); 

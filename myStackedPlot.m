@@ -16,6 +16,8 @@ ic = iscell(vars);
 
 N = length(vars);
 for c = 1:N
+
+    % what variable to plot
     if ic
         v = vars{c};
     else
@@ -23,6 +25,7 @@ for c = 1:N
     end
     if isnumeric(v)
         v = tbl.Properties.VariableNames{v};
+        u = tbl.Properties.VariableUnits{v};
     else
         if ~sum(strcmp(tbl.Properties.VariableNames, v))
             iv = find(contains(tbl.Properties.VariableNames, v));
@@ -36,11 +39,37 @@ for c = 1:N
             iv = iv(1);
             v = tbl.Properties.VariableNames(iv);
         end
+        iv = find(strcmp(tbl.Properties.VariableNames, v));
+        iv = iv(1); 
+        u = tbl.Properties.VariableUnits{iv};
     end
 
-    hAx(c) = subplot(N,1,c); 
-    hPlt(c) = plot(tbl, v);
-    grid on;
+    % plot timed data
+    x = tbl.Time;
+    y = tbl.(v);
+    hAx(c,1) = subplot(N,1,c); 
+    hPlt(c,1) = plot(x, y);
+
+    % axis labeling 
+    grid on; axis tight;
+    if c < N
+        xticklabels([]);
+    else
+        xlabel('Time');
+    end
+    ylabel({v,['(',u,')']});
+
+    % plot events
+    if ~isempty(evt)
+        hold on;
+        yl = ylim();
+        xx = evt.Time; 
+        yy1 = yl(2)*ones(size(xx));
+        yy2 = yl(1)*ones(size(xx));
+        hPlt(c,2) = stem(xx, yy1, 'Marker','none', 'Color',[.5,.5,.5], 'LineWidth',.1);
+        hPlt(c,3) = stem(xx, yy2, 'Marker','none', 'Color',[.5,.5,.5], 'LineWidth',.1);
+        ylim(yl);
+    end
 end
 
 linkaxes(hAx, 'x');
