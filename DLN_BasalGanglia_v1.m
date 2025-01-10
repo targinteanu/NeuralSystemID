@@ -1,4 +1,4 @@
-function lgraph = DLN_BasalGanglia_v1(numChan, N, showplot)
+function [lgraph, dlnet, numLearnables] = DLN_BasalGanglia_v1(numChan, N, showplot)
 % Create Deep Learning Network Architecture
 % Network was designed based on the structure of the basal ganglia. 
 % Script for creating the layers for a deep learning network with the following 
@@ -24,6 +24,10 @@ function lgraph = DLN_BasalGanglia_v1(numChan, N, showplot)
 %      layers except input and output. Default = 1
 %   showplot: if true [default], lgraph will be plotted in a new figure
 % 
+% Outputs: 
+%   lgraph: LayerGraph object 
+%   dlnet: dlnetwork object without output (regression) layer 
+%   numLearnables: # of learnables 
 % 
 %% handle incomplete inputs 
 if nargin < 3
@@ -88,6 +92,18 @@ clear tempLayers;
 lgraph = connectLayers(lgraph,"actGPinput","fcIndirectInput");
 lgraph = connectLayers(lgraph,"actGPinput","catDirectIndirect/in1");
 lgraph = connectLayers(lgraph,"actIndirectOutput","catDirectIndirect/in2");
+
+%% dlnet and # of learnables 
+
+% for some reason, matlab doesn't want to output the number of learnables
+% of the lgraph, but it will do so for the dlnet 
+% and for some reason, conversion does not work unless the regressionoutput
+% layer is removed 
+dlnet = dlnetwork(removeLayers(lgraph, 'regressionoutput'));
+numLearnables = [dlnet.Learnables.Value]; % cell array for each layer 
+numLearnables = arrayfun(@(l) numel(l{:}), numLearnables); % total # at each layer
+numLearnables = sum(numLearnables); % grand total # 
+
 %% Plot Layers
 
 if showplot
