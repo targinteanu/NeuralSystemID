@@ -59,28 +59,10 @@ disp(['Pre Stim: ',...
     char(tblDur(NS2tbl)),' (',num2str(height(NS2tbl)),' samples)'])
 
 % summary channel data
-% might need to change this if multiple NS2 files with break in between,
-% i.e. non-uniform sampling 
-BetaPower = bandpower(tblPreStim.Variables, tblPreStim.Properties.SampleRate, [13, 30]);
-SD = std(tblPreStim);
-%isOut = isoutlier(NS2tbl, 'percentiles', [1, 99]);
-isOut = isoutlier(NS2tbl, 'mean');
-numOut = sum(isOut(1:PreStimEnd,:));
-fig1 = figure; 
-subplot(4,1,1); stem(BetaPower); axis tight;
-ylabel('Beta Band Power'); title('Channels Summary Data (Pre-Stim)');
-xticks(1:width(BetaPower)); xticklabels(NS2tbl.Properties.VariableNames);
-subplot(4,1,2); stem(SD.Variables); axis tight;
-ylabel('Standard Deviation'); 
-xticks(1:width(SD)); xticklabels(NS2tbl.Properties.VariableNames);
-subplot(4,1,3); stem(numOut); axis tight;
-ylabel('# Outliers'); 
-xticks(1:width(numOut)); xticklabels(NS2tbl.Properties.VariableNames);
-subplot(4,1,4); boxplot(tblPreStim.Variables, 'PlotStyle','compact', 'Symbol','.');
-axis tight;
-ylabel('Box Plot'); xlabel('Channel Name');
-xticks(1:width(BetaPower)); xticklabels(NS2tbl.Properties.VariableNames);
+[BetaPower, SD, ~, ~, fig1] = tblChannelSummary(tblPreStim, [13, 30]);
+subplot(4,1,1); ylabel('Beta Band Power'); title('Channels Summary Data - Pre Stim');
 sgtitle(pName);
+isOut = isOutlier(NS2tbl, 'mean');
 
 %% inspect or reject channels 
 
