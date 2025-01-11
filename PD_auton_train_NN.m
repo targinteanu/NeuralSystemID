@@ -15,6 +15,7 @@ figure; myStackedPlot(dataBaseline,chDisp,isOut);
 
 % filter freq range 
 loco = 13; hico = 30;
+fsOrig = dataBaseline.Properties.SampleRate; 
 
 % filtering bound rules 
 minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
@@ -22,37 +23,40 @@ min_filtorder  = 15;   % minimum filter length
 
 % filter order 
 if loco>0
-    filtord = minfac*fix(SamplingFreq/loco);
+    filtord = minfac*fix(fsOrig/loco);
 elseif hico>0
-    filtord = minfac*fix(SamplingFreq/hico);
+    filtord = minfac*fix(fsOrig/hico);
 end
 if filtord < min_filtorder
     filtord = min_filtorder;
 end
 
-filtwts = fir1(filtord, [loco, hico]./(SamplingFreq/2));
+filtwts = fir1(filtord, [loco, hico]./(fsOrig/2));
 filtfun = @(b,x) filtfilt(b,1,x); 
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
 
 % downsample, but ensure above nyquist rate 
 fsNew = ceil(2.1*hico);
-fsOrig = dataBaseline.Properties.SampleRate; 
-dataBaseline = resample(dataBaseline, fsNew, fsOrig);
+dataBaseline = resample(dataBaseline, fsNew, round(fsOrig));
 
 %% build the model to be trained  
 
 % define a deep neural network 
-[~,bgDNN,numLearnables] = DLN_BasalGanglia_v1(width(dataBaseline), 1, true);
+[~,bgDNN,numLearnables] = DLN_BasalGanglia_v2(width(dataBaseline), 1, true);
 disp([num2str(numLearnables),' Learnables']);
 
 % define a neural state space model 
 bgNSS = idNeuralStateSpace(width(dataBaseline)); % autonomous; state = output
 bgNSS.StateNetwork = bgDNN; 
+bgNSS.StateName = dataBaseline.Properties.VariableNames; 
+bgNSS.StateUnit = dataBaseline.Properties.VariableUnits;
+bgNSS.OutputName = dataBaseline.Properties.VariableNames; 
+bgNSS.OutputUnit = dataBaseline.Properties.VariableUnits;
 
 %% setup testing and training data 
 
-% reserve 5 min for training 
-trainReserveDur = 5 * 60; % s
+% reserve 7 min for training 
+trainReserveDur = 7 * 60; % s
 trainReserveN = trainReserveDur * fsOrig; % samples at Fs of isOut 
 % reserve the region with fewest total outliers in all channels
 isOutSum = sum(isOut,2);

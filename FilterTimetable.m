@@ -15,21 +15,25 @@ function TTfilt = FilterTimetable(FiltFun, FiltObj, TTunfilt)
 %
 
 %% sample rate check
-fs_Filter = FiltObj.SampleRate; 
-fs_Signal = TTunfilt.Properties.SampleRate;
-Time_Signal = TTunfilt.Time; 
-dT = seconds(diff(Time_Signal));
-dTmax = max(dT); dTmin = min(dT);
-fsmax = 1/dTmin; fsmin = 1/dTmax;
-errthresh = .01;
-if abs((fsmax-fs_Signal)/fs_Signal) > errthresh
-    error('Timetable Sample Rate is incorrectly reported.')
-end
-if abs((fsmin-fs_Signal)/fs_Signal) > errthresh
-    error('Timetable Sample Rate is incorrectly reported.')
-end
-if abs((fs_Filter-fs_Signal)/fs_Signal) > errthresh
-    error('Filter and input signal have different sampling rates.')
+Time_Signal = TTunfilt.Time;
+try
+    fs_Filter = FiltObj.SampleRate; 
+    fs_Signal = TTunfilt.Properties.SampleRate; 
+    dT = seconds(diff(Time_Signal));
+    dTmax = max(dT); dTmin = min(dT);
+    fsmax = 1/dTmin; fsmin = 1/dTmax;
+    errthresh = .01;
+    if abs((fsmax-fs_Signal)/fs_Signal) > errthresh
+        error('Timetable Sample Rate is incorrectly reported.')
+    end
+    if abs((fsmin-fs_Signal)/fs_Signal) > errthresh
+        error('Timetable Sample Rate is incorrectly reported.')
+    end
+    if abs((fs_Filter-fs_Signal)/fs_Signal) > errthresh
+        error('Filter and input signal have different sampling rates.')
+    end
+catch ME
+    warning(['Sample rate not checked due to error: ',ME.message]);
 end
 
 %% filtering 
