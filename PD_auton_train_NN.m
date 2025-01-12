@@ -71,6 +71,8 @@ trainStartInd = max(1, floor(trainStartInd));
 trainReserveN = ceil(trainReserveN*fsNew/fsOrig);
 trainEndInd = min(height(dataBaseline), trainStartInd + trainReserveN);
 dataTrain = dataBaseline(trainStartInd:trainEndInd, :); 
+% for some reason the TimeStep property sometimes gets messed up 
+dataTrain = retime(dataTrain, 'regular', 'nearest', 'SampleRate', fsNew);
 dataTest = dataBaseline([1:(trainStartInd-1), (trainEndInd+1):end], :);
 disp(string(dataTrain.Time(1))+" to "+string(dataTrain.Time(end))+" reserved for training.");
 
@@ -87,6 +89,7 @@ for ep = 1:numEpochTrain
     epInd1 = (ep-1)*epochN + 1;     epInd2 = epInd1 + epochN - 1;
     epTT = dataTrain(epInd1:epInd2, :);
     epTT.Time = epTT.Time - epTT.Time(1); % all start at "0" 
+    epTT = retime(epTT, 'regular', 'nearest', 'SampleRate', fsNew);
     dataTrainEp{ep} = epTT;
 end
 [~,epInd] = sort(epochNoise);
@@ -97,4 +100,10 @@ nTrain = ceil(numelTrain / width(dataTrain)); % # of time samples
 NTrain = ceil(nTrain / epochN); % # of epochs 
 epInd = epInd(1:NTrain); dataTrainEp = dataTrainEp(epInd);
 
-%% 
+%% training options 
+% to do 
+
+%% run training 
+tic
+bgNSS = nlssest(dataTrainEp, bgNSS);
+toc
