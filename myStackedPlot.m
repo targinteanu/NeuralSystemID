@@ -30,7 +30,11 @@ for c = 1:N
         if ~isempty(IsOutlier)
             io = IsOutlier(:,v);
         end
-        u = tbl.Properties.VariableUnits{v};
+        if isempty(tbl.Properties.VariableUnits)
+            u = '';
+        else
+            u = tbl.Properties.VariableUnits{v};
+        end
         v = tbl.Properties.VariableNames{v};
     else
         if ~sum(strcmp(tbl.Properties.VariableNames, v))
@@ -47,7 +51,11 @@ for c = 1:N
         end
         iv = find(strcmp(tbl.Properties.VariableNames, v));
         iv = iv(1); 
-        u = tbl.Properties.VariableUnits{iv};
+        if isempty(tbl.Properties.VariableUnits)
+            u = '';
+        else
+            u = tbl.Properties.VariableUnits{iv};
+        end
         if ~isempty(IsOutlier)
             io = IsOutlier(:,iv);
         end
