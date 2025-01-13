@@ -73,7 +73,9 @@ trainEndInd = min(height(dataBaseline), trainStartInd + trainReserveN);
 dataTrain = dataBaseline(trainStartInd:trainEndInd, :); 
 % for some reason the TimeStep property sometimes gets messed up 
 dataTrain = retime(dataTrain, 'regular', 'nearest', 'SampleRate', fsNew);
-dataTest = dataBaseline([1:(trainStartInd-1), (trainEndInd+1):end], :);
+dataTest = {...
+    retime(dataBaseline(1:(trainStartInd-1), :), 'regular', 'nearest', 'SampleRate', fsNew); ...
+    retime(dataBaseline((trainEndInd+1):end, :), 'regular', 'nearest', 'SampleRate', fsNew)};
 disp(string(dataTrain.Time(1))+" to "+string(dataTrain.Time(end))+" reserved for training.");
 
 % put training data into 1s non-overlapping epochs 
@@ -98,12 +100,45 @@ end
 numelTrain = 20 * numLearnables; 
 nTrain = ceil(numelTrain / width(dataTrain)); % # of time samples 
 NTrain = ceil(nTrain / epochN); % # of epochs 
+NTrain = NTrain+1; % one to be used for validation 
 epInd = epInd(1:NTrain); dataTrainEp = dataTrainEp(epInd);
 
-%% training options 
-% to do 
+%% training 
 
-%% run training 
+% training options 
+trnopts = nssTrainingOptions("adam");
+trnopts.MaxEpochs = 1000;
+
+% run training 
 tic
-bgNSS = nlssest(dataTrainEp, bgNSS);
+bgNSS = nlssest(dataTrainEp, bgNSS, trnopts, ...
+    UseLastExperimentForValidation = true);
 toc
+
+% save trained net 
+svname = inputdlg('Save Trained NSS as:', 'File Save Name', 1, {'trainednetv'});
+svname = [svname{1},'.mat'];
+save(fullfile(fp,svname), 'bgNSS', 'dataTrainEp', 'dataTrain', 'dataTest', 'fn')
+
+% visualize training results 
+hzn = ceil(.25 * fsNew); % .25-second-ahead prediction horizon
+ypTrain = predict(bgNSS, dataTrain, hzn); 
+ypTrain.Properties.VariableNames = dataTrain.Properties.VariableNames;
+ypTrain.Time = ypTrain.Time + dataTrain.Time(1);
+figure; myStackedPlot(dataTrain, chDisp(1)); 
+hold on; myStackedPlot(ypTrain, chDisp(1)); 
+errTrn = rmse(ypTrain.Variables, dataTrain.Variables, 'all');
+title(['Total RMSE = ',num2str(errTrn)])
+
+%% testing results 
+ypTest = cellfun(@(T) predict(bgNSS, T, hzn), dataTest, 'UniformOutput', false);
+for ep = 1:height(ypTest)
+    ypTest{ep}.Time = ypTest{ep}.Time + dataTest{ep}.Time(1);
+end
+ypTestCat = [ypTest{1}; ypTest{2}]; 
+dataTestCat = [dataTest{1}; dataTest{2}];
+ypTestCat.Properties.VariableNames = dataTestCat.Properties.VariableNames;
+figure; myStackedPlot(dataTestCat, chDisp(1));
+hold on; myStackedPlot(ypTestCat, chDisp(1)); 
+errTst = rmse(ypTestCat.Variables, dataTestCat.Variables, 'all');
+title(['Total RMSE = ',num2str(errTst)])
