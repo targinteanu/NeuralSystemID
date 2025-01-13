@@ -12,6 +12,8 @@ chDisp = [ord(1:5), ord((end-4):end)];
 figure; myStackedPlot(dataBaseline,chDisp,isOut);
 
 %% preprocess data 
+% TO DO: fix filtering! filter is not strong enough and does not remove
+% baseline
 
 % filter freq range 
 loco = 13; hico = 30;
@@ -124,6 +126,7 @@ save(fullfile(fp,svname), 'bgNSS', 'dataTrainEp', 'dataTrain', 'dataTest', 'fn')
 hzn = ceil(.25 * fsNew); % .25-second-ahead prediction horizon
 ypTrain = predict(bgNSS, dataTrain, hzn); 
 ypTrain.Properties.VariableNames = dataTrain.Properties.VariableNames;
+ypTrain.Properties.VariableUnits = dataTrain.Properties.VariableUnits;
 ypTrain.Time = ypTrain.Time + dataTrain.Time(1);
 figure; myStackedPlot(dataTrain, chDisp(1)); 
 hold on; myStackedPlot(ypTrain, chDisp(1)); 
@@ -138,7 +141,22 @@ end
 ypTestCat = [ypTest{1}; ypTest{2}]; 
 dataTestCat = [dataTest{1}; dataTest{2}];
 ypTestCat.Properties.VariableNames = dataTestCat.Properties.VariableNames;
+ypTestCat.Properties.VariableUnits = dataTestCat.Properties.VariableUnits;
 figure; myStackedPlot(dataTestCat, chDisp(1));
 hold on; myStackedPlot(ypTestCat, chDisp(1)); 
 errTst = rmse(ypTestCat.Variables, dataTestCat.Variables, 'all');
 title(['Total RMSE = ',num2str(errTst)])
+
+%% confirm train/test with simulation 
+
+simStart = 1010; % start index of sim 
+simOptsTrn = simOptions(...
+    'InitialCondition', dataTrain{simStart,:}', ...
+    'OutputTimes', seconds(dataTrain.Time(simStart:end)-dataTrain.Time(simStart)));
+ysTrain = sim(bgNSS, [], simOptsTrn);
+ysTrain = array2timetable(ysTrain, "RowTimes",dataTrain.Time(simStart:end), ...
+    "VariableNames",dataTrain.Properties.VariableNames);
+ysTrain.Properties.VariableUnits = dataTrain.Properties.VariableUnits;
+figure; myStackedPlot(dataTrain, chDisp(1)); 
+hold on; myStackedPlot(ysTrain, chDisp(1)); 
+hold on; myStackedPlot(ypTrain, chDisp(1));
