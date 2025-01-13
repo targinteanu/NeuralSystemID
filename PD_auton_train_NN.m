@@ -123,7 +123,8 @@ svname = [svname{1},'.mat'];
 save(fullfile(fp,svname), 'bgNSS', 'dataTrainEp', 'dataTrain', 'dataTest', 'fn')
 
 % visualize training results 
-hzn = ceil(.25 * fsNew); % .25-second-ahead prediction horizon
+%hzn = ceil(.25 * fsNew); % .25-second-ahead prediction horizon
+hzn = .25; % .25-second-ahead prediction horizon
 ypTrain = predict(bgNSS, dataTrain, hzn); 
 ypTrain.Properties.VariableNames = dataTrain.Properties.VariableNames;
 ypTrain.Properties.VariableUnits = dataTrain.Properties.VariableUnits;
