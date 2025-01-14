@@ -12,15 +12,13 @@ chDisp = [ord(1:5), ord((end-4):end)];
 figure; myStackedPlot(dataBaseline,chDisp,isOut);
 
 %% preprocess data 
-% TO DO: fix filtering! filter is not strong enough and does not remove
-% baseline
 
 % filter freq range 
 loco = 13; hico = 30;
 fsOrig = dataBaseline.Properties.SampleRate; 
 
 % filtering bound rules 
-minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 3;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % filter order 
@@ -36,6 +34,7 @@ end
 filtwts = fir1(filtord, [loco, hico]./(fsOrig/2));
 filtfun = @(b,x) filtfilt(b,1,x); 
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
+dataBaseline.Variables = envelope(dataBaseline.Variables);
 
 % downsample, but ensure above nyquist rate 
 fsNew = ceil(2.1*hico);
@@ -47,9 +46,14 @@ dataBaseline = resample(dataBaseline, fsNew, round(fsOrig));
 [~,bgDNN,numLearnables] = DLN_BasalGanglia_v2(width(dataBaseline), 1, true);
 disp([num2str(numLearnables),' Learnables']);
 
-% define a neural state space model 
+%% define a neural state space model 
 bgNSS = idNeuralStateSpace(width(dataBaseline)); % autonomous; state = output
-bgNSS.StateNetwork = bgDNN; 
+%bgNSS.StateNetwork = bgDNN; 
+bgNSS.StateNetwork = createMLPNetwork(bgNSS,"state", ...
+    LayerSizes=[256 256], ...
+    WeightsInitializer="glorot", ...
+    BiasInitializer="zeros", ...
+    Activations='tanh');
 bgNSS.StateName = dataBaseline.Properties.VariableNames; 
 bgNSS.StateUnit = dataBaseline.Properties.VariableUnits;
 bgNSS.OutputName = dataBaseline.Properties.VariableNames; 
@@ -107,9 +111,32 @@ epInd = epInd(1:NTrain); dataTrainEp = dataTrainEp(epInd);
 
 %% training 
 
-% training options 
+%{
+% training options - ADAM
 trnopts = nssTrainingOptions("adam");
-trnopts.MaxEpochs = 1000;
+trnopts.MaxEpochs = 1000; % default 100
+%trnopts.LearnRate = .01; % default .001
+%trnopts.LearnRateSchedule = "piecewise"; % default "none"
+trnopts.MiniBatchSize = 2048; % default 100
+trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"
+%}
+
+%{
+% training options - SGDM
+trnopts = nssTrainingOptions("sgdm");
+trnopts.MaxEpochs = 1000; % default 100
+trnopts.LearnRate = .001; % default .01
+%trnopts.LearnRateSchedule = "piecewise"; % default "none"
+trnopts.MiniBatchSize = 2048; % default 1000
+trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"
+%}
+
+%{
+% training options - LBFGS; only since MATLAB 2024b
+trnopts = nssTrainingOptions("lbfgs");
+trnopts.MaxIterations = 1000; % default 100
+%trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"
+%}
 
 % run training 
 tic
@@ -124,23 +151,29 @@ save(fullfile(fp,svname), 'bgNSS', 'dataTrainEp', 'dataTrain', 'dataTest', 'fn')
 
 % visualize training results 
 %hzn = ceil(.25 * fsNew); % .25-second-ahead prediction horizon
+Lval = 10000; % length of validation data 
 hzn = .25; % .25-second-ahead prediction horizon
-ypTrain = predict(bgNSS, dataTrain, hzn); 
+ypTrain = predict(bgNSS, dataTrain(1:Lval,:), hzn); 
 ypTrain.Properties.VariableNames = dataTrain.Properties.VariableNames;
 ypTrain.Properties.VariableUnits = dataTrain.Properties.VariableUnits;
 ypTrain.Time = ypTrain.Time + dataTrain.Time(1);
-figure; myStackedPlot(dataTrain, chDisp(1)); 
+figure; myStackedPlot(dataTrain(1:Lval,:), chDisp(1)); 
 hold on; myStackedPlot(ypTrain, chDisp(1)); 
-errTrn = rmse(ypTrain.Variables, dataTrain.Variables, 'all');
+errTrn = rmse(ypTrain.Variables, dataTrain(1:Lval,:).Variables, 'all');
 title(['Total RMSE = ',num2str(errTrn)])
 
 %% testing results 
+%{
 ypTest = cellfun(@(T) predict(bgNSS, T, hzn), dataTest, 'UniformOutput', false);
 for ep = 1:height(ypTest)
     ypTest{ep}.Time = ypTest{ep}.Time + dataTest{ep}.Time(1);
 end
 ypTestCat = [ypTest{1}; ypTest{2}]; 
 dataTestCat = [dataTest{1}; dataTest{2}];
+%}
+dataTestCat = dataTest{1}(1:Lval,:);
+ypTestCat = predict(bgNSS, dataTestCat, hzn);
+ypTestCat.Time = ypTestCat.Time + dataTestCat.Time(1);
 ypTestCat.Properties.VariableNames = dataTestCat.Properties.VariableNames;
 ypTestCat.Properties.VariableUnits = dataTestCat.Properties.VariableUnits;
 figure; myStackedPlot(dataTestCat, chDisp(1));
