@@ -34,7 +34,7 @@ end
 filtwts = fir1(filtord, [loco, hico]./(fsOrig/2));
 filtfun = @(b,x) filtfilt(b,1,x); 
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
-dataBaseline.Variables = envelope(dataBaseline.Variables);
+%dataBaseline.Variables = envelope(dataBaseline.Variables);
 
 % downsample, but ensure above nyquist rate 
 fsNew = ceil(2.1*hico);
@@ -111,13 +111,13 @@ epInd = epInd(1:NTrain); dataTrainEp = dataTrainEp(epInd);
 
 %% training 
 
-%{
+%%{
 % training options - ADAM
 trnopts = nssTrainingOptions("adam");
 trnopts.MaxEpochs = 1000; % default 100
-%trnopts.LearnRate = .01; % default .001
+trnopts.LearnRate = .01; % default .001
 %trnopts.LearnRateSchedule = "piecewise"; % default "none"
-trnopts.MiniBatchSize = 2048; % default 100
+trnopts.MiniBatchSize = 4096; % default 100
 trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"
 %}
 
@@ -151,7 +151,7 @@ save(fullfile(fp,svname), 'bgNSS', 'dataTrainEp', 'dataTrain', 'dataTest', 'fn')
 
 % visualize training results 
 %hzn = ceil(.25 * fsNew); % .25-second-ahead prediction horizon
-Lval = 10000; % length of validation data 
+Lval = 1000; % length of validation data 
 hzn = .25; % .25-second-ahead prediction horizon
 ypTrain = predict(bgNSS, dataTrain(1:Lval,:), hzn); 
 ypTrain.Properties.VariableNames = dataTrain.Properties.VariableNames;
@@ -159,8 +159,10 @@ ypTrain.Properties.VariableUnits = dataTrain.Properties.VariableUnits;
 ypTrain.Time = ypTrain.Time + dataTrain.Time(1);
 figure; myStackedPlot(dataTrain(1:Lval,:), chDisp(1)); 
 hold on; myStackedPlot(ypTrain, chDisp(1)); 
-errTrn = rmse(ypTrain.Variables, dataTrain(1:Lval,:).Variables, 'all');
-title(['Total RMSE = ',num2str(errTrn)])
+errTrn = mean(...
+    rmse(ypTrain.Variables, dataTrain(1:Lval,:).Variables) ./ ...
+    rms(dataTrain(1:Lval,:).Variables) );
+title(['Mean RMSE = ',num2str(100*errTrn),'%'])
 
 %% testing results 
 %{
@@ -178,12 +180,14 @@ ypTestCat.Properties.VariableNames = dataTestCat.Properties.VariableNames;
 ypTestCat.Properties.VariableUnits = dataTestCat.Properties.VariableUnits;
 figure; myStackedPlot(dataTestCat, chDisp(1));
 hold on; myStackedPlot(ypTestCat, chDisp(1)); 
-errTst = rmse(ypTestCat.Variables, dataTestCat.Variables, 'all');
-title(['Total RMSE = ',num2str(errTst)])
+errTst = mean(...
+    rmse(ypTestCat.Variables, dataTestCat(1:Lval,:).Variables) ./ ...
+    rms(dataTestCat(1:Lval,:).Variables) );
+title(['Mean RMSE = ',num2str(100*errTst),'%'])
 
 %% confirm train/test with simulation 
 
-simStart = 1010; % start index of sim 
+simStart = 1; % start index of sim 
 simOptsTrn = simOptions(...
     'InitialCondition', dataTrain{simStart,:}', ...
     'OutputTimes', seconds(dataTrain.Time(simStart:end)-dataTrain.Time(simStart)));
