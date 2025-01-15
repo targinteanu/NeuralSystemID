@@ -34,6 +34,7 @@ end
 filtwts = fir1(filtord, [loco, hico]./(fsOrig/2));
 filtfun = @(b,x) filtfilt(b,1,x); 
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
+[~,dataBaseline] = instPhaseFreqTbl(dataBaseline);
 %dataBaseline.Variables = envelope(dataBaseline.Variables);
 
 % downsample, but ensure above nyquist rate 
@@ -115,7 +116,7 @@ epInd = epInd(1:NTrain); dataTrainEp = dataTrainEp(epInd);
 % training options - ADAM
 trnopts = nssTrainingOptions("adam");
 trnopts.MaxEpochs = 1000; % default 100
-trnopts.LearnRate = .01; % default .001
+%trnopts.LearnRate = .01; % default .001
 %trnopts.LearnRateSchedule = "piecewise"; % default "none"
 trnopts.MiniBatchSize = 4096; % default 100
 trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"
