@@ -34,27 +34,43 @@ end
 filtwts = fir1(filtord, [loco, hico]./(fsOrig/2));
 filtfun = @(b,x) filtfilt(b,1,x); 
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
-[~,dataBaseline] = instPhaseFreqTbl(dataBaseline);
-%dataBaseline.Variables = envelope(dataBaseline.Variables);
+
+% inst freq 
+[~,dataFreq] = instPhaseFreqTbl(dataBaseline);
+% envelope/power
+dataBaseline.Variables = envelope(dataBaseline.Variables);
+for c = 1:width(dataBaseline)
+    dataBaseline.Properties.VariableNames{c} = ...
+        [dataBaseline.Properties.VariableNames{c},' envelope'];
+end
+% power and freq
+dataBaseline = [dataBaseline, dataFreq];
 
 % downsample, but ensure above nyquist rate 
-fsNew = ceil(2.1*hico);
-dataBaseline = resample(dataBaseline, fsNew, round(fsOrig));
+fsNew = 2.1*hico;
+fsRatio = floor(fsOrig/fsNew); 
+fsNew = fsOrig / fsRatio; 
+disp(['Resampling from ',num2str(fsOrig),' to ',num2str(fsNew)]);
+dataBaseline = downsampleTimetable(dataBaseline, fsRatio);
+fsNew = dataBaseline.Properties.SampleRate; 
+disp(['Resampled to ',num2str(fsNew),' Hz']);
 
 %% build the model to be trained  
 
 % define a deep neural network 
-[~,bgDNN,numLearnables] = DLN_BasalGanglia_v2(width(dataBaseline), 1, true);
+[~,bgDNN,numLearnables] = DLN_BasalGanglia_v3(width(dataBaseline), 1, true);
 disp([num2str(numLearnables),' Learnables']);
 
-%% define a neural state space model 
+% define a neural state space model 
 bgNSS = idNeuralStateSpace(width(dataBaseline)); % autonomous; state = output
-%bgNSS.StateNetwork = bgDNN; 
+bgNSS.StateNetwork = bgDNN; 
+%{
 bgNSS.StateNetwork = createMLPNetwork(bgNSS,"state", ...
     LayerSizes=[256 256], ...
     WeightsInitializer="glorot", ...
     BiasInitializer="zeros", ...
     Activations='tanh');
+%}
 bgNSS.StateName = dataBaseline.Properties.VariableNames; 
 bgNSS.StateUnit = dataBaseline.Properties.VariableUnits;
 bgNSS.OutputName = dataBaseline.Properties.VariableNames; 
@@ -87,7 +103,7 @@ disp(string(dataTrain.Time(1))+" to "+string(dataTrain.Time(end))+" reserved for
 
 % put training data into 1s non-overlapping epochs 
 epochdur = 1; % s 
-epochNorig = round(epochdur/fsNew); % length at orig sample rate 
+epochNorig = round(epochdur/fsOrig); % length at orig sample rate 
 epochN = round(epochdur*fsNew); % length at new sample rate
 numEpochTrain = floor(height(dataTrain)/epochN);
 epochNoise = zeros(numEpochTrain, 1);
@@ -101,7 +117,7 @@ for ep = 1:numEpochTrain
     epTT = retime(epTT, 'regular', 'nearest', 'SampleRate', fsNew);
     dataTrainEp{ep} = epTT;
 end
-[~,epInd] = sort(epochNoise);
+[~,epInd] = sort(epochNoise); % preferably select the lowest-noise epochs for training
 
 % try 20 x numLearnables = # training samples 
 numelTrain = 20 * numLearnables; 
@@ -115,8 +131,8 @@ epInd = epInd(1:NTrain); dataTrainEp = dataTrainEp(epInd);
 %%{
 % training options - ADAM
 trnopts = nssTrainingOptions("adam");
-trnopts.MaxEpochs = 1000; % default 100
-%trnopts.LearnRate = .01; % default .001
+trnopts.MaxEpochs = 100000; % default 100
+trnopts.LearnRate = .0001; % default .001
 %trnopts.LearnRateSchedule = "piecewise"; % default "none"
 trnopts.MiniBatchSize = 4096; % default 100
 trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"
@@ -126,9 +142,9 @@ trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"
 % training options - SGDM
 trnopts = nssTrainingOptions("sgdm");
 trnopts.MaxEpochs = 1000; % default 100
-trnopts.LearnRate = .001; % default .01
+trnopts.LearnRate = .0001; % default .01
 %trnopts.LearnRateSchedule = "piecewise"; % default "none"
-trnopts.MiniBatchSize = 2048; % default 1000
+trnopts.MiniBatchSize = 4096; % default 1000
 trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"
 %}
 
@@ -179,8 +195,8 @@ ypTestCat = predict(bgNSS, dataTestCat, hzn);
 ypTestCat.Time = ypTestCat.Time + dataTestCat.Time(1);
 ypTestCat.Properties.VariableNames = dataTestCat.Properties.VariableNames;
 ypTestCat.Properties.VariableUnits = dataTestCat.Properties.VariableUnits;
-figure; myStackedPlot(dataTestCat, chDisp(1));
-hold on; myStackedPlot(ypTestCat, chDisp(1)); 
+figure; myStackedPlot(dataTestCat, chDisp(1)+61);
+hold on; myStackedPlot(ypTestCat, chDisp(1)+61); 
 errTst = mean(...
     rmse(ypTestCat.Variables, dataTestCat(1:Lval,:).Variables) ./ ...
     rms(dataTestCat(1:Lval,:).Variables) );
