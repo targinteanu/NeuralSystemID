@@ -83,6 +83,10 @@ TT = array2timetable(X,"RowTimes",t,"VariableNames",lbl);
 TT.Properties.VariableUnits = unitname;
 %TT.Properties.SampleRate = NS.MetaTags.SamplingFreq;
 
+TT.Properties.Description = [...
+    'file ',NS.MetaTags.FilePath,filesep,NS.MetaTags.Filename,NS.MetaTags.FileExt,...
+    ', comment ',NS.MetaTags.Comment];
+
 % sample rate check 
 fs_Signal = NS.MetaTags.SamplingFreq;
 dT = seconds(diff(t));

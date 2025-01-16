@@ -42,6 +42,10 @@ Xfilt = FiltFun(FiltObj, Xunfilt);
 TTfilt = array2timetable(Xfilt,"RowTimes",Time_Signal,...
     "VariableNames",TTunfilt.Properties.VariableNames); 
 TTfilt.Properties.CustomProperties = TTunfilt.Properties.CustomProperties;
+TTfilt.Properties.UserData = TTunfilt.Properties.UserData;
 TTfilt.Properties.VariableUnits = TTunfilt.Properties.VariableUnits;
+TTfilt.Properties.VariableDescriptions = TTunfilt.Properties.VariableDescriptions;
+TTfilt.Properties.Events = TTunfilt.Properties.Events;
+TTfilt.Properties.Description = [TTunfilt.Properties.Description,' filtered'];
 
 end
