@@ -36,7 +36,7 @@ filtfun = @(b,x) filtfilt(b,1,x);
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
 
 % inst freq 
-[~,dataFreq] = instPhaseFreqTbl(dataBaseline);
+[~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
 % envelope/power
 dataBaseline.Variables = envelope(dataBaseline.Variables);
 for c = 1:width(dataBaseline)
@@ -131,7 +131,7 @@ epInd = epInd(1:NTrain); dataTrainEp = dataTrainEp(epInd);
 %%{
 % training options - ADAM
 trnopts = nssTrainingOptions("adam");
-trnopts.MaxEpochs = 100000; % default 100
+trnopts.MaxEpochs = 5000; % default 100
 trnopts.LearnRate = .0001; % default .001
 %trnopts.LearnRateSchedule = "piecewise"; % default "none"
 trnopts.MiniBatchSize = 4096; % default 100
@@ -195,8 +195,8 @@ ypTestCat = predict(bgNSS, dataTestCat, hzn);
 ypTestCat.Time = ypTestCat.Time + dataTestCat.Time(1);
 ypTestCat.Properties.VariableNames = dataTestCat.Properties.VariableNames;
 ypTestCat.Properties.VariableUnits = dataTestCat.Properties.VariableUnits;
-figure; myStackedPlot(dataTestCat, chDisp(1)+61);
-hold on; myStackedPlot(ypTestCat, chDisp(1)+61); 
+figure; myStackedPlot(dataTestCat, chDisp(1));
+hold on; myStackedPlot(ypTestCat, chDisp(1)); 
 errTst = mean(...
     rmse(ypTestCat.Variables, dataTestCat(1:Lval,:).Variables) ./ ...
     rms(dataTestCat(1:Lval,:).Variables) );
