@@ -1,3 +1,8 @@
+%% Parkinson's Disease (PD) Project - train autonomous neural network
+% Train a neural state space system to capture dynamics of cortical
+% recordings in Parkinson's Disease subjects. 
+% Autonomous only: does not include brain stimulation. 
+
 %% load the data 
 [fn,fp] = uigetfile('*_DataTimeTables.mat');
 load(fullfile(fp,fn));
@@ -36,9 +41,9 @@ filtfun = @(b,x) filtfilt(b,1,x);
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
 
 % inst freq 
-%[~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
-dataFreq = instfreq(dataBaseline);
-dataFreq = retime(dataFreq, dataBaseline.Time, "spline");
+[~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
+%dataFreq = instfreq(dataBaseline);
+%dataFreq = retime(dataFreq, dataBaseline.Time, "spline");
 % envelope/power
 dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
 for c = 1:width(dataBaseline)
