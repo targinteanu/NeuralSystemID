@@ -62,7 +62,7 @@ disp(['Pre Stim: ',...
 [BetaPower, SD, ~, ~, fig1] = tblChannelSummary(tblPreStim, [13, 30]);
 subplot(4,1,1); ylabel('Beta Band Power'); title('Channels Summary Data - Pre Stim');
 sgtitle(pName);
-isOut = isOutlier(NS2tbl, 'mean');
+isOut = isoutlier(NS2tbl, 'mean');
 
 %% inspect or reject channels 
 
@@ -189,7 +189,7 @@ DataTimeTables = {...
 for h = 1:height(DataTimeTables)
     figure('Units','normalized', 'Position',...
         [(h-1)/height(DataTimeTables),0,1/height(DataTimeTables),1]);
-    myStackedPlot(DataTimeTables{h,2}(:,chanSelInds), [], []);
+    myStackedPlot(DataTimeTables{h,2}(:,chanSelInds), [], []); % chanSelInds needs to be changed!
     sgtitle({pName; DataTimeTables{h,1}});
 end
 
