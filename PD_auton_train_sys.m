@@ -19,10 +19,10 @@ H = height(chdisp);
 figure; 
 for p = 1:H
     subplot(H,2, 2*(p-1)+1);
-    plot(dataTrainVal.Time, dataTrainVal{:,chdisp(p)}, 'k', 'LineWidth',2);
+    plottbl(dataTrainVal, chdisp(p), 'k',2);
     hold on; grid on;
     subplot(H,2, 2*(p-1)+2);
-    plot(dataTestVal.Time, dataTestVal{:,chdisp(p)}, 'k', 'LineWidth',2);
+    plottbl(dataTestVal, chdisp(p), 'k', 2);
     hold on; grid on;
 end
 
@@ -55,10 +55,10 @@ disp('Null State Space - Testing Validation')
 sysNulltest = myPredict(sysNull, dataTestVal, kstep, true);
 for p = 1:H
     subplot(H,2, 2*(p-1)+1);
-    plottbl(sysNulltrain, chdisp(p));
+    plottbl(sysNulltrain, chdisp(p), ':k', 1.5);
     hold on; grid on;
     subplot(H,2, 2*(p-1)+2);
-    plottbl(sysNulltest, chdisp(p));
+    plottbl(sysNulltest, chdisp(p), ':k', 1.5);
     hold on; grid on;
 end
 
@@ -116,7 +116,7 @@ LayerSize = [
     250; % thalamus
     ];
 %StateSize = N*sum(LayerSize);
-StateSize = 100;
+StateSize = 200;
 n4hzn = [1.5*StateSize, 7, 7];
 disp('LTI - n4sid Training')
 tic
@@ -141,10 +141,19 @@ for p = 1:H
     hold on; grid on;
 end
 
+%% legend 
+legend('true', 'bgNSS', 'null', 'sysLTI', 'AR', 'bgLTI')
+
 %% helpers 
-function plottbl(TBL, v)
+function plottbl(TBL, v, lspc, lwid)
+    if nargin < 4
+        lwid = 1;
+    end
+    if nargin < 3
+        lspc = '-';
+    end
     if nargin < 2
         v = 1;
     end
-    plot(TBL.Time, TBL{:,v});
+    plot(TBL.Time, TBL{:,v}, lspc, 'LineWidth',lwid);
 end
