@@ -56,11 +56,11 @@ initval = @(sgn, h, w) sgn/(w+h) + sqrt(2/(w+h))*randn(h,w);
 
 layers = [
     featureInputLayer(numChan,"Name","ECoG")
-    fullyConnectedLayer(N*207,"Name","fcCortexInput","Weights",initval(0,N*207,numChan))
+    fullyConnectedLayer(N*70,"Name","fcCortexInput","Weights",initval(0,N*70,numChan))
     tanhLayer("Name","actCortexInput")
-    fullyConnectedLayer(N*207,"Name","fcStriatum","Weights",initval(1,N*207,N*207))
+    fullyConnectedLayer(N*70,"Name","fcStriatum","Weights",initval(1,N*70,N*70))
     tanhLayer("Name","actStriatum")
-    fullyConnectedLayer(N*30,"Name","fcGPinput","Weights",initval(-1,N*30,N*207))
+    fullyConnectedLayer(N*30,"Name","fcGPinput","Weights",initval(-1,N*30,N*70))
     tanhLayer("Name","actGPinput")
     fullyConnectedLayer(N*10,"Name","fcGPout","Weights",initval(0,N*10,N*30))
     tanhLayer("Name","actGPout")

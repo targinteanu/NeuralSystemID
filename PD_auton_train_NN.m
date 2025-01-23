@@ -1,3 +1,8 @@
+%% Parkinson's Disease (PD) Project - train autonomous neural network
+% Train a neural state space system to capture dynamics of cortical
+% recordings in Parkinson's Disease subjects. 
+% Autonomous only: does not include brain stimulation. 
+
 %% load the data 
 [fn,fp] = uigetfile('*_DataTimeTables.mat');
 load(fullfile(fp,fn));
@@ -36,9 +41,11 @@ filtfun = @(b,x) filtfilt(b,1,x);
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
 
 % inst freq 
-[~,dataFreq] = instPhaseFreqTbl(dataBaseline);
+[~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
+%dataFreq = instfreq(dataBaseline);
+%dataFreq = retime(dataFreq, dataBaseline.Time, "spline");
 % envelope/power
-dataBaseline.Variables = envelope(dataBaseline.Variables);
+dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
 for c = 1:width(dataBaseline)
     dataBaseline.Properties.VariableNames{c} = ...
         [dataBaseline.Properties.VariableNames{c},' envelope'];
@@ -58,7 +65,7 @@ disp(['Resampled to ',num2str(fsNew),' Hz']);
 %% build the model to be trained  
 
 % define a deep neural network 
-[~,bgDNN,numLearnables] = DLN_BasalGanglia_v3(width(dataBaseline), 1, true);
+[~,bgDNN,numLearnables] = DLN_BasalGanglia_v3(width(dataBaseline), 2, true);
 disp([num2str(numLearnables),' Learnables']);
 
 % define a neural state space model 
@@ -124,14 +131,17 @@ numelTrain = 20 * numLearnables;
 nTrain = ceil(numelTrain / width(dataTrain)); % # of time samples 
 NTrain = ceil(nTrain / epochN); % # of epochs 
 NTrain = NTrain+1; % one to be used for validation 
-epInd = epInd(1:NTrain); dataTrainEp = dataTrainEp(epInd);
+%epInd = epInd(1:NTrain); dataTrainEp = dataTrainEp(epInd);
+DataLearnableRatio = numel(dataTrain)/numLearnables;
+disp(['Training data size is ',num2str(DataLearnableRatio),...
+    ' times learnables size.']);
 
 %% training 
 
 %%{
 % training options - ADAM
 trnopts = nssTrainingOptions("adam");
-trnopts.MaxEpochs = 100000; % default 100
+trnopts.MaxEpochs = 5000; % default 100
 trnopts.LearnRate = .0001; % default .001
 %trnopts.LearnRateSchedule = "piecewise"; % default "none"
 trnopts.MiniBatchSize = 4096; % default 100
@@ -157,8 +167,11 @@ trnopts.MaxIterations = 1000; % default 100
 
 % run training 
 tic
+%{
 bgNSS = nlssest(dataTrainEp, bgNSS, trnopts, ...
     UseLastExperimentForValidation = true);
+%}
+bgNSS = nlssest(dataTrain, bgNSS, trnopts);
 toc
 
 % save trained net 
@@ -195,8 +208,8 @@ ypTestCat = predict(bgNSS, dataTestCat, hzn);
 ypTestCat.Time = ypTestCat.Time + dataTestCat.Time(1);
 ypTestCat.Properties.VariableNames = dataTestCat.Properties.VariableNames;
 ypTestCat.Properties.VariableUnits = dataTestCat.Properties.VariableUnits;
-figure; myStackedPlot(dataTestCat, chDisp(1)+61);
-hold on; myStackedPlot(ypTestCat, chDisp(1)+61); 
+figure; myStackedPlot(dataTestCat, chDisp(1));
+hold on; myStackedPlot(ypTestCat, chDisp(1)); 
 errTst = mean(...
     rmse(ypTestCat.Variables, dataTestCat(1:Lval,:).Variables) ./ ...
     rms(dataTestCat(1:Lval,:).Variables) );

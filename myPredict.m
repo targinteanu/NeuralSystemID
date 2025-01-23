@@ -1,74 +1,42 @@
-function Yp = myPredict(sys, tbl, k, showprog)
+function Yp = myPredict(sys, tbl, k, showprog, usebuiltin)
 % should work like predict with inputs system <sys>, input-output timetable
 % data <tbl>, and prediction horizon <k> steps ahead 
+% will call the subfunction that works for type of input <sys> 
 
-% setup 
+% handle inputs 
+if nargin < 5
+    usebuiltin = false;
+end
 if nargin < 4
     showprog = true;
 end
-progtick = .05; prog = 0; proggoal = .05;
 if nargin < 3
     k = 1;
 end
-k = k+1;
-yp = nan(height(tbl), height(sys));
 
-% is autonomous? 
-isAuton = ~width(sys); 
-if ~isAuton
-    tblInputInd = false(1, width(tbl));
-    for NAME = sys.InputName
-        name = NAME{:};
-        tblInputInd = tblInputInd | strcmp(name, tbl.Properties.VariableNames);
-    end
-    %{
-    tblInputInd = cellfun(...
-        @(name) find(strcmp(name, tbl.Properties.VariableNames)), ...
-        sys.InputName);
-    %}
-    U = tbl(:, tblInputInd);
-    tbl = tbl(:, ~tblInputInd);
+if usebuiltin
+    Yp = predictWrapper(sys, tbl, k);
 else
-    U = [];
+
+% refer to best predict function 
+c = class(sys);
+if strcmpi(c, 'idss') || strcmpi(c, 'ss')
+    Yp = myPredict2(sys, tbl, k, showprog);
+elseif strcmpi(c, 'idNeuralStateSpace')
+    Yp = myPredict1(sys, tbl, k, showprog);
+elseif strcmpi(c, 'idpoly')
+    Yp = myPredictAR(sys, tbl, k, showprog);
+else
+    warning(['System type ',c,' has not yet been tried.'])
+    Yp = predictWrapper(sys, tbl, k);
 end
 
-% first k predictions 
-yp(1:k,:) = minisim(sys, tbl, U, 1, k);
+end
 
-% remaining predictions 
-for ik2 = (k+1):height(yp)
-    ik1 = ik2-k+1; 
-    yy = minisim(sys, tbl, U, ik1, ik2);
-    yp(ik2,:) = yy(end,:);
-    prog = ik2/height(yp);
-    if showprog
-        if prog >= proggoal
-            disp(['Simulating: ',num2str(100*prog),'% Complete'])
-            proggoal = proggoal + progtick;
-        end
+    function Yp = predictWrapper(sys, tbl, k)
+        k = k*tbl.Properties.TimeStep; % convert to seconds
+        Yp = predict(sys, tbl, k);
+        Yp.Time = Yp.Time + tbl.Time(1);
     end
-end
-
-% convert output to timetable 
-Yp = array2timetable(yp, "RowTimes",tbl.Time, ...
-    "VariableNames",tbl.Properties.VariableNames);
-Yp.Properties.VariableUnits = tbl.Properties.VariableUnits; 
-% also copy events, userdata, customproperties, etc???
-if ~isAuton
-    Yp = [U, Yp]; 
-end
-
-% helper 
-function ys = minisim(S, VT, UT, i1, i2)
-    % unsure if the non-autonomous case will work; do OutputTimes /
-    % InitialCondition need to be duration/datetime/timetable to match U?
-    if ~isempty(UT)
-        UT = UT(i1:i2,:);
-    end
-    simopt = simOptions(...
-        'InitialCondition', VT{i1,:}', ...
-        'OutputTimes', seconds(VT.Time(i1:i2) - VT.Time(i1)) );
-    ys = sim(S, UT, simopt);
-end
 
 end
