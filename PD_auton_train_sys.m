@@ -156,4 +156,7 @@ function plottbl(TBL, v, lspc, lwid)
         v = 1;
     end
     plot(TBL.Time, TBL{:,v}, lspc, 'LineWidth',lwid);
+    ylabel([TBL.Properties.VariableNames{v},' (',...
+        TBL.Properties.VariableUnits{v},')']);
+    xlabel('time');
 end
