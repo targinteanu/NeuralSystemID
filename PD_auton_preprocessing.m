@@ -126,7 +126,7 @@ errTrn = mean( errsTrn );
 rhoTrn = arrayfun(@(c) corr(dataTrain{1:Lval,c}, ypTrain{:,c}), 1:width(dataTrain));
 [~,ch1] = min(errsTrn); % best channel
 [~,ch2] = min(abs(errTrn - errsTrn)); % most representative channel
-fig1 = figure; 
+fig1 = figure('Units','normalized', 'Position',[.05 .05 .9 .9]); 
 
 subplot(3,2,1); 
 plottbl(dataTrain(1:Lval,:), ch1); grid on; 
@@ -161,7 +161,7 @@ end
 %% testing results 
 dataTestCat = dataTest{1}(1:Lval,:);
 ypTestCat = myPredict(sysLTI, dataTestCat, hzn);
-fig2 = figure; 
+fig2 = figure('Units','normalized', 'Position',[.05 .05 .9 .9]); 
 
 subplot(3,2,1);
 plottbl(dataTestCat, ch1); grid on;
