@@ -1,5 +1,7 @@
 %% Parkinson's Disease (PD) Project - preprocessing 
-% Test out preprocessing. To be selected for further system training. 
+% Test out preprocessing using a simple LTI system. 
+% To be selected for further system training. 
+% Fast evaluation using 250-ms horizon
 % Autonomous only: does not include brain stimulation.
 
 %% load the data 
@@ -39,11 +41,17 @@ filtfun = @(b,x) filtfilt(b,1,x);
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
 
 %% inst freq 
-%[~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
+%%{
+[~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
+%dataFreq.Variables = dataFreq.Variables - 20;
+%dataFreq.Variables = tanh((dataFreq.Variables-20)/10);
 %dataFreq = instfreq(dataBaseline);
 %dataFreq = retime(dataFreq, dataBaseline.Time, "spline");
+dataBaseline = dataFreq;
+%}
 
 %% envelope/power
+%{
 dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
 for c = 1:width(dataBaseline)
     dataBaseline.Properties.VariableNames{c} = ...
@@ -53,6 +61,7 @@ for c = 1:width(dataBaseline)
 end
 % power and freq
 % dataBaseline = [dataBaseline, dataFreq];
+%}
 
 %% downsample, but ensure above nyquist rate 
 fsNew = 2.1*hico;
@@ -105,7 +114,7 @@ sysLTI.StateName = dataTrain.Properties.VariableNames;
 sysLTI.StateUnit = dataTrain.Properties.VariableUnits;
 sysLTI.OutputName = dataTrain.Properties.VariableNames; 
 sysLTI.OutputUnit = dataTrain.Properties.VariableUnits;
-sysLTI = d2c(sysLTI);
+%sysLTI = d2c(sysLTI);
 toc
 
 % save training params 
