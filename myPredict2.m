@@ -1,9 +1,12 @@
-function Yp = myPredict2(sys, tbl, k, showprog)
+function Yp = myPredict2(sys, tbl, k, showprog, fullstateavail)
 % should work like predict with inputs system <sys>, input-output timetable
 % data <tbl>, and prediction horizon <k> steps ahead 
 % works when <sys> is idss
 
 % setup 
+if nargin < 5
+    fullstateavail = true;
+end
 if nargin < 4
     showprog = true;
 end
@@ -37,6 +40,26 @@ if ~isAuton
     tbl = tbl(:, ~tblInputInd);
 else
     U = [];
+end
+
+% estimate state 
+if ~fullstateavail
+    Y = tbl.Variables'; % row vectors 
+    % Y = C * X
+    C = sys.C;
+    if (width(C) == height(C)) && (det(C) > 10*eps)
+        Ci = C^-1;
+    else
+        %CTC = C' * C;
+        %if det(CTC) > 10*eps
+        %    Ci = (CTC ^ -1) * C';
+        %else
+            Ci = pinv(C);
+        %end
+    end
+    % X ~~ Ci * Y
+    X = Ci*Y;
+    tbl = array2timetable(X', "RowTimes",tbl.Time);
 end
 
 % first k predictions 

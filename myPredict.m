@@ -14,14 +14,9 @@ if nargin < 3
     k = 1;
 end
 
-if ~isequal(size(sys.StateName), size(sys.OutputName))
+fullStateAvail = isequal(size(sys.StateName), size(sys.OutputName));
     % TO DO: should be a more robust check if full state output; maybe if
     % names are the same (not just size)? 
-    if ~usebuiltin
-        warning('Full state is not available, so built-in function will be used.')
-    end
-    usebuiltin = true;
-end
 
 if usebuiltin
     Yp = predictWrapper(sys, tbl, k);
@@ -30,7 +25,7 @@ else
 % refer to best predict function 
 c = class(sys);
 if strcmpi(c, 'idss') || strcmpi(c, 'ss')
-    Yp = myPredict2(sys, tbl, k, showprog);
+    Yp = myPredict2(sys, tbl, k, showprog, fullStateAvail);
 elseif strcmpi(c, 'idNeuralStateSpace')
     Yp = myPredict1(sys, tbl, k, showprog);
 elseif strcmpi(c, 'idpoly')
