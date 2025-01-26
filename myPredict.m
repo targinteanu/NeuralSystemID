@@ -14,6 +14,15 @@ if nargin < 3
     k = 1;
 end
 
+if ~isequal(size(sys.StateName), size(sys.OutputName))
+    % TO DO: should be a more robust check if full state output; maybe if
+    % names are the same (not just size)? 
+    if ~usebuiltin
+        warning('Full state is not available, so built-in function will be used.')
+    end
+    usebuiltin = true;
+end
+
 if usebuiltin
     Yp = predictWrapper(sys, tbl, k);
 else

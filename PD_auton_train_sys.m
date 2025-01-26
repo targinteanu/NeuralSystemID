@@ -77,6 +77,10 @@ sysLTI.StateUnit = dataTrain.Properties.VariableUnits;
 sysLTI.OutputName = dataTrain.Properties.VariableNames; 
 sysLTI.OutputUnit = dataTrain.Properties.VariableUnits;
 
+rat = sum([numel(sysLTI.A), numel(sysLTI.B), numel(sysLTI.C), numel(sysLTI.D), numel(sysLTI.K)]);
+rat = numel(dataTrain)/rat; 
+disp(['Training data is ',num2str(rat),' times parameter size'])
+
 disp('Basic LTI - Training Validation')
 sysLTItrain = myPredict(sysLTI, dataTrainVal, kstep, true);
 disp('Basic LTI - Testing Validation')
@@ -97,6 +101,10 @@ for p = 1:width(dataTrain)
     ARp = ar(dataTrain(:,p), 10, 'yw');
     sysAR = [sysAR; ARp];
 end
+
+rat = height(dataTrain)/10; 
+disp(['Training data is ',num2str(rat),' times parameter size'])
+
 disp('AR - Training Validation')
 xTrainPred = myPredict(sysAR, dataTrainVal, kstep, true);
 disp('AR - Testing Validation')
@@ -124,7 +132,7 @@ LayerSize = [
     250; % thalamus
     ];
 %StateSize = N*sum(LayerSize);
-StateSize = 111;
+StateSize = 60;
 n4hzn = [ceil(1.5*StateSize), 7, 7];
 disp('LTI - n4sid Training')
 tic
@@ -135,6 +143,10 @@ bgLTI = n4sid(dataTrain, StateSize, ...
 toc
 bgLTI.OutputName = dataTrain.Properties.VariableNames; 
 bgLTI.OutputUnit = dataTrain.Properties.VariableUnits;
+
+rat = sum([numel(bgLTI.A), numel(bgLTI.B), numel(bgLTI.C), numel(bgLTI.D), numel(bgLTI.K)]);
+rat = numel(dataTrain)/rat; 
+disp(['Training data is ',num2str(rat),' times parameter size'])
 
 disp('LTI - Training Validation')
 bgLTItrain = myPredict(bgLTI, dataTrainVal, kstep, false, true);

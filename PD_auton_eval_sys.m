@@ -9,6 +9,7 @@ disp([fp,' --- ',fn]);
 sysName = {'bgNSS', 'sysNull', 'sysLTI', 'sysAR', 'bgLTI'};
 sysColr = {'-b',    '-k',      '-r',     '-c',    '-m'};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
+fsNew = dataTrain.Properties.SampleRate;
 
 %% k-step ahead prediction 
 % artifact duration is around 10ms, but we should verify different time
