@@ -7,6 +7,7 @@
 [fn,fp] = uigetfile('trainednet*.mat');
 load(fullfile(fp,fn), 'bgNSS', 'dataTrain', 'dataTest');
 disp([fp,' --- ',fn]);
+[~,fn] = fileparts(fn);
 
 %% validation params 
 chdisp = [1; 10; 20]; chdisp = [chdisp; chdisp+width(dataTrain)/2];
@@ -16,15 +17,18 @@ Lval = 1000; % sample
 
 dataTrainVal = dataTrain(1:Lval,:); dataTestVal = dataTest{1}(1:Lval,:);
 H = height(chdisp);
-figure; 
+fig1 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
 for p = 1:H
-    subplot(H,2, 2*(p-1)+1);
+    ax(p,1) = subplot(H,2, 2*(p-1)+1);
     plottbl(dataTrainVal, chdisp(p), 'k',2);
     hold on; grid on;
-    subplot(H,2, 2*(p-1)+2);
+    ax(p,2) = subplot(H,2, 2*(p-1)+2);
     plottbl(dataTestVal, chdisp(p), 'k', 2);
     hold on; grid on;
+    linkaxes(ax(p,:), 'y');
 end
+linkaxes(ax(:,1), 'x'); linkaxes(ax(:,2), 'x');
+subplot(H,2,1); title('Training'); subplot(H,2,2); title('Testing');
 
 %% NSS (display only)
 disp('Neural State Space - Training Validation')
@@ -87,18 +91,22 @@ for p = 1:H
 end
 
 %% AR model
+sysAR = [];
+for p = 1:width(dataTrain)
+    disp(['AR - Training Channel ',dataTrain.Properties.VariableNames{p}])
+    ARp = ar(dataTrain(:,p), 10, 'yw');
+    sysAR = [sysAR; ARp];
+end
+disp('AR - Training Validation')
+xTrainPred = myPredict(sysAR, dataTrainVal, kstep, true);
+disp('AR - Testing Validation')
+xTestPred = myPredict(sysAR, dataTestVal, kstep, true);
 for p = 1:H
-    disp(['AR - Training Channel ',num2str(chdisp(p))])
-    arp = ar(dataTrain(:,chdisp(p)), 10, 'yw');
-    disp('AR - Training Validation')
-    xTrainPred = myPredict(arp, dataTrainVal(:,chdisp(p)), kstep, true);
-    disp('AR - Testing Validation')
-    xTestPred = myPredict(arp, dataTestVal(:,chdisp(p)), kstep, true);
     subplot(H,2, 2*(p-1)+1);
-    plottbl(xTrainPred);
+    plottbl(xTrainPred, chdisp(p));
     hold on; grid on;
     subplot(H,2, 2*(p-1)+2);
-    plottbl(xTestPred);
+    plottbl(xTestPred, chdisp(p));
     hold on; grid on;
 end
 
@@ -116,8 +124,8 @@ LayerSize = [
     250; % thalamus
     ];
 %StateSize = N*sum(LayerSize);
-StateSize = 200;
-n4hzn = [1.5*StateSize, 7, 7];
+StateSize = 111;
+n4hzn = [ceil(1.5*StateSize), 7, 7];
 disp('LTI - n4sid Training')
 tic
 bgLTI = n4sid(dataTrain, StateSize, ...
@@ -143,6 +151,17 @@ end
 
 %% legend 
 legend('true', 'bgNSS', 'null', 'sysLTI', 'AR', 'bgLTI')
+
+%% saving 
+svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
+    {[fn,'_andsysv']});
+if ~isempty(svname)
+    svname = svname{1};
+    save(fullfile(fp,[svname,'.mat']), 'bgNSS', 'sysNull', 'sysLTI', 'sysAR', 'bgLTI', ...
+        'dataTrain', 'dataTest', 'fn')
+    saveas(fig1, fullfile(fp,svname),'fig'); 
+    saveas(fig1, fullfile(fp,svname),'png'); 
+end
 
 %% helpers 
 function plottbl(TBL, v, lspc, lwid)

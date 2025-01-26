@@ -13,7 +13,15 @@ if nargin < 3
 end
 %k = k+1;
 yp = nan(height(tbl), height(sys));
-N = width(sys.A) - 1;
+if iscell(sys.A)
+    N = diag(cellfun(@width, sys.A)) - 1;
+    N = unique(N);
+    if length(N) > 1
+        error('Channel AR models should be same order.')
+    end
+else
+    N = width(sys.A) - 1;
+end
 
 % is autonomous? 
 isAuton = ~width(sys); 
