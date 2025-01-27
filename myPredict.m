@@ -14,9 +14,16 @@ if nargin < 3
     k = 1;
 end
 
+%isfield_ = @(sys, fld) sum(strcmp(fieldnames(sys), fld));
+%if isfield_(sys, 'StateName') && isfield_(sys, 'OutputName')
+try
 fullStateAvail = isequal(size(sys.StateName), size(sys.OutputName));
     % TO DO: should be a more robust check if full state output; maybe if
     % names are the same (not just size)? 
+%else
+catch
+    fullStateAvail = true;
+end
 
 if usebuiltin
     Yp = predictWrapper(sys, tbl, k);

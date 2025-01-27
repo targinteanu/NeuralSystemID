@@ -94,7 +94,11 @@ function ys = minisim(S, VT, UT, i1, i2)
     end
     simopt = simOptions(...
         'InitialCondition', VT{i1,:}');
-    ys = sim(S, UT, simopt);
+    try
+        ys = sim(S, UT, simopt);
+    catch ME
+        ys = sim(d2c(S), UT, simopt);
+    end
 end
 
 end
