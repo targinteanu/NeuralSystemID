@@ -41,7 +41,7 @@ filtfun = @(b,x) filtfilt(b,1,x);
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
 
 %% inst freq 
-%%{
+%{
 [~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
 %dataFreq.Variables = dataFreq.Variables - 20;
 %dataFreq.Variables = tanh((dataFreq.Variables-20)/10);
@@ -52,21 +52,35 @@ dataBaseline = dataFreq;
 
 %% envelope/power
 %{
-dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
+%dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
+dataBaseline.Variables = envelope(dataBaseline.Variables);
 for c = 1:width(dataBaseline)
     dataBaseline.Properties.VariableNames{c} = ...
         [dataBaseline.Properties.VariableNames{c},' envelope'];
+    %{
     dataBaseline.Properties.VariableUnits{c} = ...
         ['log ',dataBaseline.Properties.VariableUnits{c}];
+    %}
 end
 % power and freq
 % dataBaseline = [dataBaseline, dataFreq];
 %}
 
+%% wavelet transform
+%N = 24; % vaid
+N = 18; % beyl 
+N = N/2;
+dataWavelet = downsampleTimetable(dataBaseline, 2);
+for c = 1:width(dataWavelet)
+    [~,x] = dwt(dataBaseline{:,c}, 'beyl'); % or try 'vaid'
+    dataWavelet{:,c} = x(N:end);
+end
+dataBaseline = dataWavelet; 
+
 %% downsample, but ensure above nyquist rate 
 fsNew = 2.1*hico;
-fsRatio = floor(fsOrig/fsNew); 
-fsNew = fsOrig / fsRatio; 
+fsRatio = floor(dataBaseline.Properties.SampleRate/fsNew); 
+fsNew = dataBaseline.Properties.SampleRate / fsRatio; 
 disp(['Resampling from ',num2str(fsOrig),' to ',num2str(fsNew)]);
 dataBaseline = downsampleTimetable(dataBaseline, fsRatio);
 fsNew = dataBaseline.Properties.SampleRate; 
@@ -92,9 +106,14 @@ trainEndInd = min(height(dataBaseline), trainStartInd + trainReserveN);
 dataTrain = dataBaseline(trainStartInd:trainEndInd, :); 
 % for some reason the TimeStep property sometimes gets messed up 
 dataTrain = retime(dataTrain, 'regular', 'nearest', 'SampleRate', fsNew);
+%{
 dataTest = {...
     retime(dataBaseline(1:(trainStartInd-1), :), 'regular', 'nearest', 'SampleRate', fsNew); ...
     retime(dataBaseline((trainEndInd+1):end, :), 'regular', 'nearest', 'SampleRate', fsNew)};
+%}
+dataTest = {...
+    dataBaseline(1:(trainStartInd-1), :); ...
+    dataBaseline((trainEndInd+1):end, :)};
 disp(string(dataTrain.Time(1))+" to "+string(dataTrain.Time(end))+" reserved for training.");
 
 % try 20 x numLearnables = # training samples 
