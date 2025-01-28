@@ -10,7 +10,8 @@ disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
 
 %% validation params 
-chdisp = [1; 10; 20]; chdisp = [chdisp; chdisp+width(dataTrain)/2];
+%chdisp = [1; 10; 20]; chdisp = [chdisp; chdisp+width(dataTrain)/2];
+chdisp = [19; 38; 58];
 kstep = .25; % s
 kstep = ceil(kstep * dataTrain.Properties.SampleRate); % sample
 Lval = 1000; % sample
@@ -132,7 +133,7 @@ LayerSize = [
     250; % thalamus
     ];
 %StateSize = N*sum(LayerSize);
-StateSize = 60;
+StateSize = 150;
 n4hzn = [ceil(1.5*StateSize), 7, 7];
 disp('LTI - n4sid Training')
 tic
@@ -149,9 +150,9 @@ rat = numel(dataTrain)/rat;
 disp(['Training data is ',num2str(rat),' times parameter size'])
 
 disp('LTI - Training Validation')
-bgLTItrain = myPredict(bgLTI, dataTrainVal, kstep, false, true);
+bgLTItrain = myPredict(bgLTI, dataTrainVal, kstep, true);
 disp('LTI - Testing Validation')
-bgLTItest = myPredict(bgLTI, dataTestVal, kstep, false, true);
+bgLTItest = myPredict(bgLTI, dataTestVal, kstep, true);
 for p = 1:H
     subplot(H,2, 2*(p-1)+1);
     plottbl(bgLTItrain, chdisp(p));
@@ -187,7 +188,11 @@ function plottbl(TBL, v, lspc, lwid)
         v = 1;
     end
     plot(TBL.Time, TBL{:,v}, lspc, 'LineWidth',lwid);
-    ylabel([TBL.Properties.VariableNames{v},' (',...
-        TBL.Properties.VariableUnits{v},')']);
+    if ~isempty(TBL.Properties.VariableUnits)
+        ylabel([TBL.Properties.VariableNames{v},' (',...
+            TBL.Properties.VariableUnits{v},')']);
+    else
+        ylabel(TBL.Properties.VariableNames{v});
+    end
     xlabel('time');
 end

@@ -108,7 +108,7 @@ corRepr = mean(corRepr,1);
 % get at least one of each preprocessing type (power, freq)
 ch3 = mod(ch1+width(dataTrain)/2, width(dataTrain));
 ch4 = mod(ch2+width(dataTrain)/2, width(dataTrain));
-ch = [ch1; ch3; ch2; ch4];
+ch = [ch1; ch3; ch2; ch4]; ch = round(ch);
 H = height(ch);
 
 % plotting
@@ -192,7 +192,11 @@ function plottbl(TBL, v, lspc, lwid)
         v = 1;
     end
     plot(TBL.Time, TBL{:,v}, lspc, 'LineWidth',lwid);
-    ylabel([TBL.Properties.VariableNames{v},' (',...
-        TBL.Properties.VariableUnits{v},')']);
+    if ~isempty(TBL.Properties.VariableUnits)
+        ylabel([TBL.Properties.VariableNames{v},' (',...
+            TBL.Properties.VariableUnits{v},')']);
+    else
+        ylabel(TBL.Properties.VariableNames{v});
+    end
     xlabel('time');
 end
