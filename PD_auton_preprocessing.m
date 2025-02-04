@@ -51,7 +51,7 @@ dataBaseline = dataFreq;
 %}
 
 %% envelope/power
-%{
+%%{
 %dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
 dataBaseline.Variables = envelope(dataBaseline.Variables);
 for c = 1:width(dataBaseline)
@@ -70,12 +70,16 @@ end
 %N = 24; % vaid
 N = 18; % beyl 
 N = N/2;
-dataWavelet = downsampleTimetable(dataBaseline, 2);
-for c = 1:width(dataWavelet)
-    [~,x] = dwt(dataBaseline{:,c}, 'beyl'); % or try 'vaid'
-    dataWavelet{:,c} = x(N:end);
+dataWavelet1 = downsampleTimetable(dataBaseline, 2); dataWavelet2 = dataWavelet1;
+for c = 1:width(dataBaseline)
+    [y,x] = dwt(dataBaseline{:,c}, 'beyl'); % or try 'vaid'
+    dataWavelet1{:,c} = y(N:end); dataWavelet2{:,c} = x(N:end);
+    dataWavelet1.Properties.VariableNames{c} = ...
+        [dataWavelet1.Properties.VariableNames{c},' Approx'];
+    dataWavelet2.Properties.VariableNames{c} = ...
+        [dataWavelet2.Properties.VariableNames{c},' Detail'];
 end
-dataBaseline = dataWavelet; 
+dataBaseline = [dataWavelet1, dataWavelet2]; 
 
 %% downsample, but ensure above nyquist rate 
 fsNew = 2.1*hico;
