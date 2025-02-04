@@ -43,21 +43,21 @@ else
     U = [];
 end
 
-% first k predictions 
+% first k+N predictions 
 tblPad = array2timetable(zeros(N, width(tbl)), ...
     "SampleRate",tbl.Properties.SampleRate, ...
     "VariableNames",tbl.Properties.VariableNames);
-tblPad.Time = tblPad.Time - tblPad.Time(end) + tbl.Time(1);
+tblPad.Time = tblPad.Time - tblPad.Time(end) + tbl.Time(1) - tbl.Properties.TimeStep;
 TBL = [tblPad; tbl];
-y1 = minisim(sys, TBL, 2, 2*N+1, k);
+y1 = minisim(sys, TBL, 1, 2*N, k);
 yp(1:(k+N),:) = y1((N+1):end,:);
 
 % remaining predictions 
-for ik2 = (k+N+1):height(yp)
-    ik1 = ik2-N+1; 
+for ik2 = (N+1):(height(yp)-k)
+    ik1 = ik2-N+1; ik3 = ik2+k;
     yy = minisim(sys, tbl, ik1, ik2, k);
-    yp(ik2,:) = yy(end,:);
-    prog = ik2/height(yp);
+    yp(ik3,:) = yy(end,:);
+    prog = ik3/height(yp);
     if showprog
         if prog >= proggoal
             disp(['Simulating: ',num2str(100*prog),'% Complete'])
