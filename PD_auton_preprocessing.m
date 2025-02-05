@@ -67,7 +67,6 @@ end
 %}
 
 %% wavelet transform
-wCustom = [1.5, -1, .6, -.33, .22, -.1, .05, 0, -.01, .05];
 %N = 24; % vaid
 N = 18; % beyl 
 N = N/2;
@@ -82,6 +81,14 @@ for c = 1:width(dataBaseline)
 end
 %dataBaseline = [dataWavelet1, dataWavelet2]; 
 dataBaseline = dataWavelet2;
+
+%% custom convolution 
+wCustom = [1.5, -1, .6, -.33, .22, -.1, .05, 0, -.01, .05];
+N = length(wCustom);
+for c = 1:width(dataBaseline)
+    x = conv(wCustom, dataBaseline{:,c});
+    dataBaseline{:,c} = x(1:(end-N+1));
+end
 
 %% downsample, but ensure above nyquist rate 
 fsNew = 2.1*hico;
