@@ -67,6 +67,7 @@ end
 %}
 
 %% wavelet transform
+%{
 %N = 24; % vaid
 N = 18; % beyl 
 N = N/2;
@@ -81,6 +82,7 @@ for c = 1:width(dataBaseline)
 end
 %dataBaseline = [dataWavelet1, dataWavelet2]; 
 dataBaseline = dataWavelet2;
+%}
 
 %% custom convolution 
 wCustom = [1.5, -1, .6, -.33, .22, -.1, .05, 0, -.01, .05];
