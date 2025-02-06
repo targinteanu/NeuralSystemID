@@ -51,7 +51,7 @@ for c = 1:width(dataBaseline)
         [dataBaseline.Properties.VariableNames{c},' envelope'];
 end
 % power and freq
-dataBaseline = [dataBaseline, dataFreq];
+% dataBaseline = [dataBaseline, dataFreq];
 
 % downsample, but ensure above nyquist rate 
 fsNew = 2.1*hico;
@@ -65,21 +65,27 @@ disp(['Resampled to ',num2str(fsNew),' Hz']);
 %% build the model to be trained  
 
 % define a deep neural network 
-[~,bgDNN,numLearnables] = DLN_BasalGanglia_v3(width(dataBaseline), 2, true);
-disp([num2str(numLearnables),' Learnables']);
+%[~,bgDNN,numLearnables] = DLN_BasalGanglia_v3(width(dataBaseline), 2, true);
+%disp([num2str(numLearnables),' Learnables']);
+numLearnables = nan;
 
 % define a neural state space model 
 bgNSS = idNeuralStateSpace(width(dataBaseline)); % autonomous; state = output
 bgNSS.StateNetwork = bgDNN; 
-%{
+%%{
 bgNSS.StateNetwork = createMLPNetwork(bgNSS,"state", ...
-    LayerSizes=[256 256], ...
+    LayerSizes=[128 128], ...
     WeightsInitializer="glorot", ...
     BiasInitializer="zeros", ...
     Activations='tanh');
+bgNSS.OutputNetwork = createMLPNetwork(bgNSS,"output", ...
+    LayerSizes=21, ...
+    WeightsInitializer="glorot", ...
+    BiasInitializer="zeros", ...
+    Activations="tanh");
 %}
-bgNSS.StateName = dataBaseline.Properties.VariableNames; 
-bgNSS.StateUnit = dataBaseline.Properties.VariableUnits;
+%bgNSS.StateName = dataBaseline.Properties.VariableNames; 
+%bgNSS.StateUnit = dataBaseline.Properties.VariableUnits;
 bgNSS.OutputName = dataBaseline.Properties.VariableNames; 
 bgNSS.OutputUnit = dataBaseline.Properties.VariableUnits;
 
