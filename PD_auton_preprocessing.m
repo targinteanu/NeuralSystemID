@@ -19,7 +19,7 @@ ch1 = [ord(1:5), ord((end-4):end)];
 %% preprocess data 
 
 % filter freq range 
-loco = 13; hico = 30;
+loco = 30; hico = 100;
 fsOrig = dataBaseline.Properties.SampleRate; 
 
 % filtering bound rules 
@@ -51,7 +51,7 @@ dataBaseline = dataFreq;
 %}
 
 %% envelope/power
-%%{
+%{
 %dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
 dataBaseline.Variables = envelope(dataBaseline.Variables);
 for c = 1:width(dataBaseline)
@@ -85,12 +85,14 @@ dataBaseline = dataWavelet2;
 %}
 
 %% custom convolution 
+%{
 wCustom = [1.5, -1, .6, -.33, .22, -.1, .05, 0, -.01, .05];
 N = length(wCustom);
 for c = 1:width(dataBaseline)
     x = conv(wCustom, dataBaseline{:,c});
     dataBaseline{:,c} = x(1:(end-N+1));
 end
+%}
 
 %% downsample, but ensure above nyquist rate 
 fsNew = 2.1*hico;
