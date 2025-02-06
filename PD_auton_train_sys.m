@@ -4,14 +4,14 @@
 % Autonomous only: does not include brain stimulation. 
 
 %% load data file 
-[fn,fp] = uigetfile('trainednet*.mat');
-load(fullfile(fp,fn), 'bgNSS', 'dataTrain', 'dataTest');
+[fn,fp] = uigetfile('sysLTI*.mat');
+load(fullfile(fp,fn), 'dataTrain', 'dataTest');
 disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
 
 %% validation params 
-%chdisp = [1; 10; 20]; chdisp = [chdisp; chdisp+width(dataTrain)/2];
-chdisp = [19; 38; 58];
+chdisp = [1; 10; 20]; % chdisp = [chdisp; chdisp+width(dataTrain)/2];
+%chdisp = [19; 38; 58];
 kstep = .25; % s
 kstep = ceil(kstep * dataTrain.Properties.SampleRate); % sample
 Lval = 1000; % sample
@@ -32,6 +32,7 @@ linkaxes(ax(:,1), 'x'); linkaxes(ax(:,2), 'x');
 subplot(H,2,1); title('Training'); subplot(H,2,2); title('Testing');
 
 %% NSS (display only)
+%{
 disp('Neural State Space - Training Validation')
 bgNSStrain = myPredict(bgNSS, dataTrainVal, kstep, true);
 disp('Neural State Space - Testing Validation')
@@ -44,6 +45,7 @@ for p = 1:H
     plottbl(bgNSStest, chdisp(p));
     hold on; grid on;
 end
+%}
 
 %% null system 
 A = eye(width(dataTrain)); 
@@ -120,20 +122,7 @@ for p = 1:H
 end
 
 %% nontrivial LTI system 
-N = 1;
-LayerSize = [
-    70;  % cortex 
-    70;  % striatum 
-    30;  % GP input 
-    4;   % indirect input 
-    1;   % STN input 
-    6;   % STN output
-    3;   % indirect output 
-    10;  % GP output 
-    250; % thalamus
-    ];
-%StateSize = N*sum(LayerSize);
-StateSize = 150;
+StateSize = 64;
 n4hzn = [ceil(1.5*StateSize), 7, 7];
 disp('LTI - n4sid Training')
 tic
@@ -162,8 +151,25 @@ for p = 1:H
     hold on; grid on;
 end
 
+%% hw - piecewise linear 
+tic
+bgHWpl = nlhw(dataTrain, bgLTI, 'idPiecewiseLinear', 'idPiecewiseLinear');
+toc
+%% hw - sigmoid
+tic
+bgHWsg = nlhw(dataTrain, bgLTI, 'idSigmoidNetwork', 'idSigmoidNetwork');
+toc
+%% hw - wavelet
+tic
+bgHWwl = nlhw(dataTrain, bgLTI, 'idWaveletNetwork', 'idWaveletNetwork');
+toc
+%% hw - neural
+tic
+bgHWnn = nlhw(dataTrain, bgLTI, 'idNeuralNetwork', 'idNeuralNetwork');
+toc
+
 %% legend 
-legend('true', 'bgNSS', 'null', 'sysLTI', 'AR', 'bgLTI')
+legend('true', 'null', 'sysLTI', 'AR', 'bgLTI', 'bgHWpl', 'bgHWsg', 'bgHWwl', 'bgHWnn')
 
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
