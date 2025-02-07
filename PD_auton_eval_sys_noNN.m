@@ -1,5 +1,6 @@
 %% Parkinson's Disease (PD) Project - evaluate autonomous systems
 % Autonomous only: does not include brain stimulation. 
+% not testing neural network
 
 %% load data file 
 [fn,fp] = uigetfile('*andsys*.mat');
@@ -23,6 +24,8 @@ dataTest = dataTest(1:Lval,:); dataTrain = dataTrain(1:Lval,:);
 %% k-step ahead prediction 
 % artifact duration is around 10ms, but we should verify different time
 % scales. 
+hznmkr = {'d', 'o', '.'}; % marker 
+hznlwd = [2, 1.25, .5]; % line width
 hzns = [.025, .5, 1.5]; % seconds 
 hzns = ceil(hzns * fsNew); % # samples 
 
@@ -137,9 +140,9 @@ for c = 1:H
     ax(c,1) = subplot(H,4, 4*(c-1)+ 1);
     plottbl(dataTrain, ch(c), ':k', 4); grid on; hold on;
     for s = 1:width(ypTrain)
-        plottbl(ypTrain{1,s}, ch(c), sysColr{s}, 2); 
-        plottbl(ypTrain{2,s}, ch(c), sysColr{s}, 1.25); 
-%        plottbl(ypTrain{3,s}, ch(c), sysColr{s}, .5); 
+        for k = 1:length(hzns)
+            plottbl(ypTrain{k,s}, ch(c), sysColr{s}, hznlwd(k)); 
+        end
     end
     title('Train');
 
@@ -147,9 +150,10 @@ for c = 1:H
     ax(c,2) = subplot(H,4, 4*(c-1)+ 2); hold on;
     for s = 1:width(ypTrain)
         colr = sysColr{s};
-        plot(dataTrain{:,ch(c)}, ypTrain{1,s}{:,ch(c)}, ['d',colr]);
-        plot(dataTrain{:,ch(c)}, ypTrain{2,s}{:,ch(c)}, ['o',colr]);
-        plot(dataTrain{:,ch(c)}, ypTrain{3,s}{:,ch(c)}, ['.',colr]);
+        for k = 1:length(hzns)
+            mkr = hznmkr{k};
+            plot(dataTrain{:,ch(c)}, ypTrain{k,s}{:,ch(c)}, [mkr,colr]);
+        end
     end
     grid on; xlabel('true'); ylabel('pred');
     title('Train');
@@ -158,9 +162,9 @@ for c = 1:H
     ax(c,3) = subplot(H,4, 4*(c-1)+ 3);
     plottbl(dataTest, ch(c), ':k', 4); grid on; hold on;
     for s = 1:width(ypTest)
-        plottbl(ypTest{1,s}, ch(c), sysColr{s}, 2); 
-        plottbl(ypTest{2,s}, ch(c), sysColr{s}, 1.25); 
-        plottbl(ypTest{3,s}, ch(c), sysColr{s}, .5); 
+        for k = 1:length(hzns)
+            plottbl(ypTest{k,s}, ch(c), sysColr{s}, hznlwd(k)); 
+        end
     end
     title('Test');
 
@@ -168,9 +172,10 @@ for c = 1:H
     ax(c,4) = subplot(H,4, 4*(c-1)+ 4); hold on;
     for s = 1:width(ypTest)
         colr = sysColr{s};
-        plot(dataTest{:,ch(c)}, ypTest{1,s}{:,ch(c)}, ['d',colr]);
-        plot(dataTest{:,ch(c)}, ypTest{2,s}{:,ch(c)}, ['o',colr]);
-        plot(dataTest{:,ch(c)}, ypTest{3,s}{:,ch(c)}, ['.',colr]);
+        for k = 1:length(hzns)
+            mkr = hznmkr{k};
+            plot(dataTest{:,ch(c)}, ypTrain{k,s}{:,ch(c)}, [mkr,colr]);
+        end
     end
     grid on; xlabel('true'); ylabel('pred');
     title('Test');
@@ -184,7 +189,7 @@ svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
     {[fn,'_eval']});
 if ~isempty(svname)
     svname = svname{1};
-    save(fullfile(fp,[svname,'.mat']), 'sys', 'hzns', 'sysColr', 'sysName', ...
+    save(fullfile(fp,[svname,'.mat']), 'sys', 'hzns', 'sysName', ...
         'dataTrain', 'dataTest', 'ypTest', 'ypTrain', 'fn', ...
         'corsTest', 'corsTrain', 'pcorsTest', 'pcorsTrain', 'errsTest', 'errsTrain')
     saveas(figStem, fullfile(fp,[svname,'-stem']),'fig'); 
