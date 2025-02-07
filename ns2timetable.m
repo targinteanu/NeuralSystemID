@@ -75,6 +75,21 @@ lbl = {NS.ElectrodesInfo.Label};
 lbl = upper(lbl);
 unitname = {NS.ElectrodesInfo.AnalogUnits};
 
+%% correct labels
+% limit names to characters that will behave well as plot labels 
+for l = 1:length(lbl)
+    L = lbl{l}; 
+    L = L((L >= 33)&(L <= 126));
+    L(L=='_') = ' ';
+    lbl{l} = L;
+end
+for l = 1:length(unitname)
+    L = unitname{l}; 
+    L = L((L >= 33)&(L <= 126));
+    L(L=='_') = ' ';
+    unitname{l} = L;
+end
+
 %% construct table
 
 X = dta'; X = double(X);
