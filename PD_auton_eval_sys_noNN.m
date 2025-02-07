@@ -8,21 +8,22 @@ load(fullfile(fp,fn), 'sysNull', 'sysLTI', 'sysAR', 'bgLTI', ...
 disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
 sysName = {'sysNull', 'sysLTI', 'sysAR', 'bgLTI'};
-sysColr = {'-k',      '-r',     '-c',    '-m'};
+sysColr = {'k',       'r',      'b',     'g'};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
 
-%% select training/testing validation (subsets) 
-Lval = 5000; % # samples 
-disp([num2str(Lval/fsNew),' seconds selected for validation.'])
 [~,dataTestSel] = max(cellfun(@height, dataTest));
 dataTest = dataTest{dataTestSel};
+
+%% select training/testing validation (subsets) 
+Lval = 1000; % # samples 
+disp([num2str(Lval/fsNew),' seconds selected for validation.'])
 dataTest = dataTest(1:Lval,:); dataTrain = dataTrain(1:Lval,:);
 
 %% k-step ahead prediction 
 % artifact duration is around 10ms, but we should verify different time
 % scales. 
-hzns = [.025, .15, .25]; % seconds 
+hzns = [.025, .5, 1.5]; % seconds 
 hzns = ceil(hzns * fsNew); % # samples 
 
 ypTrain = {}; ypTest = {};
@@ -51,13 +52,14 @@ corsTest = errsTest; pcorsTest = corsTest;
 
 for s = 1:length(sys)
     for k = 1:length(hzns)
-        errsTrain(k,:,s) = pRMSE(ypTrain{k,s}, dataTrain);
-        errsTest(k,:,s) = pRMSE(ypTest{k,s}, dataTest);
+        t1 = hzns(k) + 1;
+        errsTrain(k,:,s) = pRMSE(ypTrain{k,s}(t1:end,:), dataTrain(t1:end,:));
+        errsTest(k,:,s) = pRMSE(ypTest{k,s}(t1:end,:), dataTest(t1:end,:));
         for c = 1:width(dataTrain)
             [corsTrain(k,c,s), pcorsTrain(k,c,s)] = ...
-                corr(ypTrain{k,s}{:,c}, dataTrain{:,c});
+                corr(ypTrain{k,s}{t1:end,c}, dataTrain{t1:end,c});
             [corsTest(k,c,s), pcorsTest(k,c,s)] = ...
-                corr(ypTest{k,s}{:,c}, dataTest{:,c});
+                corr(ypTest{k,s}{t1:end,c}, dataTest{t1:end,c});
         end
     end
 end
@@ -69,9 +71,8 @@ for k = 1:K
     subplot(K,3,3*(k-1)+1);
     for s = 1:length(sys)
         colr = sysColr{s};
-        stem(errsTrain(k,:,s), [colr,'s']); hold on;
-        colr(1) = ':';
-        stem(errsTest(k,:,s), [colr,'x'], 'LineWidth',1);
+        stem(errsTrain(k,:,s), ['-',colr,'s']); hold on;
+        stem(errsTest(k,:,s), [':',colr,'x'], 'LineWidth',1);
     end
     ylabel('pRMSE'); 
     title([num2str(hzns(k)),'-step prediction']);
@@ -81,9 +82,8 @@ for k = 1:K
     subplot(K,3,3*(k-1)+2);
     for s = 1:length(sys)
         colr = sysColr{s};
-        stem(corsTrain(k,:,s), [colr,'s']); hold on;
-        colr(1) = ':';
-        stem(corsTest(k,:,s), [colr,'x'], 'LineWidth',1);
+        stem(corsTrain(k,:,s), ['-',colr,'s']); hold on;
+        stem(corsTest(k,:,s), [':',colr,'x'], 'LineWidth',1);
     end
     ylabel('corr'); 
     title([num2str(hzns(k)),'-step prediction']);
@@ -93,9 +93,8 @@ for k = 1:K
     subplot(K,3,3*(k-1)+3);
     for s = 1:length(sys)
         colr = sysColr{s};
-        stem(pcorsTrain(k,:,s), [colr,'s']); hold on;
-        colr(1) = ':';
-        stem(pcorsTest(k,:,s), [colr,'x'], 'LineWidth',1);
+        stem(pcorsTrain(k,:,s), ['-',colr,'s']); hold on;
+        stem(pcorsTest(k,:,s), [':',colr,'x'], 'LineWidth',1);
     end
     ylabel('corr p'); 
     title([num2str(hzns(k)),'-step prediction']);
@@ -121,10 +120,13 @@ corBest = mean(corBest,1); % mean rank each horizon by channel
 corRepr = mean(corRepr,1);
 [~,ch1] = max(corBest); [~,ch2] = min(corRepr);
 
+%{
 % get at least one of each preprocessing type (power, freq)
 ch3 = mod(ch1+width(dataTrain)/2, width(dataTrain));
 ch4 = mod(ch2+width(dataTrain)/2, width(dataTrain));
 ch = [ch1; ch3; ch2; ch4]; ch = round(ch);
+%}
+ch = [ch1; ch2];
 H = height(ch);
 
 % plotting
@@ -137,14 +139,14 @@ for c = 1:H
     for s = 1:width(ypTrain)
         plottbl(ypTrain{1,s}, ch(c), sysColr{s}, 2); 
         plottbl(ypTrain{2,s}, ch(c), sysColr{s}, 1.25); 
-        plottbl(ypTrain{3,s}, ch(c), sysColr{s}, .5); 
+%        plottbl(ypTrain{3,s}, ch(c), sysColr{s}, .5); 
     end
     title('Train');
 
     % train - scatter 
     ax(c,2) = subplot(H,4, 4*(c-1)+ 2); hold on;
     for s = 1:width(ypTrain)
-        colr = sysColr{s}(2);
+        colr = sysColr{s};
         plot(dataTrain{:,ch(c)}, ypTrain{1,s}{:,ch(c)}, ['d',colr]);
         plot(dataTrain{:,ch(c)}, ypTrain{2,s}{:,ch(c)}, ['o',colr]);
         plot(dataTrain{:,ch(c)}, ypTrain{3,s}{:,ch(c)}, ['.',colr]);
@@ -165,7 +167,7 @@ for c = 1:H
     % test - scatter 
     ax(c,4) = subplot(H,4, 4*(c-1)+ 4); hold on;
     for s = 1:width(ypTest)
-        colr = sysColr{s}(2);
+        colr = sysColr{s};
         plot(dataTest{:,ch(c)}, ypTest{1,s}{:,ch(c)}, ['d',colr]);
         plot(dataTest{:,ch(c)}, ypTest{2,s}{:,ch(c)}, ['o',colr]);
         plot(dataTest{:,ch(c)}, ypTest{3,s}{:,ch(c)}, ['.',colr]);
@@ -183,7 +185,8 @@ svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
 if ~isempty(svname)
     svname = svname{1};
     save(fullfile(fp,[svname,'.mat']), 'sys', 'hzns', 'sysColr', 'sysName', ...
-        'dataTrain', 'dataTest', 'ypTest', 'ypTrain', 'fn')
+        'dataTrain', 'dataTest', 'ypTest', 'ypTrain', 'fn', ...
+        'corsTest', 'corsTrain', 'pcorsTest', 'pcorsTrain', 'errsTest', 'errsTrain')
     saveas(figStem, fullfile(fp,[svname,'-stem']),'fig'); 
     saveas(figStem, fullfile(fp,[svname,'-stem']),'png'); 
     saveas(figTime, fullfile(fp,[svname,'-time']),'fig'); 

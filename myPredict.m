@@ -32,7 +32,15 @@ else
 % refer to best predict function 
 c = class(sys);
 if strcmpi(c, 'idss') || strcmpi(c, 'ss')
-    Yp = myPredict2(sys, tbl, k, showprog, fullStateAvail);
+    if fullStateAvail
+        Yp = myPredict2(sys, tbl, k, showprog, fullStateAvail);
+    else
+        if showprog || ~usebuiltin
+            warning('myPredict has been programmed to use built-in for this type.')
+        end
+        Yp = predict(sys, tbl, k); 
+        Yp.Time = Yp.Time + tbl.Time(1);
+    end
 elseif strcmpi(c, 'idNeuralStateSpace')
     Yp = myPredict1(sys, tbl, k, showprog);
 elseif strcmpi(c, 'idpoly')

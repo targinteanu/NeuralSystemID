@@ -122,7 +122,7 @@ for p = 1:H
 end
 
 %% nontrivial LTI system 
-StateSize = 64;
+StateSize = 128;
 n4hzn = [ceil(1.5*StateSize), 7, 7];
 disp('LTI - n4sid Training')
 tic
@@ -151,32 +151,15 @@ for p = 1:H
     hold on; grid on;
 end
 
-%% hw - piecewise linear 
-tic
-bgHWpl = nlhw(dataTrain, bgLTI, 'idPiecewiseLinear', 'idPiecewiseLinear');
-toc
-%% hw - sigmoid
-tic
-bgHWsg = nlhw(dataTrain, bgLTI, 'idSigmoidNetwork', 'idSigmoidNetwork');
-toc
-%% hw - wavelet
-tic
-bgHWwl = nlhw(dataTrain, bgLTI, 'idWaveletNetwork', 'idWaveletNetwork');
-toc
-%% hw - neural
-tic
-bgHWnn = nlhw(dataTrain, bgLTI, 'idNeuralNetwork', 'idNeuralNetwork');
-toc
-
 %% legend 
-legend('true', 'null', 'sysLTI', 'AR', 'bgLTI', 'bgHWpl', 'bgHWsg', 'bgHWwl', 'bgHWnn')
+legend('true', 'null', 'sysLTI', 'AR', 'bgLTI')
 
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
     {[fn,'_andsysv']});
 if ~isempty(svname)
     svname = svname{1};
-    save(fullfile(fp,[svname,'.mat']), 'bgNSS', 'sysNull', 'sysLTI', 'sysAR', 'bgLTI', ...
+    save(fullfile(fp,[svname,'.mat']), 'sysNull', 'sysLTI', 'sysAR', 'bgLTI', ...
         'dataTrain', 'dataTest', 'fn')
     saveas(fig1, fullfile(fp,svname),'fig'); 
     saveas(fig1, fullfile(fp,svname),'png'); 

@@ -19,7 +19,7 @@ ch1 = [ord(1:5), ord((end-4):end)];
 %% preprocess data 
 
 % filter freq range 
-loco = 30; hico = 100;
+loco = 13; hico = 30;
 fsOrig = dataBaseline.Properties.SampleRate; 
 
 % filtering bound rules 
@@ -51,9 +51,9 @@ dataBaseline = dataFreq;
 %}
 
 %% envelope/power
-%{
-%dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
-dataBaseline.Variables = envelope(dataBaseline.Variables);
+%%{
+dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
+%dataBaseline.Variables = envelope(dataBaseline.Variables);
 for c = 1:width(dataBaseline)
     dataBaseline.Properties.VariableNames{c} = ...
         [dataBaseline.Properties.VariableNames{c},' envelope'];
@@ -95,7 +95,8 @@ end
 %}
 
 %% downsample, but ensure above nyquist rate 
-fsNew = 2.1*hico;
+%fsNew = 2.1*hico;
+fsNew = 100;
 fsRatio = floor(dataBaseline.Properties.SampleRate/fsNew); 
 fsNew = dataBaseline.Properties.SampleRate / fsRatio; 
 disp(['Resampling from ',num2str(fsOrig),' to ',num2str(fsNew)]);
