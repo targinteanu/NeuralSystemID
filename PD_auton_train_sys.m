@@ -14,7 +14,7 @@ chdisp = [1; 10; 20]; % chdisp = [chdisp; chdisp+width(dataTrain)/2];
 %chdisp = [19; 38; 58];
 kstep = .25; % s
 kstep = ceil(kstep * dataTrain.Properties.SampleRate); % sample
-Lval = 1000; % sample
+Lval = 100; % sample
 
 dataTrainVal = dataTrain(1:Lval,:); dataTestVal = dataTest{1}(1:Lval,:);
 H = height(chdisp);

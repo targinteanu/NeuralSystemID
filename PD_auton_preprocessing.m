@@ -95,8 +95,8 @@ end
 %}
 
 %% downsample, but ensure above nyquist rate 
-%fsNew = 2.1*hico;
-fsNew = 100;
+fsNew = 2.1*hico;
+%fsNew = 100;
 fsRatio = floor(dataBaseline.Properties.SampleRate/fsNew); 
 fsNew = dataBaseline.Properties.SampleRate / fsRatio; 
 disp(['Resampling from ',num2str(fsOrig),' to ',num2str(fsNew)]);
