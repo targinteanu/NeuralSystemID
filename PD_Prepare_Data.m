@@ -181,13 +181,18 @@ else
     tblBL2 = tblSel;
     tblDBS = tblSel([],:); % empty
 end
-
+%%
 DataTimeTables = {...
-    'Baseline 1',            trimEvents(tblBL1),  tblBL1.Time(1),  tblBL1.Time(end); ...
-    'Activity Without Stim', trimEvents(tblAct),  tblAct.Time(1),  tblAct.Time(end); ...
-    'Recorded Stim',         trimEvents(tblStim), tblStim.Time(1), tblStim.Time(end); ...
-    'Baseline 2',            trimEvents(tblBL2),  tblBL2.Time(1),  tblBL2.Time(end); ...
-    'DBS',                   trimEvents(tblDBS),  tblDBS.Time(1),  tblDBS.Time(end)}
+    'Baseline 1',            trimEvents(tblBL1); ...
+    'Activity Without Stim', trimEvents(tblAct); ...
+    'Recorded Stim',         trimEvents(tblStim); ...
+    'Baseline 2',            trimEvents(tblBL2); ...
+    'DBS',                   trimEvents(tblDBS)};
+for d = 1:height(DataTimeTables)
+    [ts, te] = timeStartEnd(DataTimeTables{d,2});
+    DataTimeTables{d,3} = ts; DataTimeTables{d,4} = te;
+end
+DataTimeTables
 for h = 1:height(DataTimeTables)
     figure('Units','normalized', 'Position',...
         [(h-1)/height(DataTimeTables),0,1/height(DataTimeTables),1]);
@@ -203,11 +208,23 @@ saveas(fig2, [folder,filesep,pName,'_Data'],'png');
 save([folder,filesep,pName,'_DataTimeTables.mat'], 'DataTimeTables');
 
 %% helper
+
 function tbl = trimEvents(tbl)
 evt = tbl.Properties.Events;
+if ~isempty(evt)
 evtTime = evt.Time;
-t1 = tbl.Time(1); t2 = tbl.Time(end);
+[t1, t2] = timeStartEnd(tbl);
 trimind = (evtTime >= t1) & (evtTime <= t2);
 evt = evt(trimind, :);
 tbl.Properties.Events = evt;
+end
+end
+
+function [ts, te] = timeStartEnd(tbl)
+t = tbl.Time;
+if ~isempty(t)
+    ts = t(1); te = t(end);
+else
+    ts = NaT; te = NaT;
+end
 end
