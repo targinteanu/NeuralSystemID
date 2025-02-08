@@ -20,8 +20,10 @@ for f = NEVfiles
     fTime = ft0 + seconds(ftRel);
     NEVtime = [NEVtime; fTime];
 end
-NS2tbl.Properties.Events = eventtable(NEVtime, ...
-    EventLabels="Serial Digital IO");
+if ~isempty(NEVtime)
+    NS2tbl.Properties.Events = eventtable(NEVtime, ...
+        EventLabels="Serial Digital IO");
+end
 
 clear f fNS fEV fTbl ft0 ftRel fTime NEVtime
 
