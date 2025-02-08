@@ -10,6 +10,9 @@ load(fullfile(fp,fn));
 disp(fn);
 disp(DataTimeTables(:,[1,3,4])); 
 dataBaseline = DataTimeTables{1,2};
+% for some reason the TimeStep property sometimes gets messed up 
+dataBaseline = retime(dataBaseline, 'regular', 'nearest', ...
+    'TimeStep', mean(diff(dataBaseline.Time)));
 
 %% check/visualize (some of) the data
 SD = std(dataBaseline); isOut = isoutlier(dataBaseline, 'mean');
