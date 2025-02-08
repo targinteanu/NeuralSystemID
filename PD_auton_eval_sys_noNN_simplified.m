@@ -30,7 +30,7 @@ dataTest = dataTest(1:Lval,:); dataTrain = dataTrain(1:Lval,:);
 % scales. 
 hznmkr = {'o', 'x'}; % marker 
 hznlwd = [2, 1.25]; % line width
-hzns = [.5, 1.5]; % seconds 
+hzns = [.5, 1.5]; % seconds  
 hzns = ceil(hzns * fsNew); % # samples 
 
 ypTrain = {}; ypTest = {};
@@ -51,6 +51,9 @@ clear ypTrain_ ypTest_
 
 %% evaluation - assessment
 
+alph = .05; % confidence level, uncorrected 
+alph = alph/width(dataTrain); % Bonferroni correction 
+
 pRMSE = @(yp, y) rmse(yp.Variables, y.Variables) ./ rms(y.Variables);
 
 errsTest = nan(length(hzns), width(dataTrain), length(sys)); 
@@ -66,10 +69,10 @@ for s = 1:length(sys)
         for c = 1:width(dataTrain)
             %{
             [corsTrain(k,c,s), pcorsTrain(k,c,s)] = ...
-                corr(ypTrain{k,s}{t1:end,c}, dataTrain{t1:end,c});
+                corr(ypTrain{k,s}{t1:end,c}, dataTrain{t1:end,c}, 'Tail','right');
             %}
             [corsTest(k,c,s), pcorsTest(k,c,s)] = ...
-                corr(ypTest{k,s}{t1:end,c}, dataTest{t1:end,c});
+                corr(ypTest{k,s}{t1:end,c}, dataTest{t1:end,c}, 'Tail','right');
         end
     end
 end
@@ -77,40 +80,44 @@ end
 figStem = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
 K = length(hzns);
 for k = 1:K
+    kt = hzns(k)*1000/fsNew;
+    kt = num2str(round(kt));
 
     subplot(K,3,3*(k-1)+1);
     for s = 1:length(sys)
         colr = sysColr{s};
-        stem(errsTest(k,:,s), ['-',colr,'s']); hold on;
+        stem(100*errsTest(k,:,s), ['-',colr,'s'], 'LineWidth',1.5); hold on;
     end
-    ylabel('pRMSE'); 
-    title([num2str(hzns(k)),'-step prediction']);
+    ylabel('% RMSE'); 
+    title([kt,'ms prediction']);
     xticks(1:width(dataTrain)); xticklabels(dataTrain.Properties.VariableNames);
     xlabel('Channel Name')
 
     subplot(K,3,3*(k-1)+2);
     for s = 1:length(sys)
         colr = sysColr{s};
-        stem(corsTest(k,:,s), ['-',colr,'s']); hold on;
+        stem(corsTest(k,:,s), ['-',colr,'s'], 'LineWidth',1.5); hold on;
     end
-    ylabel('corr'); 
-    title([num2str(hzns(k)),'-step prediction']);
+    ylabel('Pearsons \rho'); 
+    title([kt,'ms prediction']);
     xticks(1:width(dataTrain)); xticklabels(dataTrain.Properties.VariableNames);
     xlabel('Channel Name')
 
-    subplot(K,3,3*(k-1)+3);
+    axp = subplot(K,3,3*(k-1)+3);
     for s = 1:length(sys)
         colr = sysColr{s};
-        stem(pcorsTest(k,:,s), ['-',colr,'s']); hold on;
+        stem(pcorsTest(k,:,s), ['-',colr,'s'], 'LineWidth',1.5); hold on;
     end
-    ylabel('corr p'); 
-    title([num2str(hzns(k)),'-step prediction']);
+    set(axp, 'YScale', 'log')
+    xl = xlim(); plot(xl, alph*ones(size(xl)), 'k', 'LineWidth',1);
+    ylabel('Correlation p-value'); 
+    title([kt,'ms prediction']);
     xticks(1:width(dataTrain)); xticklabels(dataTrain.Properties.VariableNames);
     xlabel('Channel Name')
 
-end
+    legend({'AR', 'LTI'}, "Location","best");
 
-legend(sysName);
+end
 
 %% evaluation - visualization 
 
@@ -125,7 +132,11 @@ end
 corBest = mean(corBest,1); % mean rank each horizon by channel 
 corRepr = mean(corRepr,1);
 [~,ch1] = max(corBest); [~,ch2] = min(corRepr);
-ch = [ch1; ch2];
+% second-best 
+selind = true(size(corBest)); selind(ch1) = false; selind(ch2) = false;
+corBest = corBest(selind); corRepr = corRepr(selind);
+[~,ch3] = max(corBest); [~,ch4] = min(corRepr);
+ch = [ch1; ch3; ch2; ch4];
 H = height(ch);
 
 % plotting
@@ -172,7 +183,7 @@ for c = 1:H
         colr = sysColr{s};
         for k = 1:length(hzns)
             mkr = hznmkr{k};
-            plot(dataTest{:,ch(c)}, ypTrain{k,s}{:,ch(c)}, [mkr,colr]);
+            plot(dataTest{:,ch(c)}, ypTest{k,s}{:,ch(c)}, [mkr,colr]);
         end
     end
     grid on; xlabel('true'); ylabel('pred');
@@ -182,6 +193,36 @@ end
 
 linkaxes(ax(:,1), 'x'); %linkaxes(ax(:,3), 'x');
 
+%% sim visualization 
+tsimstart = 100; % timestamp 
+hzn = 2*max(hzns);
+ch = sort(ch);
+
+N = width(sysAR.A{1,1}) - 1;
+dataTrainRT = retime(dataTrain, 'regular', 'nearest', 'TimeStep', seconds(bgLTI.Ts));
+dataTrainRT.Time = dataTrainRT.Time - dataTrainRT.Time(1);
+ysLTI = sim(bgLTI, dataTrainRT(1:hzn, []), ...
+    simOptions('InitialCondition', bgLTI.Report.Parameters.X0));
+%ysTestLTI.Time = ysTestLTI.Time + dataTest.Time(1);
+ysAR = myFastForecastAR(sysAR, dataTrainRT{1:N,:}, hzn-N);
+ysAR = [dataTrainRT{N,:}; ysAR];
+
+dataTrainRT.Variables = exp(dataTrainRT.Variables);
+ysLTI.Variables = exp(ysLTI.Variables);
+ysAR = exp(ysAR);
+
+figSim = figure('Units','normalized', 'Position',[.1,.1,.8,.8]);
+for c = 1:H
+    ax2(c) = subplot(H,1,c);
+    plottbl(dataTrainRT(1:hzn,:), ch(c), 'k', 3); hold on; grid on;
+    plot(ysLTI.Time(N:end), ysAR(:,ch(c)), sysColr{1}, 'LineWidth', 2.25);
+    plottbl(ysLTI, ch(c), sysColr{2}, 2);
+    legend('true', 'AR', 'LTI');
+    set(ax2(c), 'YScale', 'log');
+    set(ax2(c), "FontSize", 12);
+end
+linkaxes(ax2, 'x');
+
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
     {[fn,'_eval']});
@@ -189,11 +230,13 @@ if ~isempty(svname)
     svname = svname{1};
     save(fullfile(fp,[svname,'.mat']), 'sys', 'hzns', 'sysName', ...
         'dataTrain', 'dataTest', 'ypTest', 'ypTrain', 'fn', ...
-        'corsTest', 'corsTrain', 'pcorsTest', 'pcorsTrain', 'errsTest', 'errsTrain')
+        'corsTest', 'pcorsTest', 'errsTest')
     saveas(figStem, fullfile(fp,[svname,'-stem']),'fig'); 
     saveas(figStem, fullfile(fp,[svname,'-stem']),'png'); 
     saveas(figTime, fullfile(fp,[svname,'-time']),'fig'); 
     saveas(figTime, fullfile(fp,[svname,'-time']),'png'); 
+    saveas(figSim,  fullfile(fp,[svname,'-sim']),'fig'); 
+    saveas(figSim,  fullfile(fp,[svname,'-sim']),'png'); 
 end
 
 %% helpers
