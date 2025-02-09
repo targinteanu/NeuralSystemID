@@ -22,7 +22,8 @@ ch1 = [ord(1:5), ord((end-4):end)];
 %% preprocess data 
 
 % filter freq range 
-loco = 13; hico = 30;
+loB = 15; hiB = 30;
+loG = 30; hiG = 100;
 fsOrig = dataBaseline.Properties.SampleRate; 
 
 % filtering bound rules 
@@ -30,33 +31,38 @@ minfac         = 3;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % filter order 
-if loco>0
-    filtord = minfac*fix(fsOrig/loco);
-elseif hico>0
-    filtord = minfac*fix(fsOrig/hico);
-end
-if filtord < min_filtorder
-    filtord = min_filtorder;
-end
+filtordB = minfac*fix(fsOrig/loB);
+filtordB = max(min_filtorder, filtordB);
+filtordG = minfac*fix(fsOrig/loG);
+filtordG = max(min_filtorder, filtordG);
 
-filtwts = fir1(filtord, [loco, hico]./(fsOrig/2));
+filtB = fir1(filtordB, [loB, hiB]./(fsOrig/2));
+filtG = fir1(filtordG, [loG, hiG]./(fsOrig/2));
 filtfun = @(b,x) filtfilt(b,1,x); 
-dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
+dataB = FilterTimetable(filtfun,filtB,dataBaseline);
+dataG = FilterTimetable(filtfun,filtG,dataBaseline);
+for c = 1:width(dataBaseline)
+    dataB.Properties.VariableNames{c} = [dataB.Properties.VariableNames{c},'\beta'];
+    dataG.Properties.VariableNames{c} = [dataG.Properties.VariableNames{c},'\gamma'];
+end
+dataBaseline = [dataB, dataG];
 
 %% inst freq 
-%{
-[~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
+%%{
+%[~,dataFreqB] = instPhaseFreqTblSmooth(dataB, [loB hiB]);
+%[~,dataFreqG] = instPhaseFreqTblSmooth(dataG, [loG hiG]);
 %dataFreq.Variables = dataFreq.Variables - 20;
 %dataFreq.Variables = tanh((dataFreq.Variables-20)/10);
 %dataFreq = instfreq(dataBaseline);
 %dataFreq = retime(dataFreq, dataBaseline.Time, "spline");
-dataBaseline = dataFreq;
+%dataBaseline = dataFreq;
 %}
 
 %% envelope/power
 %%{
-dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
+%dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
 %dataBaseline.Variables = envelope(dataBaseline.Variables);
+%{
 for c = 1:width(dataBaseline)
     dataBaseline.Properties.VariableNames{c} = ...
         [dataBaseline.Properties.VariableNames{c},' envelope'];
@@ -65,8 +71,10 @@ for c = 1:width(dataBaseline)
         ['log ',dataBaseline.Properties.VariableUnits{c}];
     %}
 end
+%}
 % power and freq
-% dataBaseline = [dataBaseline, dataFreq];
+% dataBaseline = [dataBaseline, dataFreqB, dataFreqG];
+%dataBaseline = [dataBaseline, dataFreqG];
 %}
 
 %% wavelet transform
@@ -98,7 +106,7 @@ end
 %}
 
 %% downsample, but ensure above nyquist rate 
-fsNew = 2.1*hico;
+fsNew = 2.1*hiG;
 %fsNew = 100;
 fsRatio = floor(dataBaseline.Properties.SampleRate/fsNew); 
 fsNew = dataBaseline.Properties.SampleRate / fsRatio; 
