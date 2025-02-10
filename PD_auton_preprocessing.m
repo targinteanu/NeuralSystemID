@@ -9,10 +9,34 @@
 load(fullfile(fp,fn));
 disp(fn);
 disp(DataTimeTables(:,[1,3,4])); 
+
+%% extract desired data 
 dataBaseline = DataTimeTables{1,2};
+dataBaseline2 = DataTimeTables{4,2};
+dataStim = DataTimeTables{3,2};
 % for some reason the TimeStep property sometimes gets messed up 
-dataBaseline = retime(dataBaseline, 'regular', 'nearest', ...
-    'TimeStep', mean(diff(dataBaseline.Time)));
+dataBaseline = fixtime(dataBaseline);
+dataBaseline2 = fixtime(dataBaseline2);
+dataStim = fixtime(dataStim);
+fsOrig = dataBaseline.Properties.SampleRate; 
+
+%% artifact removal 
+artdur = .02; % s
+artdur = ceil(artdur * fsOrig); % samples 
+stimevt = dataStim.Properties.Events;
+stimevt = stimevt(contains(lower(stimevt.EventLabels), 'stim'), :);
+stimTime = stimevt.Time;
+for t = 1:height(stimTime)
+    [~,ti] = min(abs(dataStim.Time - stimTime(t)));
+    stimTime(t) = dataStim.Time(ti);
+end
+stim = ones(size(stimTime));
+stim = timetable(stimTime, stim);
+stim = retime(stim, dataStim.Time, "fillwithconstant");
+[LMSwts, dataLMS, artLMS] = filterLMSwts(...
+    seconds(dataStim.Time - dataStim.Time(1)), ...
+    stim.Variables, dataStim.Variables, artdur, ...
+    dataStim.Properties.VariableNames, 2, true);
 
 %% check/visualize (some of) the data
 SD = std(dataBaseline); isOut = isoutlier(dataBaseline, 'mean');
@@ -23,7 +47,6 @@ ch1 = [ord(1:5), ord((end-4):end)];
 
 % filter freq range 
 loco = 13; hico = 30;
-fsOrig = dataBaseline.Properties.SampleRate; 
 
 % filtering bound rules 
 minfac         = 3;    % this many (lo)cutoff-freq cycles in filter
@@ -42,6 +65,8 @@ end
 filtwts = fir1(filtord, [loco, hico]./(fsOrig/2));
 filtfun = @(b,x) filtfilt(b,1,x); 
 dataBaseline = FilterTimetable(filtfun,filtwts,dataBaseline);
+dataBaseline2 = FilterTimetable(filtfun,filtwts,dataBaseline2);
+dataStim = FilterTimetable(filtfun,filtwts,dataStim);
 
 %% inst freq 
 %{
@@ -56,7 +81,10 @@ dataBaseline = dataFreq;
 %% envelope/power
 %%{
 dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
+dataBaseline2.Variables = log(max(eps, envelope(dataBaseline2.Variables)));
+dataStim.Variables = log(max(eps, envelope(dataStim.Variables)));
 %dataBaseline.Variables = envelope(dataBaseline.Variables);
+%{
 for c = 1:width(dataBaseline)
     dataBaseline.Properties.VariableNames{c} = ...
         [dataBaseline.Properties.VariableNames{c},' envelope'];
@@ -65,6 +93,7 @@ for c = 1:width(dataBaseline)
         ['log ',dataBaseline.Properties.VariableUnits{c}];
     %}
 end
+%}
 % power and freq
 % dataBaseline = [dataBaseline, dataFreq];
 %}
@@ -104,6 +133,8 @@ fsRatio = floor(dataBaseline.Properties.SampleRate/fsNew);
 fsNew = dataBaseline.Properties.SampleRate / fsRatio; 
 disp(['Resampling from ',num2str(fsOrig),' to ',num2str(fsNew)]);
 dataBaseline = downsampleTimetable(dataBaseline, fsRatio);
+dataBaseline2 = downsampleTimetable(dataBaseline2, fsRatio);
+dataStim = downsampleTimetable(dataStim, fsRatio);
 fsNew = dataBaseline.Properties.SampleRate; 
 disp(['Resampled to ',num2str(fsNew),' Hz']);
 
@@ -126,7 +157,7 @@ trainReserveN = ceil(trainReserveN*fsNew/fsOrig);
 trainEndInd = min(height(dataBaseline), trainStartInd + trainReserveN);
 dataTrain = dataBaseline(trainStartInd:trainEndInd, :); 
 % for some reason the TimeStep property sometimes gets messed up 
-dataTrain = retime(dataTrain, 'regular', 'nearest', 'SampleRate', fsNew);
+dataTrain = fixtime(dataTrain, fsNew);
 %{
 dataTest = {...
     retime(dataBaseline(1:(trainStartInd-1), :), 'regular', 'nearest', 'SampleRate', fsNew); ...
@@ -134,7 +165,8 @@ dataTest = {...
 %}
 dataTest = {...
     dataBaseline(1:(trainStartInd-1), :); ...
-    dataBaseline((trainEndInd+1):end, :)};
+    dataBaseline((trainEndInd+1):end, :); ...
+    dataBaseline2};
 disp(string(dataTrain.Time(1))+" to "+string(dataTrain.Time(end))+" reserved for training.");
 
 % try 20 x numLearnables = # training samples 
@@ -161,7 +193,7 @@ toc
 svname = inputdlg('Save Training params as:', 'File Save Name', 1, {'sysLTIv'});
 if ~isempty(svname)
     svname = svname{1};
-    save(fullfile(fp,[svname,'.mat']), 'sysLTI', 'dataTrain', 'dataTest', 'fn')
+    save(fullfile(fp,[svname,'.mat']), 'sysLTI', 'dataTrain', 'dataTest', 'dataStim', 'fn')
 end
 
 %% visualize training results 
@@ -264,4 +296,13 @@ function plottbl(TBL, v, lspc, lwid)
     ylabel([TBL.Properties.VariableNames{v},' (',...
         TBL.Properties.VariableUnits{v},')']);
     xlabel('time');
+end
+
+function tbl = fixtime(tbl, fs)
+if isnan(tbl.Properties.SampleRate) || isnan(tbl.Properties.TimeStep)
+if nargin < 2
+    fs = 1/mean(seconds(diff(tbl.Time)));
+end
+tbl = retime(tbl, 'regular', 'nearest', 'SampleRate',fs);
+end
 end
