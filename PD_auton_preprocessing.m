@@ -17,8 +17,18 @@ dataStim = DataTimeTables{3,2};
 % for some reason the TimeStep property sometimes gets messed up 
 dataBaseline = fixtime(dataBaseline);
 dataBaseline2 = fixtime(dataBaseline2);
-dataStim = fixtime(dataStim);
+dataStim = fixtime(dataStim); dataStimWithArtifact = dataStim;
 fsOrig = dataBaseline.Properties.SampleRate; 
+
+%% get outlier details 
+SD = std(dataBaseline); isOut = isoutlier(dataBaseline, 'mean');
+[~,ord] = sort(SD.Variables);
+ch1 = [ord(1), ord(round(length(ord)/2)), ord(end)];
+isOutStim = isoutlier(dataStim, 'mean'); 
+numOutStim = sum(isOutStim); 
+[~,ordStim] = sort(numOutStim);
+ch2 = [ordStim(1), ordStim(round(length(ordStim)/2)), ordStim(end)];
+ch = sort(unique([ch1, ch2]));
 
 %% artifact removal 
 artdur = .02; % s
@@ -33,15 +43,63 @@ end
 stim = ones(size(stimTime));
 stim = timetable(stimTime, stim);
 stim = retime(stim, dataStim.Time, "fillwithconstant");
+%{
 [LMSwts, dataLMS, artLMS] = filterLMSwts(...
     seconds(dataStim.Time - dataStim.Time(1)), ...
     stim.Variables, dataStim.Variables, artdur, ...
     dataStim.Properties.VariableNames, 2, true);
+%}
+for p = 1:width(dataStim)
+    disp(['AR - Training Channel ',dataStim.Properties.VariableNames{p}])
+    ARmdl = ar(dataBaseline(:,p), 10, 'yw');
+    for t1 = find(stim.Variables')
+        t2 = ceil(.95*artdur) + t1; t2 = min(t2, height(dataBaseline));
+        t0 = max(1, t2-artdur);
+        K = t2-t0;
+        if K > 0
+            ARpred = myFastForecastAR(ARmdl, dataStim{1:t0,p}, K);
+            dataStim{(t0+1):t2, p} = ARpred;
+        end
+    end
+end
 
-%% check/visualize (some of) the data
-SD = std(dataBaseline); isOut = isoutlier(dataBaseline, 'mean');
-[~,ord] = sort(SD.Variables);
-ch1 = [ord(1:5), ord((end-4):end)];
+%% show artifacts 
+T0 = (-artdur); T2 = (4*artdur);
+TStim = (T0:T2)*dataStim.Properties.TimeStep;
+XStim = nan(sum(stim.Variables), length(TStim), length(ch)); 
+for c = 1:length(ch)
+    trl = 1;
+    for t1 = find(stim.Variables')
+        t2 = T2 + t1; t2 = min(t2, height(dataBaseline));
+        t0 = T0 + t1; t0 = max(t0, 1);
+        T2_ = t2 - t1 - T0 + 1; T0_ = t0 - t1 - T0 + 1;
+        XStim(trl, T0_:T2_, c) = dataStimWithArtifact{t0:t2, ch(c)};
+        trl = trl+1;
+    end
+end
+XStimAvg = mean(XStim, 1); 
+XStimStd = std(XStim, [], 1); 
+numArtToShow = 100;
+numArtToSkip = ceil(size(XStim,1)/numArtToShow);
+fig0 = figure('Units','normalized', 'Position',[.1 .1 .4 .8]); 
+for c = 1:length(ch)
+    ax(c) = subplot(length(ch),1,c); 
+    plot(TStim, XStimAvg(:,:,c), 'k', 'LineWidth', 2);
+    hold on; grid on; 
+    plot(TStim, XStimAvg(:,:,c)+XStimStd(:,:,c), '--k', 'LineWidth', 2);
+    plot(TStim, XStimAvg(:,:,c)-XStimStd(:,:,c), '--k', 'LineWidth', 2);
+    for trl = 1:numArtToSkip:size(XStim,1)
+        plot(TStim, XStim(trl,:,c), ':r');
+    end
+    axis tight
+    legend('Avg', '+1SD', '-1SD', 'individual');
+    ylabel([dataStim.Properties.VariableNames{ch(c)},' (',...
+        dataStim.Properties.VariableUnits{ch(c)},')']);
+end
+xlabel('Time From Stimulus Onset'); 
+subplot(length(ch),1,1); title('Artifact')
+linkaxes(ax, 'x')
+clear ax
 
 %% preprocess data 
 
@@ -194,6 +252,8 @@ svname = inputdlg('Save Training params as:', 'File Save Name', 1, {'sysLTIv'});
 if ~isempty(svname)
     svname = svname{1};
     save(fullfile(fp,[svname,'.mat']), 'sysLTI', 'dataTrain', 'dataTest', 'dataStim', 'fn')
+    saveas(fig0, fullfile(fp,[svname,'_artifacts']),'fig');
+    saveas(fig0, fullfile(fp,[svname,'_artifacts']),'png');
 end
 
 %% visualize training results 

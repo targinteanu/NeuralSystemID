@@ -15,8 +15,8 @@ sysColr = {'b',     'r'};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
 
-[~,dataTestSel] = max(cellfun(@height, dataTest));
-dataTest = dataTest{dataTestSel};
+%[~,dataTestSel] = max(cellfun(@height, dataTest));
+%dataTest = dataTest{dataTestSel};
 
 %% select training/testing validation (subsets) 
 %{
@@ -43,7 +43,7 @@ for hzn = hzns
     ypTrain = [ypTrain; ypTrain_];
     %}
     disp('Testing Eval');
-    ypTest_ = cellfun(@(S) myPredict(S, dataTest, hzn, true), sys, ...
+    ypTest_ = cellfun(@(S) myPredictCell(S, dataTest, hzn, true), sys, ...
         'UniformOutput',false);
     ypTest = [ypTest; ypTest_];
 end
@@ -240,6 +240,14 @@ if ~isempty(svname)
 end
 
 %% helpers
+
+function TBL = myPredictCell(sys, tblcell, k, b)
+TBL = [];
+for i = 1:length(tblcell)
+    tbl = myPredict(sys, tblcell{i}, k, b);
+    TBL = [TBL; tbl];
+end
+end
 
 function r = assignrank(x)
 [~,ord] = sort(x);
