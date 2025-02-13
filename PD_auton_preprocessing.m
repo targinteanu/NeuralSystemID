@@ -41,7 +41,7 @@ for t = 1:height(stimTime)
     stimTime(t) = dataStim.Time(ti);
 end
 stim = ones(size(stimTime));
-stim = timetable(stimTime, stim);
+stim = array2timetable(stim, 'RowTimes',stimTime); 
 stim = retime(stim, dataStim.Time, "fillwithconstant");
 %{
 [LMSwts, dataLMS, artLMS] = filterLMSwts(...
@@ -193,6 +193,11 @@ disp(['Resampling from ',num2str(fsOrig),' to ',num2str(fsNew)]);
 dataBaseline = downsampleTimetable(dataBaseline, fsRatio);
 dataBaseline2 = downsampleTimetable(dataBaseline2, fsRatio);
 dataStim = downsampleTimetable(dataStim, fsRatio);
+stim = downsampleTimeTable(stim, fsRatio);
+    % WARNING: this will scale down the amplitude and make it such that two
+    % stims in quick succession count as one stim with double amplitude -
+    % is this desired??
+dataStim = [dataStim, stim]; % package into one table for sys ID 
 fsNew = dataBaseline.Properties.SampleRate; 
 disp(['Resampled to ',num2str(fsNew),' Hz']);
 
