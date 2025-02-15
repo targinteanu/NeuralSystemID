@@ -193,7 +193,7 @@ disp(['Resampling from ',num2str(fsOrig),' to ',num2str(fsNew)]);
 dataBaseline = downsampleTimetable(dataBaseline, fsRatio);
 dataBaseline2 = downsampleTimetable(dataBaseline2, fsRatio);
 dataStim = downsampleTimetable(dataStim, fsRatio);
-stim = downsampleTimeTable(stim, fsRatio);
+stim = downsampleTimetable(stim, fsRatio);
     % WARNING: this will scale down the amplitude and make it such that two
     % stims in quick succession count as one stim with double amplitude -
     % is this desired??
