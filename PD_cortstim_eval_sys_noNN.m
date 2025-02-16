@@ -23,9 +23,9 @@ dataTest = dataTest(1:Lval,:); dataTrain = dataTrain(1:Lval,:);
 %% k-step ahead prediction 
 % artifact duration is around 10ms, but we should verify different time
 % scales. 
-hznmkr = {'o', 'x'}; % marker 
-hznlwd = [2, 1.25]; % line width
-hzns = [.5, 1.5]; % seconds  
+hznmkr = {'o', 'x', '+'}; % marker 
+hznlwd = [2, 1.25, .75]; % line width
+hzns = [.125, .5, 1.5]; % seconds  
 hzns = ceil(hzns * fsNew); % # samples 
 
 ypTrain = {}; ypTest = {};
@@ -247,6 +247,7 @@ for idx = 1:mIR:length(iStim)
     nIdx = nIdx + 1;
 end
 
+%{
 % transform from log to uV 
 dataTrainRT{:,1:(end-1)} = exp(dataTrainRT{:,1:(end-1)});
 dataTestRT{:,1:(end-1)} = exp(dataTestRT{:,1:(end-1)});
@@ -257,6 +258,7 @@ for nIdx = 1:nIR
     yIR_LTI_train{2,nIdx}{:,1:(end-1)} = exp(yIR_LTI_train{2,nIdx}{:,1:(end-1)});
     yIR_LTI_test{2,nIdx}{:,1:(end-1)} = exp(yIR_LTI_test{2,nIdx}{:,1:(end-1)});
 end
+%}
 
 % plot
 Y = [{ysLTI; dataTrainRT(1:hzn,:)}, yIR_LTI_train, yIR_LTI_test];
@@ -268,8 +270,8 @@ for c = 1:H
         plottbl(Y{2,n}, ch(c), 'k', 3); hold on; grid on; 
         axis tight;
         plottbl(Y{1,n}, ch(c), sysColr{1}, 2);
-        legend('true', 'LTI');
-        set(ax2(c,n), 'YScale', 'log');
+        %legend('true', 'LTI');
+        %set(ax2(c,n), 'YScale', 'log');
         set(ax2(c,n), "FontSize", 12);
     end
 end
@@ -280,9 +282,11 @@ for n = 1:W
     set(ax2(H+1,n), "FontSize", 12);
     linkaxes(ax2(:,n), 'x');
 end
+%{
 for c = 1:(H+1)
-    linkaxes(ax2(c,:), 'x');
+    linkaxes(ax2(c,:), 'y');
 end
+%}
 
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...

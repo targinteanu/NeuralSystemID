@@ -127,7 +127,7 @@ dataBaseline2 = FilterTimetable(filtfun,filtwts,dataBaseline2);
 dataStim = FilterTimetable(filtfun,filtwts,dataStim);
 
 %% inst freq 
-%{
+%%{
 [~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
 %dataFreq.Variables = dataFreq.Variables - 20;
 %dataFreq.Variables = tanh((dataFreq.Variables-20)/10);
@@ -137,7 +137,7 @@ dataBaseline = dataFreq;
 %}
 
 %% envelope/power
-%%{
+%{
 dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
 dataBaseline2.Variables = log(max(eps, envelope(dataBaseline2.Variables)));
 dataStim.Variables = log(max(eps, envelope(dataStim.Variables)));
@@ -186,7 +186,7 @@ end
 
 %% downsample, but ensure above nyquist rate 
 fsNew = 2.1*hico;
-%fsNew = 100;
+%fsNew = 95;
 fsRatio = floor(dataBaseline.Properties.SampleRate/fsNew); 
 fsNew = dataBaseline.Properties.SampleRate / fsRatio; 
 disp(['Resampling from ',num2str(fsOrig),' to ',num2str(fsNew)]);
