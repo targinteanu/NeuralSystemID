@@ -28,11 +28,11 @@ chdisp = [1; 9; 18]; % chdisp = [chdisp; chdisp+width(dataTrain)/2];
 %chdisp = [19; 38; 58];
 kstep = .25; % s
 kstep = ceil(kstep * dataTrain.Properties.SampleRate); % sample
-Lval = 100; % sample
+Lval = 1000; % sample
 
 dataTrainVal = dataTrain(1:Lval,:); dataTestVal = dataTest(1:Lval,:);
 H = height(chdisp);
-fig1 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+fig1 = figure('Units','normalized', 'Position',[.05,.1,.9,.8]); 
 for p = 1:H
     ax(p,1) = subplot(H,2, 2*(p-1)+1);
     plottbl(dataTrainVal, chdisp(p), 'k',2);
