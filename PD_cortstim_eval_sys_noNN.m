@@ -214,13 +214,11 @@ dataTestRT = retime([dataTest, stimTest], 'regular', 'nearest', 'TimeStep', seco
 dataTestRT.Time = dataTestRT.Time - dataTestRT.Time(1);
 ysLTI = sim(bgLTIstim, dataTrainRT(1:hzn, end), ...
     simOptions('InitialCondition', bgLTIstim.Report.Parameters.X0));
-ysLTIa = sim(bgLTIstim, 0.*dataTrainRT(1:hzn, end), ...
-    simOptions('InitialCondition', bgLTIstim.Report.Parameters.X0));
 
 % training data; impulse response 
 iStim = find(stimTrain.Variables > 0); %iStim = flipud(iStim);
 mIR = floor(length(iStim)/nIR);
-yIR_LTI_train = cell(3, nIR); nIdx = 1;
+yIR_LTI_train = cell(2, nIR); nIdx = 1;
 for idx = 1:mIR:length(iStim)
     idx_ = iStim(idx);
     it2 = ceil(.95*hzn) + idx_; it2 = min(it2, height(stimTrain));
@@ -228,19 +226,16 @@ for idx = 1:mIR:length(iStim)
     x0 = pinv(bgLTIstim.C) * dataTrainRT{it1, 1:(end-1)}';
     yIR_LTI_train{1, nIdx} = sim(bgLTIstim, dataTrainRT(it1:it2, end), ...
         simOptions('InitialCondition', x0));
-    yIR_LTI_train{3, nIdx} = sim(bgLTIstim, 0.*dataTrainRT(it1:it2, end), ...
-        simOptions('InitialCondition', x0));
     yIR_LTI_train{2, nIdx} = dataTrainRT(it1:it2, :);
     yIR_LTI_train{1, nIdx}.Time = yIR_LTI_train{1, nIdx}.Time - yIR_LTI_train{1, nIdx}.Time(1);
     yIR_LTI_train{2, nIdx}.Time = yIR_LTI_train{2, nIdx}.Time - yIR_LTI_train{2, nIdx}.Time(1);
-    yIR_LTI_train{3, nIdx}.Time = yIR_LTI_train{3, nIdx}.Time - yIR_LTI_train{3, nIdx}.Time(1);
     nIdx = nIdx + 1;
 end
 
 % testing data; impulse response 
 iStim = find(stimTest.Variables > 0); %iStim = flipud(iStim);
 mIR = floor(length(iStim)/nIR);
-yIR_LTI_test = cell(3, nIR); nIdx = 1;
+yIR_LTI_test = cell(2, nIR); nIdx = 1;
 for idx = 1:mIR:length(iStim)
     idx_ = iStim(idx);
     it2 = ceil(.95*hzn) + idx_; it2 = min(it2, height(stimTest));
@@ -248,16 +243,13 @@ for idx = 1:mIR:length(iStim)
     x0 = pinv(bgLTIstim.C) * dataTestRT{it1, 1:(end-1)}';
     yIR_LTI_test{1, nIdx} = sim(bgLTIstim, dataTestRT(it1:it2, end), ...
         simOptions('InitialCondition', x0));
-    yIR_LTI_test{3, nIdx} = sim(bgLTIstim, 0.*dataTestRT(it1:it2, end), ...
-        simOptions('InitialCondition', x0));
     yIR_LTI_test{2, nIdx} = dataTestRT(it1:it2, :);
     yIR_LTI_test{1, nIdx}.Time = yIR_LTI_test{1, nIdx}.Time - yIR_LTI_test{1, nIdx}.Time(1);
     yIR_LTI_test{2, nIdx}.Time = yIR_LTI_test{2, nIdx}.Time - yIR_LTI_test{2, nIdx}.Time(1);
-    yIR_LTI_test{3, nIdx}.Time = yIR_LTI_test{3, nIdx}.Time - yIR_LTI_test{3, nIdx}.Time(1);
     nIdx = nIdx + 1;
 end
 
-%%{
+%{
 % transform from log to uV 
 dataTrainRT{:,1:(end-1)} = exp(dataTrainRT{:,1:(end-1)});
 dataTestRT{:,1:(end-1)} = exp(dataTestRT{:,1:(end-1)});
@@ -265,15 +257,13 @@ ysLTI.Variables = exp(ysLTI.Variables);
 for nIdx = 1:nIR
     yIR_LTI_train{1, nIdx}.Variables = exp(yIR_LTI_train{1, nIdx}.Variables);
     yIR_LTI_test{1, nIdx}.Variables = exp(yIR_LTI_test{1, nIdx}.Variables);
-    yIR_LTI_train{3, nIdx}.Variables = exp(yIR_LTI_train{3, nIdx}.Variables);
-    yIR_LTI_test{3, nIdx}.Variables = exp(yIR_LTI_test{3, nIdx}.Variables);
     yIR_LTI_train{2,nIdx}{:,1:(end-1)} = exp(yIR_LTI_train{2,nIdx}{:,1:(end-1)});
     yIR_LTI_test{2,nIdx}{:,1:(end-1)} = exp(yIR_LTI_test{2,nIdx}{:,1:(end-1)});
 end
 %}
 
 % plot
-Y = [{ysLTI; dataTrainRT(1:hzn,:); ysLTIa}, yIR_LTI_train, yIR_LTI_test];
+Y = [{ysLTI; dataTrainRT(1:hzn,:)}, yIR_LTI_train, yIR_LTI_test];
 W = width(Y);
 figSim = figure('Units','normalized', 'Position',[.1,.1,.8,.8]);
 for c = 1:H
@@ -282,9 +272,8 @@ for c = 1:H
         plottbl(Y{2,n}, ch(c), 'k', 3); hold on; grid on; 
         axis tight;
         plottbl(Y{1,n}, ch(c), sysColr{1}, 2);
-        plottbl(Y{3,n}, ch(c), 'b', 1.5);
         %legend('true', 'LTI');
-        set(ax2(c,n), 'YScale', 'log');
+        %set(ax2(c,n), 'YScale', 'log');
         set(ax2(c,n), "FontSize", 12);
     end
 end
