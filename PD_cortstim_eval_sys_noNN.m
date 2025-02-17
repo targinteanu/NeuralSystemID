@@ -14,7 +14,7 @@ sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
 
 %% select training/testing validation (subsets) 
-%%{
+%{
 Lval = 1000; % # samples 
 disp([num2str(Lval/fsNew),' seconds selected for validation.'])
 dataTest = dataTest(1:Lval,:); dataTrain = dataTrain(1:Lval,:);
@@ -202,10 +202,10 @@ linkaxes(ax(:,1), 'x'); linkaxes(ax(:,3), 'x');
 linkaxes(ax(H+1,:), 'y');
 
 %% sim visualization 
-hzn = 2*max(hzns);
+hzn = max(hzns);
 ch = sort(ch);
 
-nIR = 1; % # of impulse responses to show 
+nIR = 2; % # of impulse responses to show 
 
 % training data; estimated initial condition 
 dataTrainRT = retime([dataTrain, stimTrain], 'regular', 'nearest', 'TimeStep', seconds(bgLTIstim.Ts));
@@ -216,7 +216,7 @@ ysLTI = sim(bgLTIstim, dataTrainRT(1:hzn, end), ...
     simOptions('InitialCondition', bgLTIstim.Report.Parameters.X0));
 
 % training data; impulse response 
-iStim = find(stimTrain.Variables > 0); %iStim = fliplr(iStim);
+iStim = find(stimTrain.Variables > 0); %iStim = flipud(iStim);
 mIR = floor(length(iStim)/nIR);
 yIR_LTI_train = cell(2, nIR); nIdx = 1;
 for idx = 1:mIR:length(iStim)
@@ -233,7 +233,7 @@ for idx = 1:mIR:length(iStim)
 end
 
 % testing data; impulse response 
-iStim = find(stimTest.Variables > 0); %iStim = fliplr(iStim);
+iStim = find(stimTest.Variables > 0); %iStim = flipud(iStim);
 mIR = floor(length(iStim)/nIR);
 yIR_LTI_test = cell(2, nIR); nIdx = 1;
 for idx = 1:mIR:length(iStim)
