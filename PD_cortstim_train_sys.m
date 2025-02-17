@@ -126,7 +126,7 @@ end
 %}
 
 %% nontrivial LTI system 
-StateSize = 64;
+StateSize = 128;
 n4hzn = [ceil(1.5*StateSize), 7, 7];
 disp('LTI - n4sid Training')
 tic
