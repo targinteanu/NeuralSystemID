@@ -223,8 +223,9 @@ for idx = 1:mIR:length(iStim)
     idx_ = iStim(idx);
     it2 = ceil(.95*hzn) + idx_; it2 = min(it2, height(stimTrain));
     it1 = max(1, it2-hzn);
+    x0 = pinv(bgLTIstim.C) * dataTrainRT{it1, 1:(end-1)}';
     yIR_LTI_train{1, nIdx} = sim(bgLTIstim, dataTrainRT(it1:it2, end), ...
-        simOptions('InitialCondition', 'z'));
+        simOptions('InitialCondition', x0));
     yIR_LTI_train{2, nIdx} = dataTrainRT(it1:it2, :);
     yIR_LTI_train{1, nIdx}.Time = yIR_LTI_train{1, nIdx}.Time - yIR_LTI_train{1, nIdx}.Time(1);
     yIR_LTI_train{2, nIdx}.Time = yIR_LTI_train{2, nIdx}.Time - yIR_LTI_train{2, nIdx}.Time(1);
@@ -239,8 +240,9 @@ for idx = 1:mIR:length(iStim)
     idx_ = iStim(idx);
     it2 = ceil(.95*hzn) + idx_; it2 = min(it2, height(stimTest));
     it1 = max(1, it2-hzn);
+    x0 = pinv(bgLTIstim.C) * dataTestRT{it1, 1:(end-1)}';
     yIR_LTI_test{1, nIdx} = sim(bgLTIstim, dataTestRT(it1:it2, end), ...
-        simOptions('InitialCondition', 'z'));
+        simOptions('InitialCondition', x0));
     yIR_LTI_test{2, nIdx} = dataTestRT(it1:it2, :);
     yIR_LTI_test{1, nIdx}.Time = yIR_LTI_test{1, nIdx}.Time - yIR_LTI_test{1, nIdx}.Time(1);
     yIR_LTI_test{2, nIdx}.Time = yIR_LTI_test{2, nIdx}.Time - yIR_LTI_test{2, nIdx}.Time(1);
