@@ -129,11 +129,13 @@ dataStim = FilterTimetable(filtfun,filtwts,dataStim);
 %% inst freq 
 %%{
 [~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
+[~,dataFreq2] = instPhaseFreqTblSmooth(dataBaseline2, [loco hico]);
+[~,dataFreqStim] = instPhaseFreqTblSmooth(dataStim, [loco hico]);
 %dataFreq.Variables = dataFreq.Variables - 20;
 %dataFreq.Variables = tanh((dataFreq.Variables-20)/10);
 %dataFreq = instfreq(dataBaseline);
 %dataFreq = retime(dataFreq, dataBaseline.Time, "spline");
-dataBaseline = dataFreq;
+dataBaseline = dataFreq; dataBaseline2 = dataFreq2; dataStim = dataFreqStim;
 %}
 
 %% envelope/power
