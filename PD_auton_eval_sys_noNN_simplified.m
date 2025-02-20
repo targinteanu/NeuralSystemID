@@ -225,7 +225,7 @@ figSim = figure('Units','normalized', 'Position',[.1,.1,.8,.8]);
 for c = 1:H
     ax2(c) = subplot(H,1,c);
     plottbl(dataTrainRT(1:hzn,:), ch(c), 'k', 3); hold on; grid on;
-    plot(ysLTI.Time(N:end), ysAR(:,ch(c)), sysColr{1}, 'LineWidth', 2.25);
+    plot(seconds(ysLTI.Time(N:end)), ysAR(:,ch(c)), sysColr{1}, 'LineWidth', 2.25);
     plottbl(ysLTI, ch(c), sysColr{2}, 2);
     legend('true', 'AR', 'LTI');
     set(ax2(c), 'YScale', 'log');
@@ -274,12 +274,21 @@ function plottbl(TBL, v, lspc, lwid)
     if nargin < 2
         v = 1;
     end
-    plot(TBL.Time, TBL{:,v}, lspc, 'LineWidth',lwid);
+    t = TBL.Time;
+    convertdur = isduration(t(1)); % the plots for durations look bad
+    if convertdur
+        t = seconds(t);
+    end
+    plot(t, TBL{:,v}, lspc, 'LineWidth',lwid);
     if ~isempty(TBL.Properties.VariableUnits)
         ylabel([TBL.Properties.VariableNames{v},' (',...
             TBL.Properties.VariableUnits{v},')']);
     else
         ylabel(TBL.Properties.VariableNames{v});
     end
-    xlabel('time');
+    if convertdur
+        xlabel('time (seconds)');
+    else
+        xlabel('time');
+    end
 end
