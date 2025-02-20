@@ -49,6 +49,16 @@ for hzn = hzns
 end
 clear ypTrain_ ypTest_ 
 
+%% vertically stack dataTest
+if iscell(dataTest)
+    dataTest_ = [];
+    for trl = 1:length(dataTest)
+        dataTest_ = [dataTest_; dataTest{trl}];
+    end
+    dataTest = dataTest_;
+    clear dataTest_
+end
+
 %% evaluation - assessment
 
 alph = .05; % confidence level, uncorrected 
@@ -195,7 +205,7 @@ linkaxes(ax(:,1), 'x'); %linkaxes(ax(:,3), 'x');
 
 %% sim visualization 
 tsimstart = 100; % timestamp 
-hzn = 2*max(hzns);
+hzn = max(hzns);
 ch = sort(ch);
 
 N = width(sysAR.A{1,1}) - 1;
