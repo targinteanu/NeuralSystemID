@@ -77,11 +77,12 @@ end
 
 figure; 
 mkrs = {'o', 'x', 'd', '+', 's', 'v', '^'};
+W = .6; % width range for individual points scatter 
 for h = 1:H
 
     % RMSE 
     ax(h,1) = subplot(H,2, 2*(h-1)+1); 
-    b = bar(squeeze(errsMean(h,:,:))); grid on; hold on;
+    b = bar(squeeze(errsMean(h,:,:)), 'FaceAlpha',.2, 'LineWidth',2); grid on; hold on;
     x = b.XData; y = b.YData;  
 
     % individual pts 
@@ -90,9 +91,10 @@ for h = 1:H
         yy = []; xx = [];
         for m = 1:size(Y,3)
             yyy = Y(:,:,m); yy = [yy, yyy]; 
-            xx = [xx, x(m)*ones(size(yyy))];
+            xxx = x(m)*ones(size(yyy));
+            xxx = xxx + ( (0:(length(xxx)-1))*W/length(xxx) -W/2 ); % distribute points horizontally
+            xx = [xx, xxx];
         end
-        xx = xx + .1*randn(size(xx));
         plot(xx, yy, [mkrs{subj},'r'], 'LineWidth',1.5);
     end
     errorbar(x,y, squeeze(errsSD(h,:,:)),squeeze(errsSD(h,:,:)), '.k', 'LineWidth',4);
@@ -114,7 +116,7 @@ for h = 1:H
 
     % corr 
     ax(h,1) = subplot(H,2, 2*(h-1)+2); 
-    b = bar(squeeze(corsMean(h,:,:))); grid on; hold on;
+    b = bar(squeeze(corsMean(h,:,:)), 'FaceAlpha',.2, 'LineWidth',2); grid on; hold on;
     x = b.XData; y = b.YData; 
 
     % individual pts 
@@ -123,9 +125,10 @@ for h = 1:H
         yy = []; xx = [];
         for m = 1:size(Y,3)
             yyy = Y(:,:,m); yy = [yy, yyy]; 
-            xx = [xx, x(m)*ones(size(yyy))];
+            xxx = x(m)*ones(size(yyy));
+            xxx = xxx + ( (0:(length(xxx)-1))*W/length(xxx) -W/2 ); % distribute points horizontally
+            xx = [xx, xxx];
         end
-        xx = xx + .1*randn(size(xx));
         plot(xx, yy, [mkrs{subj},'r'], 'LineWidth',1.5);
     end
     errorbar(x,y, squeeze(corsSD(h,:,:)),squeeze(corsSD(h,:,:)), '.k', 'LineWidth',4); 
