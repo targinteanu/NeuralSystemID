@@ -10,7 +10,7 @@ disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
 
 %% validation params 
-chdisp = [1; 10; 20]; % chdisp = [chdisp; chdisp+width(dataTrain)/2];
+chdisp = [1; 9; 18]; % chdisp = [chdisp; chdisp+width(dataTrain)/2];
 %chdisp = [19; 38; 58];
 kstep = .25; % s
 kstep = ceil(kstep * dataTrain.Properties.SampleRate); % sample
