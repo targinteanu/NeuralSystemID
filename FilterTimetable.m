@@ -14,6 +14,8 @@ function TTfilt = FilterTimetable(FiltFun, FiltObj, TTunfilt)
 %   TTfilt: filtered data in timetable format 
 %
 
+if numel(TTunfilt) > 0
+
 %% sample rate check
 Time_Signal = TTunfilt.Time;
 try
@@ -47,5 +49,10 @@ TTfilt.Properties.VariableUnits = TTunfilt.Properties.VariableUnits;
 TTfilt.Properties.VariableDescriptions = TTunfilt.Properties.VariableDescriptions;
 TTfilt.Properties.Events = TTunfilt.Properties.Events;
 TTfilt.Properties.Description = [TTunfilt.Properties.Description,' filtered'];
+
+else
+    warning('No filtering done because table is empty!')
+    TTfilt = TTunfilt;
+end
 
 end
