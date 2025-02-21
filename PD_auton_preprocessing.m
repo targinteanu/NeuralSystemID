@@ -127,7 +127,7 @@ dataBaseline2 = FilterTimetable(filtfun,filtwts,dataBaseline2);
 dataStim = FilterTimetable(filtfun,filtwts,dataStim);
 
 %% inst freq 
-%%{
+%{
 [~,dataFreq] = instPhaseFreqTblSmooth(dataBaseline, [loco hico]);
 [~,dataFreq2] = instPhaseFreqTblSmooth(dataBaseline2, [loco hico]);
 [~,dataFreqStim] = instPhaseFreqTblSmooth(dataStim, [loco hico]);
@@ -139,7 +139,7 @@ dataBaseline = dataFreq; dataBaseline2 = dataFreq2; dataStim = dataFreqStim;
 %}
 
 %% envelope/power
-%{
+%%{
 dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
 dataBaseline2.Variables = log(max(eps, envelope(dataBaseline2.Variables)));
 dataStim.Variables = log(max(eps, envelope(dataStim.Variables)));
@@ -366,10 +366,12 @@ function plottbl(TBL, v, lspc, lwid)
 end
 
 function tbl = fixtime(tbl, fs)
+if height(tbl) > 0
 if isnan(tbl.Properties.SampleRate) || isnan(tbl.Properties.TimeStep)
 if nargin < 2
     fs = 1/mean(seconds(diff(tbl.Time)));
 end
 tbl = retime(tbl, 'regular', 'nearest', 'SampleRate',fs);
+end
 end
 end

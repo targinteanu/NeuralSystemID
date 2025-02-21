@@ -1,3 +1,8 @@
+%% show drawing of grid layout for ref
+G = zeros(21,3);
+G(:) = 1:63; 
+figure; heatmap(G);
+
 %% user selects folder; necessary files are pulled 
 folder = uigetdir; 
 [~,pName] = fileparts(folder)
@@ -193,19 +198,21 @@ for d = 1:height(DataTimeTables)
     DataTimeTables{d,3} = ts; DataTimeTables{d,4} = te;
 end
 DataTimeTables
+%{
 for h = 1:height(DataTimeTables)
     figure('Units','normalized', 'Position',...
         [(h-1)/height(DataTimeTables),0,1/height(DataTimeTables),1]);
     myStackedPlot(DataTimeTables{h,2}(:,chanSelInds), [], []); % chanSelInds needs to be changed!
     sgtitle({pName; DataTimeTables{h,1}});
 end
+%}
 
 %% saving 
+save([folder,filesep,pName,'_DataTimeTables.mat'], 'DataTimeTables');
 saveas(fig1, [folder,filesep,pName,'_ChannelSummary'],'fig'); 
 saveas(fig1, [folder,filesep,pName,'_ChannelSummary'],'png'); 
 saveas(fig2, [folder,filesep,pName,'_Data'],'fig'); 
 saveas(fig2, [folder,filesep,pName,'_Data'],'png'); 
-save([folder,filesep,pName,'_DataTimeTables.mat'], 'DataTimeTables');
 
 %% helper
 
