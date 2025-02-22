@@ -254,8 +254,10 @@ end
 function TBL = myPredictCell(sys, tblcell, k, b)
 TBL = [];
 for i = 1:length(tblcell)
-    tbl = myPredict(sys, tblcell{i}, k, b);
-    TBL = [TBL; tbl];
+    if numel(tblcell{i})
+        tbl = myPredict(sys, tblcell{i}, k, b);
+        TBL = [TBL; tbl];
+    end
 end
 end
 
