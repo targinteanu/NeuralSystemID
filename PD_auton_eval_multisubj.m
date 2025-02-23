@@ -84,6 +84,7 @@ for h = 1:H
     ax(h,1) = subplot(H,2, 2*(h-1)+1); 
     b = bar(squeeze(errsMean(h,:,:)), 'FaceAlpha',.2, 'LineWidth',2); grid on; hold on;
     x = b.XData; y = b.YData;  
+    axis tight;
 
     % individual pts 
     for subj = 1:width(namesAll)
@@ -118,6 +119,7 @@ for h = 1:H
     ax(h,1) = subplot(H,2, 2*(h-1)+2); 
     b = bar(squeeze(corsMean(h,:,:)), 'FaceAlpha',.2, 'LineWidth',2); grid on; hold on;
     x = b.XData; y = b.YData; 
+    axis tight;
 
     % individual pts 
     for subj = 1:width(namesAll)
