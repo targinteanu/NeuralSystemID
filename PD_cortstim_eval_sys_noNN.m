@@ -4,18 +4,18 @@
 
 %% load data file 
 [fn,fp] = uigetfile('*andsyscortstim*.mat');
-load(fullfile(fp,fn), 'bgLTIstim', ...
+load(fullfile(fp,fn), 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', ...
         'dataTrain', 'dataTest');
 disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
-sysName = {'bgLTIstim'};
-sysColr = {'r'};
+sysName = {'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA'};
+sysColr = {'b',       'c',          'm',    'r'};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
 
 %% select training/testing validation (subsets) 
-%{
-Lval = 1000; % # samples 
+%%{
+Lval = 2000; % # samples 
 disp([num2str(Lval/fsNew),' seconds selected for validation.'])
 dataTest = dataTest(1:Lval,:); dataTrain = dataTrain(1:Lval,:);
 %}
@@ -121,7 +121,7 @@ end
 
 % best channel 
 %corBest = min(corsTest, [], 3); % best model 
-corBest = corsTest(:,:,1); % use bgLTI 
+corBest = corsTest(:,:,end); % use bgLTI 
 corRepr = abs(corBest - mean(corBest,2));
 for k = 1:length(hzns)
     corBest(k,:) = assignrank(corBest(k,:)); % rank channel; higher = better 
