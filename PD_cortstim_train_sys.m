@@ -4,9 +4,12 @@
 % input = cortical brain stimulation. 
 
 %% load data file 
-[fn,fp] = uigetfile('sysLTI*.mat');
+[fnA,fp] = uigetfile('sysLTI*.mat'); % trained auton sys
+fn_ = find(fnA == '_'); fn_ = fn_(1); 
+fn = [fnA(1:fn_-1),'.mat'];
 load(fullfile(fp,fn), 'dataStim');
-disp([fp,' --- ',fn]);
+load(fullfile(fp,fnA), 'sysAR', 'sysLTI', 'bgLTI', 'sysNull');
+disp([fp,' --- ',fn,' & ',fnA]);
 [~,fn] = fileparts(fn);
 
 %% divide stim into test-train 
@@ -45,109 +48,76 @@ end
 linkaxes(ax(:,1), 'x'); linkaxes(ax(:,2), 'x');
 subplot(H,2,1); title('Training'); subplot(H,2,2); title('Testing');
 
-%% null system 
-%{
-A = eye(Nx); 
-B = zeros(height(A),1); C = eye(size(A)); D = zeros(height(C),1);
-sysNull = idss(ss(A,B,C,D, seconds(dataTrain.Properties.TimeStep)));
-sysNull.StateName = OutputName; 
-sysNull.StateUnit = OutputUnits;
-sysNull.OutputName = OutputName; 
-sysNull.OutputUnit = OutputUnits;
-
-disp('Null State Space - Training Validation')
-sysNulltrain = myPredict(sysNull, dataTrainVal(:,1:(end-1)), kstep, true);
-disp('Null State Space - Testing Validation')
-sysNulltest = myPredict(sysNull, dataTestVal(:,1:(end-1)), kstep, true);
-for p = 1:H
-    subplot(H,2, 2*(p-1)+1);
-    plottbl(sysNulltrain, chdisp(p), ':k', 1.5);
-    hold on; grid on;
-    subplot(H,2, 2*(p-1)+2);
-    plottbl(sysNulltest, chdisp(p), ':k', 1.5);
-    hold on; grid on;
-end
-%}
-
-%% basic LTI system 
-%{
-% full state = output
-[~,~,~,~,A] = fitLTIauton(dataTrain);
-B = zeros(height(A),0); C = eye(size(A)); D = zeros(height(C),0);
-disp('Basic LTI - Training')
-sysLTI = idss(ss(A,B,C,D, seconds(dataTrain.Properties.TimeStep)));
-sysLTI.StateName = dataTrain.Properties.VariableNames; 
-sysLTI.StateUnit = dataTrain.Properties.VariableUnits;
-sysLTI.OutputName = dataTrain.Properties.VariableNames; 
-sysLTI.OutputUnit = dataTrain.Properties.VariableUnits;
-
-rat = sum([numel(sysLTI.A), numel(sysLTI.B), numel(sysLTI.C), numel(sysLTI.D), numel(sysLTI.K)]);
-rat = numel(dataTrain)/rat; 
-disp(['Training data is ',num2str(rat),' times parameter size'])
-
-disp('Basic LTI - Training Validation')
-sysLTItrain = myPredict(sysLTI, dataTrainVal, kstep, true);
-disp('Basic LTI - Testing Validation')
-sysLTItest = myPredict(sysLTI, dataTestVal, kstep, true);
-for p = 1:H
-    subplot(H,2, 2*(p-1)+1);
-    plottbl(sysLTItrain, chdisp(p));
-    hold on; grid on;
-    subplot(H,2, 2*(p-1)+2);
-    plottbl(sysLTItest, chdisp(p));
-    hold on; grid on;
-end
-%}
-
-%% AR model
-%{
-sysAR = [];
-for p = 1:width(dataTrain)
-    disp(['AR - Training Channel ',dataTrain.Properties.VariableNames{p}])
-    ARp = ar(dataTrain(:,p), 10, 'yw');
-    sysAR = [sysAR; ARp];
-end
-
-rat = height(dataTrain)/10; 
-disp(['Training data is ',num2str(rat),' times parameter size'])
-
-disp('AR - Training Validation')
-xTrainPred = myPredict(sysAR, dataTrainVal, kstep, true);
-disp('AR - Testing Validation')
-xTestPred = myPredict(sysAR, dataTestVal, kstep, true);
-for p = 1:H
-    subplot(H,2, 2*(p-1)+1);
-    plottbl(xTrainPred, chdisp(p));
-    hold on; grid on;
-    subplot(H,2, 2*(p-1)+2);
-    plottbl(xTestPred, chdisp(p));
-    hold on; grid on;
-end
-%}
-
 %% nontrivial LTI system 
 StateSize = 128;
 n4hzn = [ceil(1.5*StateSize), 7, 7];
 disp('LTI - n4sid Training')
 tic
-bgLTIstim = n4sid(dataTrain, StateSize, ...
+bgLTI_NA = n4sid(dataTrain, StateSize, ...
     n4sidOptions('Display','on', 'EstimateCovariance',false, ...
     'N4Weight','CVA', 'N4Horizon',n4hzn), ...
     'InputName',InputName,'OutputName',OutputName);
 toc
-bgLTIstim.OutputName = OutputName; 
-bgLTIstim.OutputUnit = OutputUnits;
+bgLTI_NA.OutputName = OutputName; 
+bgLTI_NA.OutputUnit = OutputUnits;
 
-rat = sum([numel(bgLTIstim.A), numel(bgLTIstim.B), numel(bgLTIstim.C), numel(bgLTIstim.D), numel(bgLTIstim.K)]);
+rat = sum([numel(bgLTI_NA.A), numel(bgLTI_NA.B), numel(bgLTI_NA.C), numel(bgLTI_NA.D), numel(bgLTI_NA.K)]);
 rat = numel(dataTrain)/rat; 
 disp(['Training data is ',num2str(rat),' times parameter size'])
 
-plothelper(bgLTIstim, dataTrainVal, dataTestVal, kstep, chdisp);
+plothelper(bgLTI_NA, dataTrainVal, dataTestVal, kstep, chdisp);
 
+%% refine 
+%{
+disp('LTI - refining with ssest')
+tic
+bgLTI_NA2NA = ssest(dataTrain, bgLTI_NA);
+toc
+plothelper(bgLTI_NA2NA, dataTrainVal, dataTestVal, kstep, chdisp);
+%}
+
+%% retrained 
+bgLTI_A = idss( ss(bgLTI.A, zeros(size(bgLTI_NA.B)), bgLTI.C, zeros(size(bgLTI_NA.D)), ...
+    (bgLTI.Ts) ) );
+bgLTI_A.OutputName = OutputName; 
+bgLTI_A.OutputUnit = OutputUnits;
+
+bgLTI_NA2A = bgLTI_NA; 
+bgLTI_NA2A.B = 0.*bgLTI_NA2A.B; 
+bgLTI_NA2A.D = 0.*bgLTI_NA2A.D; 
+
+%{
+disp('LTI - Retraining autonomous model with input-output data')
+tic
+bgLTI_A2NA = ssest(dataTrain, bgLTI_A, ...
+    ssestOptions('Display','on', 'EstimateCovariance',false, ...
+    'InitializeMethod','n4sid', 'InitialState','zero', ...
+    'SearchMethod','gna', ...
+    'N4Weight','CVA', 'N4Horizon',n4hzn));
+toc
+%}
+
+plothelper(bgLTI_A, dataTrainVal, dataTestVal, kstep, chdisp);
+plothelper(bgLTI_NA2A, dataTrainVal, dataTestVal, kstep, chdisp);
+%plothelper(bgLTI_A2NA, dataTrainVal, dataTestVal, kstep, chdisp);
+
+%% transfer function from auton model
+disp('tf - calculating from scratch')
+tic
+bgTF = tfest(dataTrain, floor(StateSize/width(dataTrain)), ...
+    tfestOptions('Display','on', 'EstimateCovariance',false, ...
+    'InitialCondition','estimate', 'SearchMethod','gna'), ...
+    'InputName',InputName,'OutputName',OutputName, ...
+    'Ts',seconds(dataTrain.Properties.TimeStep) );
+toc
+
+plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
+
+%{
 %% hw - piecewise linear 
 disp('HWpl - Training')
 tic
-bgHWpl = nlhw(dataTrain, bgLTIstim, 'idPiecewiseLinear', 'idPiecewiseLinear');
+bgHWpl = nlhw(dataTrain, bgLTI_NA, 'idPiecewiseLinear', 'idPiecewiseLinear');
 toc
 
 plothelper(bgHWpl, dataTrainVal, dataTestVal, kstep, chdisp);
@@ -155,7 +125,7 @@ plothelper(bgHWpl, dataTrainVal, dataTestVal, kstep, chdisp);
 %% hw - sigmoid
 disp('HWsg - Training')
 tic
-bgHWsg = nlhw(dataTrain, bgLTIstim, 'idSigmoidNetwork', 'idSigmoidNetwork');
+bgHWsg = nlhw(dataTrain, bgLTI_NA, 'idSigmoidNetwork', 'idSigmoidNetwork');
 toc
 
 plothelper(bgHWsg, dataTrainVal, dataTestVal, kstep, chdisp);
@@ -163,7 +133,7 @@ plothelper(bgHWsg, dataTrainVal, dataTestVal, kstep, chdisp);
 %% hw - wavelet
 disp('HWwl - Training')
 tic
-bgHWwl = nlhw(dataTrain, bgLTIstim, 'idWaveletNetwork', 'idWaveletNetwork');
+bgHWwl = nlhw(dataTrain, bgLTI_NA, 'idWaveletNetwork', 'idWaveletNetwork');
 toc
 
 plothelper(bgHWwl, dataTrainVal, dataTestVal, kstep, chdisp);
@@ -171,20 +141,22 @@ plothelper(bgHWwl, dataTrainVal, dataTestVal, kstep, chdisp);
 %% hw - neural
 disp('HWnn - Training')
 tic
-bgHWnn = nlhw(dataTrain, bgLTIstim, 'idNeuralNetwork', 'idNeuralNetwork');
+bgHWnn = nlhw(dataTrain, bgLTI_NA, 'idNeuralNetwork', 'idNeuralNetwork');
 toc
 
 plothelper(bgHWnn, dataTrainVal, dataTestVal, kstep, chdisp);
+%}
 
 %% legend 
-legend('true', 'LTI', 'HWpl', 'HWsg', 'HWwl', 'HWnn')
+legend('true', 'LTI-NA', 'LTI-A', 'LTI-NA2A', 'TF')
 
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
     {[fn,'_andsyscortstimv']});
 if ~isempty(svname)
     svname = svname{1};
-    save(fullfile(fp,[svname,'.mat']), 'sysNull', 'sysLTI', 'sysAR', 'bgLTIstim', ...
+    save(fullfile(fp,[svname,'.mat']), 'sysNull', 'sysLTI', 'sysAR', 'bgLTI_A', ...
+        'bgLTI_NA', 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', ...
         'dataTrain', 'dataTest', 'fn')
     saveas(fig1, fullfile(fp,svname),'fig'); 
     saveas(fig1, fullfile(fp,svname),'png'); 
