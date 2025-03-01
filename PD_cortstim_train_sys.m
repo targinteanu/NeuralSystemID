@@ -126,6 +126,7 @@ plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
 
 bgTF2ss = idss(ss(bgTF));
 
+% convert to continuous first!
 F = bgLTI.A; H = bgLTI.C; 
 A = bgTF2ss.A; B = bgTF2ss.B; C = bgTF2ss.C;
 
@@ -133,6 +134,7 @@ A = bgTF2ss.A; B = bgTF2ss.B; C = bgTF2ss.C;
 T = pinv(C)*H;
 R = ((H'*H)^-1)*H'*C; % or pinv(H)*C ?
 
+%{
 bgA2TF  = idss(ss( T*F*R, B, C, zeros(height(C),1), bgTF2ss.Ts ));
 bgTF2NA = idss(ss( R*A*T, R*B, H, zeros(height(H),1), bgLTI.Ts ));
 bgA2TF.OutputName = OutputName; 
@@ -142,6 +144,11 @@ bgTF2NA.OutputUnit = OutputUnits;
 
 plothelper(bgA2TF,  dataTrainVal, dataTestVal, kstep, chdisp);
 plothelper(bgTF2NA, dataTrainVal, dataTestVal, kstep, chdisp);
+%}
+
+syms s
+ZIR = H*((s*eye(size(F))-F)^-1)*bgLTI.Report.Parameters.X0; % ZIR from auton
+[num,den] = tfdata(bgTF); ZSR = cell(size(den)); % ZSR from 
 
 %{
 %% hw - piecewise linear 
