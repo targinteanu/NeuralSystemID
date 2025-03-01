@@ -49,7 +49,10 @@ linkaxes(ax(:,1), 'x'); linkaxes(ax(:,2), 'x');
 subplot(H,2,1); title('Training'); subplot(H,2,2); title('Testing');
 
 %% nontrivial LTI system 
-StateSize = 128;
+%StateSize = 128;
+%StateSize = floor(StateSize/width(dataTrain)) * width(dataTrain); 
+StateSize = height(bgLTI.A);
+    % make state space multiple of output space
 n4hzn = [ceil(1.5*StateSize), 7, 7];
 disp('LTI - n4sid Training')
 tic
@@ -81,6 +84,7 @@ bgLTI_A = idss( ss(bgLTI.A, zeros(size(bgLTI_NA.B)), bgLTI.C, zeros(size(bgLTI_N
     (bgLTI.Ts) ) );
 bgLTI_A.OutputName = OutputName; 
 bgLTI_A.OutputUnit = OutputUnits;
+%bgLTI_A.Report.Parameters.X0 = bgLTI.Report.Parameters.X0;
 
 bgLTI_NA2A = bgLTI_NA; 
 bgLTI_NA2A.B = 0.*bgLTI_NA2A.B; 
@@ -112,6 +116,32 @@ bgTF = tfest(dataTrain, floor(StateSize/width(dataTrain)), ...
 toc
 
 plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
+
+%% combo transfer function and auton 
+% auton: z2 = Fz1 + 0u1 , y = Hz
+% tf: x2 = Ax1 + Bu1 , y = Cx
+% transforms: x = Tz , z = Rx
+% A2TF: x2 = TFRx1 + Bu1
+% TF2NA: z2 = RATz1 + RBu1
+
+bgTF2ss = idss(ss(bgTF));
+
+F = bgLTI.A; H = bgLTI.C; 
+A = bgTF2ss.A; B = bgTF2ss.B; C = bgTF2ss.C;
+
+%T = ((C'*C)^-1)*C'*H; % or pinv(C)*H ?
+T = pinv(C)*H;
+R = ((H'*H)^-1)*H'*C; % or pinv(H)*C ?
+
+bgA2TF  = idss(ss( T*F*R, B, C, zeros(height(C),1), bgTF2ss.Ts ));
+bgTF2NA = idss(ss( R*A*T, R*B, H, zeros(height(H),1), bgLTI.Ts ));
+bgA2TF.OutputName = OutputName; 
+bgTF2NA.OutputName = OutputName; 
+bgA2TF.OutputUnit = OutputUnits; 
+bgTF2NA.OutputUnit = OutputUnits;
+
+plothelper(bgA2TF,  dataTrainVal, dataTestVal, kstep, chdisp);
+plothelper(bgTF2NA, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %{
 %% hw - piecewise linear 
@@ -148,7 +178,7 @@ plothelper(bgHWnn, dataTrainVal, dataTestVal, kstep, chdisp);
 %}
 
 %% legend 
-legend('true', 'LTI-NA', 'LTI-A', 'LTI-NA2A', 'TF')
+legend('true', 'LTI-NA', 'LTI-A', 'LTI-NA2A', 'TF', 'A2TF', 'TF2NA')
 
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
@@ -156,7 +186,7 @@ svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
 if ~isempty(svname)
     svname = svname{1};
     save(fullfile(fp,[svname,'.mat']), 'sysNull', 'sysLTI', 'sysAR', 'bgLTI_A', ...
-        'bgLTI_NA', 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', ...
+        'bgLTI_NA', 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgA2TF', 'bgTF2NA', ...
         'dataTrain', 'dataTest', 'fn')
     saveas(fig1, fullfile(fp,svname),'fig'); 
     saveas(fig1, fullfile(fp,svname),'png'); 

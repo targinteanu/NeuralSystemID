@@ -5,6 +5,7 @@
 %% load data file 
 [fn,fp] = uigetfile('*andsyscortstim*.mat');
 load(fullfile(fp,fn), 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', ...
+        'bgA2TF', 'bgTF2NA', ...
         'dataTrain', 'dataTest');
 bgTF = idss(ss(bgTF)); % now all sys should be idss
 disp([fp,' --- ',fn]);
@@ -13,6 +14,14 @@ sysName = {'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA'};
 sysColr = {'b',       'c',          'm',    'r'};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
+
+% edit chars in name for display
+for s = 1:length(sysName)
+    str = sysName{s};
+    str(str=='_') = ' ';
+    sysName{s} = str;
+    clear str
+end
 
 %% select training/testing validation (subsets) 
 %%{
