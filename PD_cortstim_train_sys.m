@@ -121,28 +121,25 @@ plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
 % auton -> ZIR: x2(t) = A*x1(t), y(t) = C*x(t) 
 % tf -> ZSR: Y(s) = G(s)*U(s) 
 
-% convert to continuous 
-bgLTIc = d2c(bgLTI); bgTFc = d2c(bgTF); 
-A = bgLTIc.A; C = bgLTIc.C; x0 = bgLTI.Report.Parameters.X0;
+A = bgLTI.A; C = bgLTI.C; x0 = bgLTI.Report.Parameters.X0;
 
 % transform ZIR according to its eigenvalue decomposition 
 % A = V*L*V^-1 
-% z = V^-1 * x; x = V*z
-% z2 = L*z1 
-% y = C*V*z
+% w := V^-1 * x; x = V*w
+% w2 = L*w1 
+% y = C*V*w
 [V,L] = eig(A);
 
-% frequency domain ZIR: Y(s) = C * V * (sI-L)^-1 * V^-1 * x(t=0);
-syms s
-sILinv = diag( 1./(s-diag(L)) );
-Yzir = C*V*sILinv*(V^-1)*x0;
+% frequency domain ZIR: Y[z] = C * V * (I-zinv*L)^-1 * V^-1 * x(t=0);
+syms zinv
+IzLinv = diag( 1./(1-zinv*diag(L)) );
+Yzir = C*V*IzLinv*(V^-1)*x0;
 
 % ZSR from TF
-[num,den] = tfdata(bgTFc); Yzsr = cell(size(den)); 
+[num,den] = tfdata(bgTF); Yzsr = cell(size(den)); 
 for ch = 1:height(Yzsr)
-    Yzsr{ch} = poly2sym(num{ch}, s)/poly2sym(den{ch}, s);
+    Yzsr{ch} = poly2sym(num{ch}, zinv)/poly2sym(den{ch}, zinv);
 end
-Yzsr = cell2mat(Yzsr);
 
 %{
 %% hw - piecewise linear 
