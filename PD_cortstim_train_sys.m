@@ -131,14 +131,26 @@ A = bgLTI.A; C = bgLTI.C; x0 = bgLTI.Report.Parameters.X0;
 [V,L] = eig(A);
 
 % frequency domain ZIR: Y[z] = C * V * (I-zinv*L)^-1 * V^-1 * x(t=0);
-syms zinv
-IzLinv = diag( 1./(1-zinv*diag(L)) );
+syms z
+IzLinv = diag( 1./(1-(z^-1)*diag(L)) );
 Yzir = C*V*IzLinv*(V^-1)*x0;
 
-% ZSR from TF
-[num,den] = tfdata(bgTF); Yzsr = cell(size(den)); 
-for ch = 1:height(Yzsr)
-    Yzsr{ch} = poly2sym(num{ch}, zinv)/poly2sym(den{ch}, zinv);
+%% add ZIR to ZSR from TF
+Y = tf(bgTF);
+for ch = 1:height(Y)
+    disp(['Channel ',num2str(ch),' of ',num2str(height(Y))])
+    trms = children(Yzir(ch));
+    for t = 1:length(trms)
+        % disp([' --- term ',num2str(t),' of ',num2str(length(trms))])
+        trm = trms{t};
+        [num, den] = numden(trm);
+        num = sym2poly(num); den = sym2poly(den);
+        if numel(den)
+            num = num/den(1); den = den/den(1);
+        end
+        % extract real from num/den ?
+        Y(ch) = Y(ch) + tf(num, den, Y.Ts);
+    end
 end
 
 %{
