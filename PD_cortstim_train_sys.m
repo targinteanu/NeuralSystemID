@@ -34,19 +34,19 @@ kstep = ceil(kstep * dataTrain.Properties.SampleRate); % sample
 Lval = 1000; % sample
 
 dataTrainVal = dataTrain(1:Lval,:); dataTestVal = dataTest(1:Lval,:);
-H = height(chdisp);
+C = height(chdisp);
 fig1 = figure('Units','normalized', 'Position',[.05,.1,.9,.8]); 
-for p = 1:H
-    ax(p,1) = subplot(H,2, 2*(p-1)+1);
+for p = 1:C
+    ax(p,1) = subplot(C,2, 2*(p-1)+1);
     plottbl(dataTrainVal, chdisp(p), 'k',2);
     hold on; grid on;
-    ax(p,2) = subplot(H,2, 2*(p-1)+2);
+    ax(p,2) = subplot(C,2, 2*(p-1)+2);
     plottbl(dataTestVal, chdisp(p), 'k', 2);
     hold on; grid on;
     linkaxes(ax(p,:), 'y');
 end
 linkaxes(ax(:,1), 'x'); linkaxes(ax(:,2), 'x');
-subplot(H,2,1); title('Training'); subplot(H,2,2); title('Testing');
+subplot(C,2,1); title('Training'); subplot(C,2,2); title('Testing');
 
 %% nontrivial LTI system 
 %StateSize = 128;
@@ -118,37 +118,31 @@ toc
 plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %% combo transfer function and auton 
-% auton: z2 = Fz1 + 0u1 , y = Hz
-% tf: x2 = Ax1 + Bu1 , y = Cx
-% transforms: x = Tz , z = Rx
-% A2TF: x2 = TFRx1 + Bu1
-% TF2NA: z2 = RATz1 + RBu1
+% auton -> ZIR: x2(t) = A*x1(t), y(t) = C*x(t) 
+% tf -> ZSR: Y(s) = G(s)*U(s) 
 
-bgTF2ss = idss(ss(bgTF));
+% convert to continuous 
+bgLTIc = d2c(bgLTI); bgTFc = d2c(bgTF); 
+A = bgLTIc.A; C = bgLTIc.C; x0 = bgLTI.Report.Parameters.X0;
 
-% convert to continuous first!
-F = bgLTI.A; H = bgLTI.C; 
-A = bgTF2ss.A; B = bgTF2ss.B; C = bgTF2ss.C;
+% transform ZIR according to its eigenvalue decomposition 
+% A = V*L*V^-1 
+% z = V^-1 * x; x = V*z
+% z2 = L*z1 
+% y = C*V*z
+[V,L] = eig(A);
 
-%T = ((C'*C)^-1)*C'*H; % or pinv(C)*H ?
-T = pinv(C)*H;
-R = ((H'*H)^-1)*H'*C; % or pinv(H)*C ?
-
-%{
-bgA2TF  = idss(ss( T*F*R, B, C, zeros(height(C),1), bgTF2ss.Ts ));
-bgTF2NA = idss(ss( R*A*T, R*B, H, zeros(height(H),1), bgLTI.Ts ));
-bgA2TF.OutputName = OutputName; 
-bgTF2NA.OutputName = OutputName; 
-bgA2TF.OutputUnit = OutputUnits; 
-bgTF2NA.OutputUnit = OutputUnits;
-
-plothelper(bgA2TF,  dataTrainVal, dataTestVal, kstep, chdisp);
-plothelper(bgTF2NA, dataTrainVal, dataTestVal, kstep, chdisp);
-%}
-
+% frequency domain ZIR: Y(s) = C * V * (sI-L)^-1 * V^-1 * x(t=0);
 syms s
-ZIR = H*((s*eye(size(F))-F)^-1)*bgLTI.Report.Parameters.X0; % ZIR from auton
-[num,den] = tfdata(bgTF); ZSR = cell(size(den)); % ZSR from 
+sILinv = diag( 1./(s-diag(L)) );
+Yzir = C*V*sILinv*(V^-1)*x0;
+
+% ZSR from TF
+[num,den] = tfdata(bgTFc); Yzsr = cell(size(den)); 
+for ch = 1:height(Yzsr)
+    Yzsr{ch} = poly2sym(num{ch}, s)/poly2sym(den{ch}, s);
+end
+Yzsr = cell2mat(Yzsr);
 
 %{
 %% hw - piecewise linear 
