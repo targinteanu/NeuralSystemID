@@ -120,6 +120,8 @@ plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
 %% combo transfer function and auton 
 % auton -> ZIR: x2(t) = A*x1(t), y(t) = C*x(t) 
 % tf -> ZSR: Y(s) = G(s)*U(s) 
+% seek a solution for B that minimizes error in H(s) * B = G(s)
+% where: H(s) = C * V * (zI-L)^-1 
 
 A = bgLTI.A; C = bgLTI.C; x0 = bgLTI.Report.Parameters.X0;
 
@@ -130,17 +132,32 @@ A = bgLTI.A; C = bgLTI.C; x0 = bgLTI.Report.Parameters.X0;
 % y = C*V*w
 [V,L,~,Lcell] = decomp2diag(A);
 
-% frequency domain ZIR: Y[z] = C * V * (I-zinv*L)^-1 * V^-1 * x(t=0);
-syms z
-IzLcell = Lcell; 
-for r = 1:length(IzLcell)
+% frequency domain ZIR: Y[z] = C * V * (I-zinv*L)^-1 * V^-1 * x(t=0)
+syms z n
+zILcell = Lcell; 
+for r = 1:length(zILcell)
     Lcr = Lcell{r};
-    Lcr = eye(size(Lcr)) - (z^-1).*Lcr;
-    IzLcell{r} = Lcr;
+    Lcr = z*eye(size(Lcr)) - Lcr;
+    zILcell{r} = Lcr;
 end
-IzLinv = invertDiag(IzLcell);
-IzLinv = vpa(IzLinv); % improve speed, but may introduce rounding error
-Yzir = C*V*IzLinv*(V^-1)*x0;
+zILinv = invertDiag(zILcell);
+zILinv = vpa(zILinv); % improve speed, but may introduce rounding error
+%Yzir = C*V*zILinv*(V^-1)*x0;
+H = C*V*zILinv; % H(z)
+
+% inverse z-transform and integrate over time step n
+nHzn = 60; % time horizon (s) over which to evaluate 
+nHzn = ceil(nHzn / bgTF.Ts); neval = 0:nHzn; % sample
+G = []; g = []; gint = zeros(size(bgTF));
+for ch = 1:height(bgTF)
+    [num,den] = tfdata(bgTF(ch));
+    Gch = poly2sym(num,z)/poly2sym(den,z);
+    gch = iztrans(Gch); gch = vpa(gch);
+    geval = double( subs(gch, n, neval) );
+    gint(ch) = sum(geval);
+    G = [G; Gch]; g = [g; gch];
+    clear num den Gch gch geval
+end
 
 % add ZIR to ZSR from TF
 disp('Combining ZIR and ZSR:')
@@ -192,7 +209,7 @@ plothelper(bgHWnn, dataTrainVal, dataTestVal, kstep, chdisp);
 %}
 
 %% legend 
-legend('true', 'LTI-NA', 'LTI-A', 'LTI-NA2A', 'TF', 'A2TF', 'TF2NA')
+legend('true', 'LTI-NA', 'LTI-A', 'LTI-NA2A', 'TF', 'ZIR-ZSR')
 
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
