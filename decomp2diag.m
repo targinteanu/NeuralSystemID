@@ -43,7 +43,7 @@ while ~isempty(E)
     v = w - w_; v = .5*imag(v);
     a = e + e_; a = .5*real(a);
     b = e - e_; b = .5*imag(b);
-    VV = [u, v]; DD = [a, b; -b, a];
+    VV = [u, v]; DD = [a, -b; b, a];
     VComp = [VComp, VV]; VcellComp = [VcellComp, VV]; 
     DcellComp = [DcellComp, DD]; 
 end
