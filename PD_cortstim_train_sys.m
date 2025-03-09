@@ -133,7 +133,7 @@ A = bgLTI.A; C = bgLTI.C; x0 = bgLTI.Report.Parameters.X0;
 [V,L,~,Lcell] = decomp2diag(A);
 
 % frequency domain ZIR: Y[z] = C * V * (I-zinv*L)^-1 * V^-1 * x(t=0)
-syms z n
+syms z
 zILcell = Lcell; 
 for r = 1:length(zILcell)
     Lcr = Lcell{r};
@@ -145,33 +145,40 @@ zILinv = vpa(zILinv); % improve speed, but may introduce rounding error
 %Yzir = C*V*zILinv*(V^-1)*x0;
 H = C*V*zILinv; % H(z)
 
-% inverse z-transform and integrate over time step n
-nHzn = 60; % time horizon (s) over which to evaluate 
-nHzn = ceil(nHzn / bgTF.Ts); neval = 0:nHzn; % sample
-G = []; g = []; gint = zeros(size(bgTF));
+%% construct symbolic G(z) and get list of all poles and zeros
+G = []; % G(z)
+pz = []; % list of all poles and zeros 
+[nums, dens] = tfdata(bgTF);
 for ch = 1:height(bgTF)
-    [num,den] = tfdata(bgTF(ch));
+    disp(['Channel ',num2str(ch),' of ',num2str(height(bgTF))])
+    num = nums{ch}; den = dens{ch};
     Gch = poly2sym(num,z)/poly2sym(den,z);
-    gch = iztrans(Gch); gch = vpa(gch);
-    geval = double( subs(gch, n, neval) );
-    gint(ch) = sum(geval);
-    G = [G; Gch]; g = [g; gch];
-    clear num den Gch gch geval
+    pz = [pz; roots(num); roots(den)];
+    G = [G; Gch]; 
+    clear num den Gch
+    for c = 1:width(H)
+        Hchc = H(ch,c);
+        [num,den] = numden(Hchc);
+        num = sym2poly(num); den = sym2poly(den);
+        pz = [pz; roots(num); roots(den)];
+        clear num den Hchc
+    end
 end
+clear nums dens
 
-% add ZIR to ZSR from TF
-disp('Combining ZIR and ZSR:')
-Y = tf(bgTF);
-for ch = 1:height(Y)
-    disp(['Channel ',num2str(ch),' of ',num2str(height(Y))])
-    [num,den] = numden(Yzir(ch));
-    scl = coeffs(den); scl = scl(1); 
-    num = num/scl; den = den/scl; 
-    num = sym2poly(num); den = sym2poly(den); 
-    Y(ch) = Y(ch) + tf(num, den, Y.Ts);
+%% estimate B 
+noZ = 50; % # of Z points to sample 
+zeval = linspace(min(real(pz))-2*std(real(pz)), max(real(pz))+2*std(real(pz)), noZ);
+HH = []; GG = [];
+for z_ = zeval
+    HH = [HH; double(subs(H,z,z_))];
+    GG = [GG; double(subs(G,z,z_))];
 end
+BB = HH\GG;
 
-bgZIRZSR = idtf(Y);
+bgZIRZSR = idss(ss(L, BB, C*V, zeros(height(C),width(BB)), bgLTI.Ts));
+bgZIRZSR.OutputName = OutputName; 
+bgZIRZSR.OutputUnit = OutputUnits; 
 plothelper(bgZIRZSR, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %{
