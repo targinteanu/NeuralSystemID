@@ -168,7 +168,7 @@ clear nums dens
 
 %% estimate B 
 noZ = 50; % # of Z points to sample 
-zeval = linspace(min(real(pz))-2*std(real(pz)), max(real(pz))+2*std(real(pz)), noZ);
+zeval = linspace(mean(real(pz))-3*std(real(pz)), mean(real(pz))+3*std(real(pz)), noZ);
 HH = []; GG = [];
 for z_ = zeval
     HH = [HH; double(subs(H,z,z_))];
