@@ -147,20 +147,20 @@ H = C*V*zILinv; % H(z)
 
 %% construct symbolic G(z) and get list of all poles and zeros
 G = []; % G(z)
-pz = []; % list of all poles and zeros 
+pzG = []; pzH = []; % list of all poles and zeros 
 [nums, dens] = tfdata(bgTF);
 for ch = 1:height(bgTF)
     disp(['Channel ',num2str(ch),' of ',num2str(height(bgTF))])
     num = nums{ch}; den = dens{ch};
     Gch = poly2sym(num,z)/poly2sym(den,z);
-    pz = [pz; roots(num); roots(den)];
+    pzG = [pzG; roots(num); roots(den)];
     G = [G; Gch]; 
     clear num den Gch
     for c = 1:width(H)
         Hchc = H(ch,c);
         [num,den] = numden(Hchc);
         num = sym2poly(num); den = sym2poly(den);
-        pz = [pz; roots(num); roots(den)];
+        pzH = [pzH; roots(num); roots(den)];
         clear num den Hchc
     end
 end
