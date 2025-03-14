@@ -6,12 +6,13 @@
 [fn,fp] = uigetfile('*andsyscortstim*.mat');
 load(fullfile(fp,fn), 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', ...
         'bgA2TF', 'bgTF2NA', ...
+        'bgHWpl', 'bgHWsg', 'bgHWwl', 'bgHWnn', ...
         'dataTrain', 'dataTest');
-bgTF = idss(ss(bgTF)); % now all sys should be idss
+bgTF = idss(ss(bgTF)); % now all sys should be idss or idnlhw
 disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
-sysName = {'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA'};
-sysColr = {'b',       'c',          'm',    'r'};
+sysName = {'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', 'bgHWpl',      'bgHWsg',     'bgHWwl',      'bgHWnn'};
+sysColr = {'b',       'c',          'm',    'r',        [.39,.76,.06], [.1,.45,.12], [.92,.58,.05], [.46,.46,0]};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
 
@@ -38,22 +39,39 @@ hznlwd = [2, 1.25, .75]; % line width
 hzns = [.125, .5, 1.5]; % seconds  
 hzns = ceil(hzns * fsNew); % # samples 
 
+% prediction 
 ypTrain = {}; ypTest = {};
 for hzn = hzns
     disp(['Eval ',num2str(hzn),'-step']);
     %%{
     disp('Training Eval');
-    ypTrain_ = cellfun(@(S) myPredict(S, dataTrain, hzn, true), sys, ...
+    ypTrain_ = cellfun(@(S) predict(S, dataTrain, hzn, ...
+        predictOptions('InitialCondition','z')), sys, ...
         'UniformOutput',false);
     ypTrain = [ypTrain; ypTrain_];
     %}
     disp('Testing Eval');
-    ypTest_ = cellfun(@(S) myPredict(S, dataTest, hzn, true), sys, ...
+    ypTest_ = cellfun(@(S) predict(S, dataTest, hzn, ...
+        predictOptions('InitialCondition','z')), sys, ...
         'UniformOutput',false);
     ypTest = [ypTest; ypTest_];
 end
 clear ypTrain_ ypTest_ 
 
+% set time axis 
+for cy = 1:width(ypTest)
+    for ry = 1:height(ypTest)
+        Y = ypTest{ry,cy};
+        Y.Time = Y.Time + dataTest.Time(1);
+        ypTest{ry,cy} = Y; clear Y
+        Y = ypTrain{ry,cy};
+        Y.Time = Y.Time + dataTrain.Time(1);
+        ypTrain{ry,cy} = Y; clear Y
+    end
+end
+clear ry cy
+
+% extract input signal
 stimTest = dataTest(:,end); stimTrain = dataTrain(:,end); 
 dataTest = dataTest(:,1:(end-1)); dataTrain = dataTrain(:,1:(end-1)); 
 
@@ -94,7 +112,7 @@ for k = 1:K
     subplot(K,3,3*(k-1)+1);
     for s = 1:length(sys)
         colr = sysColr{s};
-        stem(100*errsTest(k,:,s), ['-',colr,'s'], 'LineWidth',1.5); hold on;
+        stem(100*errsTest(k,:,s), '-s', 'Color',colr, 'LineWidth',1.5); hold on;
     end
     ylabel('% RMSE'); 
     title([kt,'ms prediction']);
@@ -104,7 +122,7 @@ for k = 1:K
     subplot(K,3,3*(k-1)+2);
     for s = 1:length(sys)
         colr = sysColr{s};
-        stem(corsTest(k,:,s), ['-',colr,'s'], 'LineWidth',1.5); hold on;
+        stem(corsTest(k,:,s), '-s', 'Color',colr, 'LineWidth',1.5); hold on;
     end
     ylabel('Pearsons \rho'); 
     title([kt,'ms prediction']);
@@ -114,7 +132,7 @@ for k = 1:K
     axp = subplot(K,3,3*(k-1)+3);
     for s = 1:length(sys)
         colr = sysColr{s};
-        stem(pcorsTest(k,:,s), ['-',colr,'s'], 'LineWidth',1.5); hold on;
+        stem(pcorsTest(k,:,s), '-s', 'Color',colr, 'LineWidth',1.5); hold on;
     end
     set(axp, 'YScale', 'log')
     xl = xlim(); plot(xl, alph*ones(size(xl)), 'k', 'LineWidth',1);
@@ -160,7 +178,7 @@ for c = 1:H
     plottbl(dataTrain, ch(c), ':k', 4); grid on; hold on;
     for s = 1:width(ypTrain)
         for k = 1:length(hzns)
-            plottbl(ypTrain{k,s}, ch(c), sysColr{s}, hznlwd(k)); 
+            plottbl(ypTrain{k,s}, ch(c), '-', hznlwd(k), sysColr{s}); 
         end
     end
     title('Train');
@@ -171,7 +189,7 @@ for c = 1:H
         colr = sysColr{s};
         for k = 1:length(hzns)
             mkr = hznmkr{k};
-            plot(dataTrain{:,ch(c)}, ypTrain{k,s}{:,ch(c)}, [mkr,colr]);
+            plot(dataTrain{:,ch(c)}, ypTrain{k,s}{:,ch(c)}, mkr,'Color',colr);
         end
     end
     grid on; xlabel('true'); ylabel('pred');
@@ -183,7 +201,7 @@ for c = 1:H
     plottbl(dataTest, ch(c), ':k', 4); grid on; hold on;
     for s = 1:width(ypTest)
         for k = 1:length(hzns)
-            plottbl(ypTest{k,s}, ch(c), sysColr{s}, hznlwd(k)); 
+            plottbl(ypTest{k,s}, ch(c), '-', hznlwd(k), sysColr{s}); 
         end
     end
     title('Test');
@@ -194,7 +212,7 @@ for c = 1:H
         colr = sysColr{s};
         for k = 1:length(hzns)
             mkr = hznmkr{k};
-            plot(dataTest{:,ch(c)}, ypTest{k,s}{:,ch(c)}, [mkr,colr]);
+            plot(dataTest{:,ch(c)}, ypTest{k,s}{:,ch(c)}, mkr,'Color',colr);
         end
     end
     grid on; xlabel('true'); ylabel('pred');
@@ -223,9 +241,14 @@ dataTrainRT = retime([dataTrain, stimTrain], 'regular', 'nearest', 'TimeStep', s
 dataTrainRT.Time = dataTrainRT.Time - dataTrainRT.Time(1);
 dataTestRT = retime([dataTest, stimTest], 'regular', 'nearest', 'TimeStep', seconds(bgLTI_NA.Ts));
 dataTestRT.Time = dataTestRT.Time - dataTestRT.Time(1);
-ysTrain = cellfun(@(S) sim( S, dataTrainRT(1:hzn, end), ...
+ysTrain = [...
+    cellfun(@(S) sim( S, dataTrainRT(1:hzn, end), ...
     simOptions('InitialCondition', S.Report.Parameters.X0) ), ...
-    sys, 'UniformOutput', false)';
+    sys(1:4), 'UniformOutput', false) , ...
+    cellfun(@(S) sim( S, dataTrainRT(1:hzn, end), ...
+    simOptions('InitialCondition', 'z') ), ...
+    sys(5:end), 'UniformOutput', false) , ...
+    ]';
 ysTrain = [ysTrain; {dataTrainRT(1:hzn,:)}];
 
 % training data; impulse response 
@@ -238,9 +261,14 @@ for idx = 1:mIR:length(iStim)
     it1 = max(1, it2-hzn);
     for s = 1:length(sys)
         S = sys{s};
-        x0 = pinv(S.C) * dataTrainRT{it1, 1:(end-1)}';
-        yIR = sim(S, dataTrainRT(it1:it2, end), ...
-            simOptions('InitialCondition', x0));
+        if s <= 4
+            x0 = pinv(S.C) * dataTrainRT{it1, 1:(end-1)}';
+            yIR = sim(S, dataTrainRT(it1:it2, end), ...
+                simOptions('InitialCondition', x0));
+        else
+            yIR = sim(S, dataTrainRT(it1:it2, end), ...
+                simOptions('InitialCondition', 'z'));
+        end
         yIR.Time = yIR.Time - yIR.Time(1);
         yIRtrain{s, nIdx} = yIR;
         clear yIR
@@ -260,9 +288,14 @@ for idx = 1:mIR:length(iStim)
     it1 = max(1, it2-hzn);
     for s = 1:length(sys)
         S = sys{s};
-        x0 = pinv(S.C) * dataTestRT{it1, 1:(end-1)}';
-        yIR = sim(S, dataTestRT(it1:it2, end), ...
-            simOptions('InitialCondition', x0));
+        if s <= 4
+            x0 = pinv(S.C) * dataTrainRT{it1, 1:(end-1)}';
+            yIR = sim(S, dataTrainRT(it1:it2, end), ...
+                simOptions('InitialCondition', x0));
+        else
+            yIR = sim(S, dataTrainRT(it1:it2, end), ...
+                simOptions('InitialCondition', 'z'));
+        end
         yIR.Time = yIR.Time - yIR.Time(1);
         yIRtest{s, nIdx} = yIR;
         clear yIR
@@ -294,7 +327,7 @@ for c = 1:H
         plottbl(Y{end,n}, ch(c), 'k', 3); hold on; grid on; 
         axis tight;
         for s = 1:length(sys)
-            plottbl(Y{s,n}, ch(c), sysColr{s}, 2);
+            plottbl(Y{s,n}, ch(c), '-', 2, sysColr{s});
         end
         %legend(['true', sysName]);
         set(ax2(c,n), 'YScale', 'log');
@@ -347,7 +380,10 @@ function r = assignrank(x)
 r = arrayfun(@(i) find(ord==i), 1:length(x));
 end
 
-function plottbl(TBL, v, lspc, lwid)
+function plottbl(TBL, v, lspc, lwid, colr)
+    if nargin < 5
+        colr = [];
+    end
     if nargin < 4
         lwid = 1;
     end
@@ -357,7 +393,11 @@ function plottbl(TBL, v, lspc, lwid)
     if nargin < 2
         v = 1;
     end
-    plot(TBL.Time, TBL{:,v}, lspc, 'LineWidth',lwid);
+    if isempty(colr)
+        plot(TBL.Time, TBL{:,v}, lspc, 'LineWidth',lwid);
+    else
+        plot(TBL.Time, TBL{:,v}, lspc, 'LineWidth',lwid, 'Color',colr);
+    end
     if ~isempty(TBL.Properties.VariableUnits)
         ylabel([TBL.Properties.VariableNames{v},' (',...
             TBL.Properties.VariableUnits{v},')']);
