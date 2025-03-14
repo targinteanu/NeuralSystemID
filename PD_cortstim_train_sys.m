@@ -131,7 +131,8 @@ plothelper(bgHWpl, dataTrainVal, dataTestVal, kstep, chdisp);
 %% hw - sigmoid
 disp('HWsg - Training')
 tic
-bgHWsg = nlhw(dataTrain, bgTF, 'idSigmoidNetwork', 'idSigmoidNetwork');
+bgHWsg = nlhw(dataTrain, bgTF, 'idSigmoidNetwork', 'idSigmoidNetwork', ...
+    nlhwOptions('Display','on'));
 toc
 
 plothelper(bgHWsg, dataTrainVal, dataTestVal, kstep, chdisp);
@@ -139,7 +140,8 @@ plothelper(bgHWsg, dataTrainVal, dataTestVal, kstep, chdisp);
 %% hw - wavelet
 disp('HWwl - Training')
 tic
-bgHWwl = nlhw(dataTrain, bgTF, 'idWaveletNetwork', 'idWaveletNetwork');
+bgHWwl = nlhw(dataTrain, bgTF, 'idWaveletNetwork', 'idWaveletNetwork', ...
+    nlhwOptions('Display','on'));
 toc
 
 plothelper(bgHWwl, dataTrainVal, dataTestVal, kstep, chdisp);
@@ -148,7 +150,8 @@ plothelper(bgHWwl, dataTrainVal, dataTestVal, kstep, chdisp);
 %{
 disp('HWsiwo - Training')
 tic
-bgHWsiwo = nlhw(dataTrain, bgTF, 'idSigmoidNetwork', 'idWaveletNetwork');
+bgHWsiwo = nlhw(dataTrain, bgTF, 'idSigmoidNetwork', 'idWaveletNetwork', ...
+    nlhwOptions('Display','on'));
 toc
 
 plothelper(bgHWsiwo, dataTrainVal, dataTestVal, kstep, chdisp);
@@ -157,7 +160,8 @@ plothelper(bgHWsiwo, dataTrainVal, dataTestVal, kstep, chdisp);
 %% hw - wavelet in, sigmoid out
 disp('HWwiso - Training')
 tic
-bgHWwiso = nlhw(dataTrain, bgTF, 'idWaveletNetwork', 'idSigmoidNetwork');
+bgHWwiso = nlhw(dataTrain, bgTF, 'idWaveletNetwork', 'idSigmoidNetwork', ...
+    nlhwOptions('Display','on'));
 toc
 
 plothelper(bgHWwiso, dataTrainVal, dataTestVal, kstep, chdisp);
@@ -165,7 +169,8 @@ plothelper(bgHWwiso, dataTrainVal, dataTestVal, kstep, chdisp);
 %% hw - neural
 disp('HWnn - Training')
 tic
-bgHWnn = nlhw(dataTrain, bgTF, 'idNeuralNetwork', 'idNeuralNetwork');
+bgHWnn = nlhw(dataTrain, bgTF, 'idNeuralNetwork', 'idNeuralNetwork', ...
+    nlhwOptions('Display','on'));
 toc
 
 plothelper(bgHWnn, dataTrainVal, dataTestVal, kstep, chdisp);
@@ -175,7 +180,9 @@ plothelper(bgHWnn, dataTrainVal, dataTestVal, kstep, chdisp);
 disp('HWdn - Training')
 tic
 bgHWdn = nlhw(dataTrain, bgTF, ...
-    idNeuralNetwork(NetworkType="dlnetwork"), idNeuralNetwork(NetworkType="dlnetwork"));
+    idNeuralNetwork(NetworkType="dlnetwork"), ... input
+    idNeuralNetwork(NetworkType="dlnetwork"), ... output
+    nlhwOptions('Display','on'));
 toc
 
 plothelper(bgHWdn, dataTrainVal, dataTestVal, kstep, chdisp);
