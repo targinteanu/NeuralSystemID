@@ -118,14 +118,15 @@ toc
 
 plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
 
-%%{
 %% hw - piecewise linear 
+%{
 disp('HWpl - Training')
 tic
 bgHWpl = nlhw(dataTrain, bgTF, 'idPiecewiseLinear', 'idPiecewiseLinear');
 toc
 
 plothelper(bgHWpl, dataTrainVal, dataTestVal, kstep, chdisp);
+%}
 
 %% hw - sigmoid
 disp('HWsg - Training')
@@ -142,6 +143,24 @@ bgHWwl = nlhw(dataTrain, bgTF, 'idWaveletNetwork', 'idWaveletNetwork');
 toc
 
 plothelper(bgHWwl, dataTrainVal, dataTestVal, kstep, chdisp);
+
+%% hw - sigmoid in, wavelet out
+%{
+disp('HWsiwo - Training')
+tic
+bgHWsiwo = nlhw(dataTrain, bgTF, 'idSigmoidNetwork', 'idWaveletNetwork');
+toc
+
+plothelper(bgHWsiwo, dataTrainVal, dataTestVal, kstep, chdisp);
+%}
+
+%% hw - wavelet in, sigmoid out
+disp('HWwiso - Training')
+tic
+bgHWwiso = nlhw(dataTrain, bgTF, 'idWaveletNetwork', 'idSigmoidNetwork');
+toc
+
+plothelper(bgHWwiso, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %% hw - neural
 disp('HWnn - Training')
@@ -164,7 +183,7 @@ plothelper(bgHWdn, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %% legend 
 legend('true', 'LTI-NA', 'LTI-A', 'LTI-NA2A', 'TF', ...
-    'HWpl', 'HWsg', 'HWwl', 'HWnn')
+    'HWsg', 'HWwl', 'HWwiso', 'HWnn')
 
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
@@ -173,7 +192,8 @@ if ~isempty(svname)
     svname = svname{1};
     save(fullfile(fp,[svname,'.mat']), 'sysNull', 'sysLTI', 'sysAR', 'bgLTI_A', ...
         'bgLTI_NA', 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', ...
-        'bgHWpl', 'bgHWsg', 'bgHWwl', 'bgHWnn', ... 'bgHWdn', ...
+        'bgHWsg', 'bgHWwl', 'bgHWnn', ... 'bgHWdn', ...
+        'bgHWwiso', ...
         'dataTrain', 'dataTest', 'fn')
     saveas(fig1, fullfile(fp,svname),'fig'); 
     saveas(fig1, fullfile(fp,svname),'png'); 

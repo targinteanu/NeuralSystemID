@@ -6,13 +6,13 @@
 [fn,fp] = uigetfile('*andsyscortstim*.mat');
 load(fullfile(fp,fn), 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', ...
         'bgA2TF', 'bgTF2NA', ...
-        'bgHWpl', 'bgHWsg', 'bgHWwl', 'bgHWnn', ...
+        'bgHWsg', 'bgHWwl', 'bgHWnn', 'bgHWwiso', ...
         'dataTrain', 'dataTest');
 bgTF = idss(ss(bgTF)); % now all sys should be idss or idnlhw
 disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
-sysName = {'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', 'bgHWpl',      'bgHWsg',     'bgHWwl',      'bgHWnn'};
-sysColr = {'b',       'c',          'm',    'r',        [.39,.76,.06], [.1,.45,.12], [.92,.58,.05], [.46,.46,0]};
+sysName = {'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', 'bgHWsg',     'bgHWwl',      'bgHWwiso',  'bgHWnn'};
+sysColr = {'b',       'c',          'm',    'r',        [.39,.76,.06], [.1,.45,.12], [.46,.46,0], [.5,.18,.55]};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
 
