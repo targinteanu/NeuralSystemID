@@ -33,34 +33,44 @@ subplot(C,2,1); title('Training'); subplot(C,2,2); title('Testing');
 
 %% build the model to be trained  
 
-StateSize = height(bgLTI_NA.A); 
+%ASize = size(bgLTI_NA.A); 
+ASize = [64, 64];
 OutputSize = width(dataTrain)-1;
 
 % define a neural state space model 
-bgNSS = idNeuralStateSpace(StateSize, "NumInputs",1, "NumOutputs",OutputSize); 
+bgNSS = idNeuralStateSpace(OutputSize, "NumInputs",1, "NumOutputs",OutputSize); 
 bgNSS.StateNetwork = createMLPNetwork(bgNSS,"state", ...
-    LayerSizes= [StateSize,StateSize], ...
+    LayerSizes= ASize, ...
     WeightsInitializer="glorot", ...
     BiasInitializer="zeros", ...
     Activations='tanh');
-bgNSS.OutputNetwork = createMLPNetwork(bgNSS,"output", ...
-    LayerSizes=OutputSize, ...
-    WeightsInitializer="glorot", ...
-    BiasInitializer="zeros", ...
-    Activations="tanh");
+bgNSS.StateName = dataTrain.Properties.VariableNames(1:(end-1)); 
+bgNSS.StateUnit = dataTrain.Properties.VariableUnits(1:(end-1));
 bgNSS.OutputName = dataTrain.Properties.VariableNames(1:(end-1)); 
 bgNSS.OutputUnit = dataTrain.Properties.VariableUnits(1:(end-1));
-bgNSS.InputName = dataTeain.Properties.VariableNames(end);
+bgNSS.InputName = dataTrain.Properties.VariableNames(end);
+
+%% compare model size to data size 
+
+numLearnables = [...
+    bgNSS.StateNetwork.Learnables.Value; 
+    bgNSS.OutputNetwork.Learnables.Value]; % cell array for each layer 
+numLearnables = arrayfun(@(l) numel(l{:}), numLearnables); % total # at each layer
+numLearnables = sum(numLearnables); % grand total # 
+
+DataLearnableRatio = numel(dataTrain)/numLearnables;
+disp(['Training data size is ',num2str(DataLearnableRatio),...
+    ' times learnables size.']);
 
 %% training 
 
 %%{
 % training options - ADAM
 trnopts = nssTrainingOptions("adam");
-trnopts.MaxEpochs = 5000; % default 100
-trnopts.LearnRate = .0001; % default .001
+trnopts.MaxEpochs = 1000; % default 100
+trnopts.LearnRate = .00005; % default .001
 %trnopts.LearnRateSchedule = "piecewise"; % default "none"
-trnopts.MiniBatchSize = 4096; % default 100
+trnopts.MiniBatchSize = 2048; % default 100
 trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"
 %}
 
@@ -100,7 +110,7 @@ svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
     {[fn,'_andNNv']});
 if ~isempty(svname)
     svname = svname{1};
-    save(fullfile(fp,[svname,'.mat']), ...
+    save(fullfile(fp,[svname,'.mat']), 'bgNSS', ...
         'dataTrain', 'dataTest', 'fn')
     saveas(fig1, fullfile(fp,svname),'fig'); 
     saveas(fig1, fullfile(fp,svname),'png'); 
