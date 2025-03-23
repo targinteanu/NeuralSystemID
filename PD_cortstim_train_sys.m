@@ -106,7 +106,7 @@ plothelper(bgLTI_A, dataTrainVal, dataTestVal, kstep, chdisp);
 plothelper(bgLTI_NA2A, dataTrainVal, dataTestVal, kstep, chdisp);
 %plothelper(bgLTI_A2NA, dataTrainVal, dataTestVal, kstep, chdisp);
 
-%% transfer function from auton model
+%% transfer function 
 disp('tf - estimating')
 tic
 bgTF = tfest(dataTrain, floor(StateSize/width(dataTrain)), ...
@@ -119,9 +119,27 @@ toc
 plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %% combo ZIR-ZSR
+
+% isolate ZSR
+yZIR = predict(bgLTI, dataTrain(:,1:(end-1)), 1);
+yZIR.Time = yZIR.Time + dataTrain.Time(1);
+yZIR = retime(yZIR, dataTrain.Time, 'nearest');
+yZSR = dataTrain(:,1:(end-1)) - yZIR; 
+yZSR = [yZSR, dataTrain(:,end)];
+
+% estimate ZSR tf 
+disp('tf - estimating')
+tic
+bgZSRTF = tfest(yZSR, floor(StateSize/width(dataTrain)), ...
+    tfestOptions('Display','on', 'EstimateCovariance',false, ...
+    'InitialCondition','estimate', 'SearchMethod','gna'), ...
+    'InputName',InputName,'OutputName',OutputName, ...
+    'Ts',seconds(dataTrain.Properties.TimeStep) );
+toc
+
 Azir = bgLTI_A.A; Bzir = bgLTI_A.B; Czir = bgLTI_A.C; Dzir = bgLTI_A.D; 
-bgTF2ss = ss(bgTF);
-Azsr = bgTF2ss.A; Bzsr = bgTF2ss.B; Czsr = bgTF2ss.C; Dzsr = bgTF2ss.D; 
+bgZSRss = ss(bgZSRTF);
+Azsr = bgZSRss.A; Bzsr = bgZSRss.B; Czsr = bgZSRss.C; Dzsr = bgZSRss.D; 
 A = [Azir, zeros(height(Azir),width(Azsr)); 
      zeros(height(Azsr),width(Azir)), Azsr]; 
 B = [zeros(size(Bzir)); Bzsr];
