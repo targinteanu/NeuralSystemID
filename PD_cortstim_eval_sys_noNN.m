@@ -289,11 +289,11 @@ for idx = 1:mIR:length(iStim)
     for s = 1:length(sys)
         S = sys{s};
         if s <= 4
-            x0 = pinv(S.C) * dataTrainRT{it1, 1:(end-1)}';
-            yIR = sim(S, dataTrainRT(it1:it2, end), ...
+            x0 = pinv(S.C) * dataTestRT{it1, 1:(end-1)}';
+            yIR = sim(S, dataTestRT(it1:it2, end), ...
                 simOptions('InitialCondition', x0));
         else
-            yIR = sim(S, dataTrainRT(it1:it2, end), ...
+            yIR = sim(S, dataTestRT(it1:it2, end), ...
                 simOptions('InitialCondition', 'z'));
         end
         yIR.Time = yIR.Time - yIR.Time(1);
