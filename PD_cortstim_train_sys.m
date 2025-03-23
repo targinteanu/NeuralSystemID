@@ -137,16 +137,28 @@ bgZSRTF = tfest(yZSR, floor(StateSize/width(dataTrain)), ...
     'Ts',seconds(dataTrain.Properties.TimeStep) );
 toc
 
+%% extract components for combined system 
 Azir = bgLTI_A.A; Bzir = bgLTI_A.B; Czir = bgLTI_A.C; Dzir = bgLTI_A.D; 
 bgZSRss = ss(bgZSRTF);
 Azsr = bgZSRss.A; Bzsr = bgZSRss.B; Czsr = bgZSRss.C; Dzsr = bgZSRss.D; 
-A = [Azir, zeros(height(Azir),width(Azsr)); 
-     zeros(height(Azsr),width(Azir)), Azsr]; 
-B = [zeros(size(Bzir)); Bzsr];
-C = [Czir, Czsr];
+
+% transform to block-diagonal
+[Vzir,Lzir] = decomp2diag(Azir);
+[Vzsr,Lzsr] = decomp2diag(Azsr);
+Hzir = Czir*(Vzir^-1);
+Hzsr = Czsr*(Vzsr^-1);
+Gzir = Vzir*Bzir; 
+Gzsr = Vzsr*Bzsr;
+
+% stitch systems together 
+A = [Lzir, zeros(height(Lzir),width(Lzsr)); 
+     zeros(height(Lzsr),width(Lzir)), Lzsr]; 
+B = [zeros(size(Gzir)); Gzsr];
+C = [Hzir, Hzsr];
 D = Dzsr;
 bgZIRZSR = idss(ss( A,B,C,D, seconds(dataTrain.Properties.TimeStep) ));
 
+% plot
 plothelper(bgZIRZSR, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %% hw - piecewise linear 
