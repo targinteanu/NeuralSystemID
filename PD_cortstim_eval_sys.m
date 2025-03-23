@@ -1,5 +1,4 @@
 %% Parkinson's Disease (PD) Project - evaluate systems with input
-% not testing neural network
 % input = cortical brain stimulation. 
 
 %% load data file 
@@ -7,14 +6,14 @@
 fsp = find(fn == '_');
 fn1 = [fn(1:(fsp(end)-1))]; % change to fn2 and repeat for fn1
 load(fullfile(fp,fn), 'bgNSS');
-load(fullfile(fp,fn1), 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', ...
+load(fullfile(fp,fn1), 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', 'bgZIRZSR', ...
         'bgHWsg', 'bgHWwl', 'bgHWnn', 'bgHWwiso', ...
         'dataTrain', 'dataTest');
 bgTF = idss(ss(bgTF)); % now all sys should be idss or idnlhw
 disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
-sysName = {'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', 'bgNSS', 'bgHWsg',     'bgHWwl',      'bgHWwiso',  'bgHWnn'};
-sysColr = {'b',       'c',          'm',    'r',        'g',     [.39,.76,.06], [.1,.45,.12], [.46,.46,0], [.5,.18,.55]};
+sysName = {'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', 'bgZIRZSR', 'bgNSS', 'bgHWsg',     'bgHWwl',      'bgHWwiso',  'bgHWnn'};
+sysColr = {'b',       'c',          'm',    'r',        'y',        'g',     [.39,.76,.06], [.1,.45,.12], [.46,.46,0], [.5,.18,.55]};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
 
@@ -248,18 +247,26 @@ ch = sort(ch);
 
 nIR = 2; % # of impulse responses to show 
 
-% training data; estimated initial condition 
+% retime 
 dataTrainRT = retime([dataTrain, stimTrain], 'regular', 'nearest', 'TimeStep', seconds(bgLTI_NA.Ts));
 dataTrainRT.Time = dataTrainRT.Time - dataTrainRT.Time(1);
 dataTestRT = retime([dataTest, stimTest], 'regular', 'nearest', 'TimeStep', seconds(bgLTI_NA.Ts));
 dataTestRT.Time = dataTestRT.Time - dataTestRT.Time(1);
+
+% initial condition 
+y0train = dataTrainRT{1, 1:(end-1)}';
+y0test  = dataTestRT{1, 1:(end-1)}';
+
+% training data; estimated initial condition 
 ysTrain = [...
     cellfun(@(S) sim( S, dataTrainRT(1:hzn, end), ...
     simOptions('InitialCondition', S.Report.Parameters.X0) ), ...
-    sys(1:4), 'UniformOutput', false) , ...
+    sys(1:5), 'UniformOutput', false) , ...
+    { sim(sys{6}, dataTrainRT(1:hzn, end), ...
+      simOptions('InitialCondition', y0train) ) }, ...
     cellfun(@(S) sim( S, dataTrainRT(1:hzn, end), ...
     simOptions('InitialCondition', 'z') ), ...
-    sys(5:end), 'UniformOutput', false) , ...
+    sys(7:end), 'UniformOutput', false) , ...
     ]';
 ysTrain = [ysTrain; {dataTrainRT(1:hzn,:)}];
 
@@ -271,10 +278,16 @@ for idx = 1:mIR:length(iStim)
     idx_ = iStim(idx);
     it2 = ceil(.95*hzn) + idx_; it2 = min(it2, height(stimTrain));
     it1 = max(1, it2-hzn);
+    y0train = dataTrainRT{it1, 1:(end-1)}';
     for s = 1:length(sys)
         S = sys{s};
-        if s <= 4
-            x0 = pinv(S.C) * dataTrainRT{it1, 1:(end-1)}';
+        if s <= 6
+            if s == 6
+                % NSS: FSA 
+                x0 = y0train;
+            else
+                x0 = pinv(S.C) * y0train;
+            end
             yIR = sim(S, dataTrainRT(it1:it2, end), ...
                 simOptions('InitialCondition', x0));
         else
@@ -298,14 +311,20 @@ for idx = 1:mIR:length(iStim)
     idx_ = iStim(idx);
     it2 = ceil(.95*hzn) + idx_; it2 = min(it2, height(stimTest));
     it1 = max(1, it2-hzn);
+    y0test  = dataTestRT{it1, 1:(end-1)}';
     for s = 1:length(sys)
         S = sys{s};
-        if s <= 4
-            x0 = pinv(S.C) * dataTrainRT{it1, 1:(end-1)}';
-            yIR = sim(S, dataTrainRT(it1:it2, end), ...
+        if s <= 6
+            if s == 6
+                % NSS: FSA
+                x0 = y0test;
+            else
+                x0 = pinv(S.C) * y0test;
+            end
+            yIR = sim(S, dataTestRT(it1:it2, end), ...
                 simOptions('InitialCondition', x0));
         else
-            yIR = sim(S, dataTrainRT(it1:it2, end), ...
+            yIR = sim(S, dataTestRT(it1:it2, end), ...
                 simOptions('InitialCondition', 'z'));
         end
         yIR.Time = yIR.Time - yIR.Time(1);
