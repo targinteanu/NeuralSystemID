@@ -118,6 +118,19 @@ toc
 
 plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
 
+%% combo ZIR-ZSR
+Azir = bgLTI_A.A; Bzir = bgLTI_A.B; Czir = bgLTI_A.C; Dzir = bgLTI_A.D; 
+bgTF2ss = ss(bgTF);
+Azsr = bgTF2ss.A; Bzsr = bgTF2ss.B; Czsr = bgTF2ss.C; Dzsr = bgTF2ss.D; 
+A = [Azir, zeros(height(Azir),width(Azsr)); 
+     zeros(height(Azsr),width(Azir)), Azsr]; 
+B = [zeros(size(Bzir)); Bzsr];
+C = [Czir, Czsr];
+D = Dzsr;
+bgZIRZSR = idss(ss( A,B,C,D, seconds(dataTrain.Properties.TimeStep) ));
+
+plothelper(bgZIRZSR, dataTrainVal, dataTestVal, kstep, chdisp);
+
 %% hw - piecewise linear 
 %{
 disp('HWpl - Training')
