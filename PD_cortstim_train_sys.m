@@ -151,12 +151,16 @@ Gzir = Vzir*Bzir;
 Gzsr = Vzsr*Bzsr;
 
 % stitch systems together 
-A = [Lzir, zeros(height(Lzir),width(Lzsr)); 
-     zeros(height(Lzsr),width(Lzir)), Lzsr]; 
-B = [zeros(size(Gzir)); Gzsr];
-C = [Hzir, Hzsr];
+A = [Azir, zeros(height(Azir),width(Azsr)); 
+     zeros(height(Azsr),width(Azir)), Azsr]; 
+B = [zeros(size(Bzir)); Bzsr];
+C = [Czir, Czsr];
 D = Dzsr;
 bgZIRZSR = idss(ss( A,B,C,D, seconds(dataTrain.Properties.TimeStep) ));
+bgZIRZSR.OutputName = OutputName; 
+bgZIRZSR.OutputUnit = OutputUnits;
+bgZIRZSR.InputName = bgLTI_NA.InputName;
+%bgZIRZSR = minreal(bgZIRZSR, eps);
 
 % plot
 plothelper(bgZIRZSR, dataTrainVal, dataTestVal, kstep, chdisp);
