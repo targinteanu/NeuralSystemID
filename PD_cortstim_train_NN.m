@@ -68,7 +68,7 @@ disp(['Training data size is ',num2str(DataLearnableRatio),...
 % training options - ADAM
 trnopts = nssTrainingOptions("adam");
 trnopts.MaxEpochs = 1000; % default 100
-trnopts.LearnRate = .00005; % default .001
+trnopts.LearnRate = .001; % default .001
 %trnopts.LearnRateSchedule = "piecewise"; % default "none"
 trnopts.MiniBatchSize = 2048; % default 100
 trnopts.LossFcn = "MeanSquaredError"; % default "MeanAbsoluteError"

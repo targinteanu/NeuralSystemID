@@ -42,6 +42,13 @@ if strcmpi(c, 'idss') || strcmpi(c, 'ss')
             predictOptions('InitialCondition','z')); 
         Yp.Time = Yp.Time + tbl.Time(1);
     end
+elseif strcmpi(c, 'idnlhw')
+    if showprog || ~usebuiltin
+        warning('myPredict has been programmed to use built-in for this type.')
+    end
+    Yp = predict(sys, tbl, k, ...
+        predictOptions('InitialCondition','z'));
+    Yp.Time = Yp.Time + tbl.Time(1);
 elseif strcmpi(c, 'idNeuralStateSpace')
     Yp = myPredict1(sys, tbl, k, showprog);
 elseif strcmpi(c, 'idpoly')

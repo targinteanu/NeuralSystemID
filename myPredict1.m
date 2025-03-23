@@ -70,6 +70,9 @@ function ys = minisim(S, VT, UT, i1, i2)
         'InitialCondition', VT{i1,:}', ...
         'OutputTimes', seconds(VT.Time(i1:i2) - VT.Time(i1)) );
     ys = sim(S, UT, simopt);
+    if ~isempty(UT)
+        ys = ys.Variables;
+    end
 end
 
 end

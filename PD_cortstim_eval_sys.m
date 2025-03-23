@@ -31,6 +31,14 @@ end
 Lval = 2000; % # samples 
 disp([num2str(Lval/fsNew),' seconds selected for validation.'])
 dataTest = dataTest(1:Lval,:); dataTrain = dataTrain(1:Lval,:);
+if seconds(dataTest.Properties.TimeStep) ~= sys{1}.Ts
+    dataTest = retime(dataTest,'regular','nearest',...
+        'TimeStep', seconds(sys{1}.Ts));
+end
+if seconds(dataTrain.Properties.TimeStep) ~= sys{1}.Ts
+    dataTrain = retime(dataTrain,'regular','nearest',...
+        'TimeStep', seconds(sys{1}.Ts));
+end
 %}
 
 %% k-step ahead prediction 
@@ -47,19 +55,20 @@ for hzn = hzns
     disp(['Eval ',num2str(hzn),'-step']);
     %%{
     disp('Training Eval');
-    ypTrain_ = cellfun(@(S) predict(S, dataTrain, hzn, ...
-        predictOptions('InitialCondition','z')), sys, ...
+    ypTrain_ = cellfun(@(S) myPredict(S, dataTrain, hzn, ...
+        true, false), sys, ...
         'UniformOutput',false);
     ypTrain = [ypTrain; ypTrain_];
     %}
     disp('Testing Eval');
-    ypTest_ = cellfun(@(S) predict(S, dataTest, hzn, ...
-        predictOptions('InitialCondition','z')), sys, ...
+    ypTest_ = cellfun(@(S) myPredict(S, dataTest, hzn, ...
+        true, false), sys, ...
         'UniformOutput',false);
     ypTest = [ypTest; ypTest_];
 end
 clear ypTrain_ ypTest_ 
 
+%{
 % set time axis 
 for cy = 1:width(ypTest)
     for ry = 1:height(ypTest)
@@ -72,6 +81,7 @@ for cy = 1:width(ypTest)
     end
 end
 clear ry cy
+%}
 
 % extract input signal
 stimTest = dataTest(:,end); stimTrain = dataTrain(:,end); 
