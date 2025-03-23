@@ -55,9 +55,11 @@ Yp = array2timetable(yp, "RowTimes",tbl.Time, ...
     "VariableNames",tbl.Properties.VariableNames);
 Yp.Properties.VariableUnits = tbl.Properties.VariableUnits; 
 % also copy events, userdata, customproperties, etc???
+%{
 if ~isAuton
     Yp = [U, Yp]; 
 end
+%}
 
 % helper 
 function ys = minisim(S, VT, UT, i1, i2)
