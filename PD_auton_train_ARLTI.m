@@ -66,16 +66,23 @@ for m = 1:width(dataTrain) % each solved row
             A(r,r-1) = 1;
         end
     end
-    C(m, (m-1)*numTaps + 1) = 1;
+    C(m, (m-1)*numTaps + 1) = 1; % if we want output = data only, no taps
 end
+C = eye(height(A)); % if we want full state available
 
 %% define ARLTI system 
 B = zeros(height(A),0); D = zeros(height(C),0);
 sysARLTI = idss(ss(A,B,C,D, seconds(dataTrain.Properties.TimeStep)));
 sysARLTI.StateName = dataTrainTapped.Properties.VariableNames; 
 sysARLTI.StateUnit = dataTrainTapped.Properties.VariableUnits;
+%{
+% if we want output = data only, no taps: 
 sysARLTI.OutputName = dataTrain.Properties.VariableNames; 
 sysARLTI.OutputUnit = dataTrain.Properties.VariableUnits;
+%}
+% if we want output = full state: 
+sysARLTI.OutputName = dataTrainTapped.Properties.VariableNames; 
+sysARLTI.OutputUnit = dataTrainTapped.Properties.VariableUnits;
 
 %% train AR model
 sysAR = [];
@@ -90,38 +97,35 @@ disp(['Training data is ',num2str(rat),' times parameter size'])
 
 %% visualize training results 
 hzn = ceil(.25 * fsNew); % .25-second-ahead prediction horizon
-Lval = 10000; % length of validation data 
+Lval = 1000; % length of validation data 
 ypTrain = myPredict(sysARLTI, dataTrainTapped(1:Lval,:), hzn, true);  
-ypTrain = predict(sysARLTI, dataTrainTapped(1:Lval,:), ...
-    predictOptions('InitialCondition', dataTrainTapped{1,:}'));
-ypTrain.Time = ypTrain.Time + dataTrainTapped.Time(1);
 ypTrain = ypTrain((hzn+1):end,:); 
 errsTrn = ...
-    rmse(ypTrain.Variables, dataTrain((hzn+1):Lval,:).Variables) ./ ...
-    rms(dataTrain((hzn+1):Lval,:).Variables);
+    rmse(ypTrain.Variables, dataTrainTapped((hzn+1):Lval,:).Variables) ./ ...
+    rms(dataTrainTapped((hzn+1):Lval,:).Variables);
 errTrn = mean( errsTrn );
-rhoTrn = arrayfun(@(c) corr(dataTrain{(hzn+1):Lval,c}, ypTrain{:,c}), 1:width(dataTrain));
+rhoTrn = arrayfun(@(c) corr(dataTrainTapped{(hzn+1):Lval,c}, ypTrain{:,c}), 1:width(dataTrainTapped));
 [~,ch1] = min(errsTrn); % best channel
 [~,ch2] = min(abs(errTrn - errsTrn)); % most representative channel
 fig1 = figure('Units','normalized', 'Position',[.05 .05 .9 .9]); 
 
 subplot(3,2,1); 
-plottbl(dataTrain((hzn+1):Lval,:), ch1); grid on; 
+plottbl(dataTrainTapped((hzn+1):Lval,:), ch1); grid on; 
 hold on; plottbl(ypTrain, ch1);
 title('best channel');
 subplot(3,2,3); 
-plottbl(dataTrain((hzn+1):Lval,:), ch2); grid on; 
+plottbl(dataTrainTapped((hzn+1):Lval,:), ch2); grid on; 
 hold on; plottbl(ypTrain, ch2);
 title('most representative channel');
 
 subplot(3,2,2);
-plot(dataTrain{(hzn+1):Lval,ch1}, ypTrain{:,ch1}, '.');
+plot(dataTrainTapped{(hzn+1):Lval,ch1}, ypTrain{:,ch1}, '.');
 xlabel('actual'); ylabel('predicted'); grid on;
-title(dataTrain.Properties.VariableNames{ch1});
+title(dataTrainTapped.Properties.VariableNames{ch1});
 subplot(3,2,4);
-plot(dataTrain{(hzn+1):Lval,ch2}, ypTrain{:,ch2}, '.');
+plot(dataTrainTapped{(hzn+1):Lval,ch2}, ypTrain{:,ch2}, '.');
 xlabel('actual'); ylabel('predicted'); grid on;
-title(dataTrain.Properties.VariableNames{ch2});
+title(dataTrainTapped.Properties.VariableNames{ch2});
 
 subplot(3,1,3); stem(errsTrn); grid on; 
 hold on; stem(rhoTrn);
@@ -130,7 +134,7 @@ xlabel('Channel Name'); ylabel('pRMSE / corr'); legend('RMS','corr');
 title(['Train: Mean RMSE = ',num2str(100*errTrn),'%'])
 
 %% testing results 
-dataTestCat = dataTest{1}(1:Lval,:);
+dataTestCat = dataTestTapped{1}(1:Lval,:);
 ypTestCat = myPredict(sysARLTI, dataTestCat, hzn);
 dataTestCat = dataTestCat((hzn+1):end,:); ypTestCat = ypTestCat((hzn+1):end,:);
 fig2 = figure('Units','normalized', 'Position',[.05 .05 .9 .9]); 
