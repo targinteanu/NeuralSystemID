@@ -90,32 +90,33 @@ hzn = ceil(.25 * fsNew); % .25-second-ahead prediction horizon
 Lval = 1000; % length of validation data 
 ypTrain = myPredict(sysARLTI, dataTrainTapped(1:Lval,:), hzn, true);  
 ypTrain = ypTrain((hzn+1):end,:); 
+ypTrain = ypTrain(:,1:width(dataTrain)); % limit analysis to actual channels
 errsTrn = ...
-    rmse(ypTrain.Variables, dataTrainTapped((hzn+1):Lval,:).Variables) ./ ...
-    rms(dataTrainTapped((hzn+1):Lval,:).Variables);
+    rmse(ypTrain.Variables, dataTrain((hzn+1):Lval,:).Variables) ./ ...
+    rms(dataTrain((hzn+1):Lval,:).Variables);
 errTrn = mean( errsTrn );
-rhoTrn = arrayfun(@(c) corr(dataTrainTapped{(hzn+1):Lval,c}, ypTrain{:,c}), 1:width(dataTrainTapped));
+rhoTrn = arrayfun(@(c) corr(dataTrain{(hzn+1):Lval,c}, ypTrain{:,c}), 1:width(dataTrain));
 [~,ch1] = min(errsTrn); % best channel
 [~,ch2] = min(abs(errTrn - errsTrn)); % most representative channel
 fig1 = figure('Units','normalized', 'Position',[.05 .05 .9 .9]); 
 
 subplot(3,2,1); 
-plottbl(dataTrainTapped((hzn+1):Lval,:), ch1); grid on; 
+plottbl(dataTrain((hzn+1):Lval,:), ch1); grid on; 
 hold on; plottbl(ypTrain, ch1);
 title('best channel');
 subplot(3,2,3); 
-plottbl(dataTrainTapped((hzn+1):Lval,:), ch2); grid on; 
+plottbl(dataTrain((hzn+1):Lval,:), ch2); grid on; 
 hold on; plottbl(ypTrain, ch2);
 title('most representative channel');
 
 subplot(3,2,2);
-plot(dataTrainTapped{(hzn+1):Lval,ch1}, ypTrain{:,ch1}, '.');
+plot(dataTrain{(hzn+1):Lval,ch1}, ypTrain{:,ch1}, '.');
 xlabel('actual'); ylabel('predicted'); grid on;
-title(dataTrainTapped.Properties.VariableNames{ch1});
+title(dataTrain.Properties.VariableNames{ch1});
 subplot(3,2,4);
-plot(dataTrainTapped{(hzn+1):Lval,ch2}, ypTrain{:,ch2}, '.');
+plot(dataTrain{(hzn+1):Lval,ch2}, ypTrain{:,ch2}, '.');
 xlabel('actual'); ylabel('predicted'); grid on;
-title(dataTrainTapped.Properties.VariableNames{ch2});
+title(dataTrain.Properties.VariableNames{ch2});
 
 subplot(3,1,3); stem(errsTrn); grid on; 
 hold on; stem(rhoTrn);
@@ -127,6 +128,8 @@ title(['Train: Mean RMSE = ',num2str(100*errTrn),'%'])
 dataTestCat = dataTestTapped{1}(1:Lval,:);
 ypTestCat = myPredict(sysARLTI, dataTestCat, hzn);
 dataTestCat = dataTestCat((hzn+1):end,:); ypTestCat = ypTestCat((hzn+1):end,:);
+dataTestCat = dataTestCat(:,1:width(dataTrain)); % limit analysis to actual channels
+ypTestCat = ypTestCat(:,1:width(dataTrain)); % limit analysis to actual channels
 fig2 = figure('Units','normalized', 'Position',[.05 .05 .9 .9]); 
 
 subplot(3,2,1);
