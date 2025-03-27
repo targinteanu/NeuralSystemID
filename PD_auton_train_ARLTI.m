@@ -54,20 +54,10 @@ XT = XT(1:(end-1),:); YT = YT(2:end,:);
 CAT = XT\YT; CA = CAT';
 
 % fill in unsolved rows for A 
-A = zeros(width(CA)); 
-C = zeros(width(dataTrain), height(A));
-for m = 1:width(dataTrain) % each solved row 
-    for n = 1:numTaps
-        r = (m-1)*numTaps + n; % row 
-        if n == 1
-            % tap 0 = solved row 
-            A(r,:) = CA(m,:); 
-        else
-            A(r,r-1) = 1;
-        end
-    end
-    C(m, (m-1)*numTaps + 1) = 1; % if we want output = data only, no taps
-end
+W = width(CA); H = height(CA); 
+A = [CA; 
+    [eye(W-H), zeros(W-H, H)]];
+C = [eye(H), zeros(H, W-H)]; % if we want output = data only, no taps
 C = eye(height(A)); % if we want full state available
 
 %% define ARLTI system 
