@@ -43,6 +43,7 @@ end
 stim = ones(size(stimTime));
 stim = array2timetable(stim, 'RowTimes',stimTime); 
 stim = retime(stim, dataStim.Time, "fillwithconstant");
+stim.Properties.VariableUnits{1} = '';
 %{
 [LMSwts, dataLMS, artLMS] = filterLMSwts(...
     seconds(dataStim.Time - dataStim.Time(1)), ...
@@ -203,6 +204,22 @@ dataStim = [dataStim, stim]; % package into one table for sys ID
 fsNew = dataBaseline.Properties.SampleRate; 
 disp(['Resampled to ',num2str(fsNew),' Hz']);
 
+%% visualize baseline vs response to stim 
+fig01 = figure('Units','normalized', 'Position',[.05 .05 .9 .9]); 
+for c = 1:length(ch)
+    % baseline 
+    ax(c,1) = subplot(length(ch)+1,2, 2*(c-1)+1);
+    plottbl(dataBaseline, ch(c)); grid on; axis tight;
+    % stim 
+    ax(c,2) = subplot(length(ch)+1,2, 2*(c-1)+2);
+    plottbl(dataStim, ch(c)); grid on; axis tight;
+    linkaxes(ax(c,:), 'y');
+end
+ax(length(ch)+1,2) = subplot(length(ch)+1, 2, 2*(length(ch)+1));
+plottbl(stim, 1); grid on;
+linkaxes(ax(:,1), 'x'); linkaxes(ax(:,2), 'x'); 
+clear ax
+
 %% setup testing and training data 
 
 % reserve 7 min for training 
@@ -261,6 +278,8 @@ if ~isempty(svname)
     save(fullfile(fp,[svname,'.mat']), 'sysLTI', 'dataTrain', 'dataTest', 'dataStim', 'fn')
     saveas(fig0, fullfile(fp,[svname,'_artifacts']),'fig');
     saveas(fig0, fullfile(fp,[svname,'_artifacts']),'png');
+    saveas(fig01, fullfile(fp,[svname,'_stimresponse']),'fig');
+    saveas(fig01, fullfile(fp,[svname,'_stimresponse']),'png');
 end
 
 %% visualize training results 
