@@ -33,7 +33,13 @@ else
 c = class(sys);
 if strcmpi(c, 'idss') || strcmpi(c, 'ss')
     if fullStateAvail
-        Yp = myPredict2(sys, tbl, k, showprog, fullStateAvail);
+        %Yp = myPredict2(sys, tbl, k, showprog, fullStateAvail);
+        if showprog || ~usebuiltin
+            warning('myPredict has been programmed to use built-in for this type.')
+        end
+        Yp = predict(sys, tbl, k, ...
+            predictOptions('InitialCondition',tbl{1,:}')); 
+        Yp.Time = Yp.Time + tbl.Time(1);
     else
         if showprog || ~usebuiltin
             warning('myPredict has been programmed to use built-in for this type.')
