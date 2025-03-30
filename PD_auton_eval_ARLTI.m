@@ -27,10 +27,11 @@ dataTestTapped = {dataTestTapped(1:Lval,:)}; dataTrainTapped = dataTrainTapped(1
 %% k-step ahead prediction 
 % artifact duration is around 10ms, but we should verify different time
 % scales. 
-hznmkr = {'o', 'x'}; % marker 
-hznlwd = [2, 1.25]; % line width
+hznmkr = {'o', 'x', 's'}; % marker 
+hznlwd = [2, 1.5, 1]; % line width
 %hzns = [.5, 1.5]; % seconds  
-hzns = [.02, .05]; % seconds
+%hzns = [.02, .05]; % seconds
+hzns = [.1, .5, 1.5]; % seconds  
 hzns = ceil(hzns * fsNew); % # samples 
 
 ypTrain = {}; ypTest = {};
@@ -224,7 +225,7 @@ ysLTI = sim(sys{2}, dataTrainRT(1:hzn, []), ...
     simOptions('InitialCondition', dataTrainRT{1,:}'));
 ysAR = myFastForecastAR(sys{1}, dataTrainRT{1:N,:}, hzn-N);
 ysAR = [dataTrainRT{N,:}; ysAR];
-ysARLTI = sim(sys{3}, dataTrainTappedRT(1:hzn, []), ...
+ysARLTI = sim(sys{3}, dataTrainTappedRT(1:(hzn-N), []), ...
     simOptions('InitialCondition', dataTrainTappedRT{1,:}'));
 ysARLTI = ysARLTI(:,1:width(dataTrainRT));
 
