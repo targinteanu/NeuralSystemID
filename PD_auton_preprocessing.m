@@ -136,7 +136,7 @@ dataStim = FilterTimetable(filtfun,filtwts,dataStim);
 %dataFreq.Variables = tanh((dataFreq.Variables-20)/10);
 %dataFreq = instfreq(dataBaseline);
 %dataFreq = retime(dataFreq, dataBaseline.Time, "spline");
-dataBaseline = dataFreq; dataBaseline2 = dataFreq2; dataStim = dataFreqStim;
+%dataBaseline = dataFreq; dataBaseline2 = dataFreq2; dataStim = dataFreqStim;
 %}
 
 %% envelope/power
@@ -196,6 +196,8 @@ disp(['Resampling from ',num2str(fsOrig),' to ',num2str(fsNew)]);
 dataBaseline = downsampleTimetable(dataBaseline, fsRatio);
 dataBaseline2 = downsampleTimetable(dataBaseline2, fsRatio);
 dataStim = downsampleTimetable(dataStim, fsRatio);
+TavgStim = 0.2; %s window to average stim frequency 
+stim.Variables = movmean(stim.Variables, TavgStim*fsOrig); 
 stim = downsampleTimetable(stim, fsRatio);
     % WARNING: this will scale down the amplitude and make it such that two
     % stims in quick succession count as one stim with double amplitude -
