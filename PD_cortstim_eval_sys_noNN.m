@@ -4,15 +4,15 @@
 
 %% load data file 
 [fn,fp] = uigetfile('*andsyscortstim*.mat');
-load(fullfile(fp,fn), 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', ...
-        'bgA2TF', 'bgTF2NA', ...
-        'bgHWsg', 'bgHWwl', 'bgHWnn', 'bgHWwiso', ...
+load(fullfile(fp,fn), 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', 'bgZIRZSR', ...
+        'bgHWwl', 'bgHWnn', 'bgHWwiso', ...
         'dataTrain', 'dataTest');
 bgTF = idss(ss(bgTF)); % now all sys should be idss or idnlhw
 disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
-sysName = {'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', 'bgHWsg',     'bgHWwl',      'bgHWwiso',  'bgHWnn'};
-sysColr = {'b',       'c',          'm',    'r',        [.39,.76,.06], [.1,.45,.12], [.46,.46,0], [.5,.18,.55]};
+sysName = {'bgTF', 'bgLTI_A', 'bgLTI_NA2A', 'bgLTI_NA', 'bgZIRZSR',    'bgHWwl',     'bgHWwiso',  'bgHWnn'};
+sysColr = {'m',    'b',       'c',          'r',        [.39,.76,.06], [.1,.45,.12], [.46,.46,0], [.5,.18,.55]};
+sysC    = {bgTF.C, bgLTI_A.C, bgLTI_NA2A.C, bgLTI_NA.C, bgZIRZSR.C,    nan,          nan,         nan};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
 
@@ -29,6 +29,14 @@ end
 Lval = 2000; % # samples 
 disp([num2str(Lval/fsNew),' seconds selected for validation.'])
 dataTest = dataTest(1:Lval,:); dataTrain = dataTrain(1:Lval,:);
+if seconds(dataTest.Properties.TimeStep) ~= sys{1}.Ts
+    dataTest = retime(dataTest,'regular','nearest',...
+        'TimeStep', seconds(sys{1}.Ts));
+end
+if seconds(dataTrain.Properties.TimeStep) ~= sys{1}.Ts
+    dataTrain = retime(dataTrain,'regular','nearest',...
+        'TimeStep', seconds(sys{1}.Ts));
+end
 %}
 
 %% k-step ahead prediction 
@@ -45,15 +53,29 @@ for hzn = hzns
     disp(['Eval ',num2str(hzn),'-step']);
     %%{
     disp('Training Eval');
-    ypTrain_ = cellfun(@(S) predict(S, dataTrain, hzn, ...
-        predictOptions('InitialCondition','z')), sys, ...
-        'UniformOutput',false);
+    ypTrain_ = cell(size(sys)); 
+    for s = 1:length(sys)
+        if isnan(sysC{s})
+            IC = 'z';
+        else
+            IC = pinv(sysC{s}) * dataTrain{1,1:(end-1)}';
+        end
+        ypTrain_{s} = predict(sys{s}, dataTrain, hzn, ...
+            predictOptions('InitialCondition',IC));
+    end
     ypTrain = [ypTrain; ypTrain_];
     %}
     disp('Testing Eval');
-    ypTest_ = cellfun(@(S) predict(S, dataTest, hzn, ...
-        predictOptions('InitialCondition','z')), sys, ...
-        'UniformOutput',false);
+    ypTest_ = cell(size(sys));
+    for s = 1:length(sys)
+        if isnan(sysC{s})
+            IC = 'z';
+        else
+            IC = pinv(sysC{s}) * dataTest{1,1:(end-1)}';
+        end
+        ypTest_{s} = predict(sys{s}, dataTest, hzn, ...
+            predictOptions('InitialCondition',IC));
+    end
     ypTest = [ypTest; ypTest_];
 end
 clear ypTrain_ ypTest_ 
@@ -244,7 +266,7 @@ dataTestRT.Time = dataTestRT.Time - dataTestRT.Time(1);
 ysTrain = [...
     cellfun(@(S) sim( S, dataTrainRT(1:hzn, end), ...
     simOptions('InitialCondition', S.Report.Parameters.X0) ), ...
-    sys(1:4), 'UniformOutput', false) , ...
+    sys(2:4), 'UniformOutput', false) , ...
     cellfun(@(S) sim( S, dataTrainRT(1:hzn, end), ...
     simOptions('InitialCondition', 'z') ), ...
     sys(5:end), 'UniformOutput', false) , ...
@@ -259,16 +281,15 @@ for idx = 1:mIR:length(iStim)
     idx_ = iStim(idx);
     it2 = ceil(.95*hzn) + idx_; it2 = min(it2, height(stimTrain));
     it1 = max(1, it2-hzn);
-    for s = 1:length(sys)
+    for s = 2:length(sys)
         S = sys{s};
-        if s <= 4
-            x0 = pinv(S.C) * dataTrainRT{it1, 1:(end-1)}';
-            yIR = sim(S, dataTrainRT(it1:it2, end), ...
-                simOptions('InitialCondition', x0));
+        if isnan(sysC{s})
+            IC = 'z';
         else
-            yIR = sim(S, dataTrainRT(it1:it2, end), ...
-                simOptions('InitialCondition', 'z'));
+            IC = pinv(sysC{s}) * dataTrainRT{it1, 1:(end-1)}';
         end
+        yIR = sim(S, dataTrainRT(it1:it2, end), ...
+            simOptions('InitialCondition', IC));
         yIR.Time = yIR.Time - yIR.Time(1);
         yIRtrain{s, nIdx} = yIR;
         clear yIR
@@ -277,6 +298,7 @@ for idx = 1:mIR:length(iStim)
     yIRtrain{end, nIdx}.Time = yIRtrain{end, nIdx}.Time - yIRtrain{end, nIdx}.Time(1);
     nIdx = nIdx + 1;
 end
+yIRtrain = yIRtrain(2:end,:);
 
 % testing data; impulse response 
 iStim = find(stimTest.Variables > 0); %iStim = flipud(iStim);
@@ -286,16 +308,15 @@ for idx = 1:mIR:length(iStim)
     idx_ = iStim(idx);
     it2 = ceil(.95*hzn) + idx_; it2 = min(it2, height(stimTest));
     it1 = max(1, it2-hzn);
-    for s = 1:length(sys)
+    for s = 2:length(sys)
         S = sys{s};
-        if s <= 4
-            x0 = pinv(S.C) * dataTestRT{it1, 1:(end-1)}';
-            yIR = sim(S, dataTestRT(it1:it2, end), ...
-                simOptions('InitialCondition', x0));
+        if isnan(sysC{s})
+            IC = 'z';
         else
-            yIR = sim(S, dataTestRT(it1:it2, end), ...
-                simOptions('InitialCondition', 'z'));
+            IC = pinv(sysC{s}) * dataTestRT{it1, 1:(end-1)}';
         end
+        yIR = sim(S, dataTestRT(it1:it2, end), ...
+            simOptions('InitialCondition', IC));
         yIR.Time = yIR.Time - yIR.Time(1);
         yIRtest{s, nIdx} = yIR;
         clear yIR
@@ -304,6 +325,7 @@ for idx = 1:mIR:length(iStim)
     yIRtest{end, nIdx}.Time = yIRtest{end, nIdx}.Time - yIRtest{end, nIdx}.Time(1);
     nIdx = nIdx + 1;
 end
+yIRtest = yIRtest(2:end,:);
 
 Y = [ysTrain, yIRtrain, yIRtest];
 %%{
