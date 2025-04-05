@@ -255,7 +255,7 @@ linkaxes(ax(H+1,:), 'y');
 hzn = max(hzns);
 ch = sort(ch);
 
-nIR = 1; % # of impulse responses to show 
+nIR = 2; % # of impulse responses to show 
 
 % training data; estimated initial condition 
 dataTrainRT = retime([dataTrain, stimTrain], 'regular', 'nearest', 'TimeStep', seconds(bgLTI_NA.Ts));
@@ -347,8 +347,8 @@ for c = 1:H
         ax2(c,n) = subplot(H+1,W, W*(c-1) +n);
         plottbl(Y{end,n}, ch(c), 'k', 3); hold on; grid on; 
         axis tight;
-        for s = 1:length(sys)
-            plottbl(Y{s,n}, ch(c), '-', 2, sysColr{s});
+        for s = 2:length(sys)
+            plottbl(Y{s-1,n}, ch(c), '-', 2, sysColr{s});
         end
         %legend(['true', sysName]);
         set(ax2(c,n), 'YScale', 'log');
