@@ -5,14 +5,14 @@
 %% load data file 
 [fn,fp] = uigetfile('*andsyscortstim*.mat');
 load(fullfile(fp,fn), 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgLTI_NA', 'bgZIRZSR', ...
-        'bgHWwl', 'bgHWnn', 'bgHWwiso', ...
+        'bgHWnn', 'bgHWwiso', ...
         'dataTrain', 'dataTest');
 bgTF = idss(ss(bgTF)); % now all sys should be idss or idnlhw
 disp([fp,' --- ',fn]);
 [~,fn] = fileparts(fn);
-sysName = {'bgTF', 'bgLTI_A', 'bgLTI_NA2A', 'bgLTI_NA', 'bgZIRZSR',    'bgHWwl',     'bgHWwiso',  'bgHWnn'};
-sysColr = {'m',    'b',       'c',          'r',        [.39,.76,.06], [.1,.45,.12], [.46,.46,0], [.5,.18,.55]};
-sysC    = {bgTF.C, bgLTI_A.C, bgLTI_NA2A.C, bgLTI_NA.C, bgZIRZSR.C,    nan,          nan,         nan};
+sysName = {'bgTF', 'bgLTI_A', 'bgLTI_NA2A', 'bgLTI_NA', 'bgZIRZSR',    'bgHWwiso',  'bgHWnn'};
+sysColr = {'m',    'b',       'c',          'r',        [.39,.76,.06], [.46,.46,0], [.5,.18,.55]};
+sysC    = {bgTF.C, bgLTI_A.C, bgLTI_NA2A.C, bgLTI_NA.C, bgZIRZSR.C,    nan,         nan};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
 fsNew = dataTrain.Properties.SampleRate;
 
@@ -163,9 +163,9 @@ for k = 1:K
     xticks(1:width(dataTrain)); xticklabels(dataTrain.Properties.VariableNames);
     xlabel('Channel Name')
 
-    %legend({'AR', 'LTI'}, "Location","best");
-
 end
+
+legend(sysName);
 
 %% evaluation - visualization 
 
@@ -254,9 +254,8 @@ linkaxes(ax(H+1,:), 'y');
 %% sim visualization 
 hzn = max(hzns);
 ch = sort(ch);
-%sys{3} = idss(ss(sys{3})); % convert tf to ss
 
-nIR = 2; % # of impulse responses to show 
+nIR = 1; % # of impulse responses to show 
 
 % training data; estimated initial condition 
 dataTrainRT = retime([dataTrain, stimTrain], 'regular', 'nearest', 'TimeStep', seconds(bgLTI_NA.Ts));
@@ -356,7 +355,7 @@ for c = 1:H
         set(ax2(c,n), "FontSize", 12);
     end
 end
-legend(['true', sysName]);
+legend(['true', sysName(2:end)]);
 for n = 1:W
     % stem-plot stim train at bottom
     ax2(H+1,n) = subplot(H+1,W, W*H +n); 

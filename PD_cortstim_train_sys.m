@@ -176,6 +176,7 @@ plothelper(bgHWpl, dataTrainVal, dataTestVal, kstep, chdisp);
 %}
 
 %% hw - sigmoid
+%{
 disp('HWsg - Training')
 tic
 bgHWsg = nlhw(dataTrain, bgTF, 'idSigmoidNetwork', 'idSigmoidNetwork', ...
@@ -183,8 +184,10 @@ bgHWsg = nlhw(dataTrain, bgTF, 'idSigmoidNetwork', 'idSigmoidNetwork', ...
 toc
 
 plothelper(bgHWsg, dataTrainVal, dataTestVal, kstep, chdisp);
+%}
 
 %% hw - wavelet
+%{
 disp('HWwl - Training')
 tic
 bgHWwl = nlhw(dataTrain, bgTF, 'idWaveletNetwork', 'idWaveletNetwork', ...
@@ -192,6 +195,7 @@ bgHWwl = nlhw(dataTrain, bgTF, 'idWaveletNetwork', 'idWaveletNetwork', ...
 toc
 
 plothelper(bgHWwl, dataTrainVal, dataTestVal, kstep, chdisp);
+%}
 
 %% hw - sigmoid in, wavelet out
 %{
@@ -237,7 +241,7 @@ plothelper(bgHWdn, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %% legend 
 legend('true', 'LTI-NA', 'LTI-A', 'LTI-NA2A', 'TF', 'ZIR-ZSR', ...
-    'HWsg', 'HWwl', 'HWwiso', 'HWnn')
+    'HWwiso', 'HWnn')
 
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
@@ -246,7 +250,8 @@ if ~isempty(svname)
     svname = svname{1};
     save(fullfile(fp,[svname,'.mat']), 'sysNull', 'sysLTI', 'sysAR', ...
         'bgLTI_NA', 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgZIRZSR', ...
-        'bgHWsg', 'bgHWwl', 'bgHWnn', ... 'bgHWdn', ...
+        ...'bgHWsg', 'bgHWwl', ...
+        'bgHWnn', ... 'bgHWdn', ...
         'bgHWwiso', ...
         'dataTrain', 'dataTest', 'fn')
     saveas(fig1, fullfile(fp,svname),'fig'); 
