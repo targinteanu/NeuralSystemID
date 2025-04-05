@@ -107,18 +107,6 @@ plothelper(bgLTI_NA2A, dataTrainVal, dataTestVal, kstep, chdisp);
 %plothelper(bgLTI_A2NA, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %% transfer function 
-disp('tf - estimating')
-tic
-bgTF = tfest(dataTrain, floor(StateSize/width(dataTrain)), ...
-    tfestOptions('Display','on', 'EstimateCovariance',false, ...
-    'InitialCondition','estimate', 'SearchMethod','gna'), ...
-    'InputName',InputName,'OutputName',OutputName, ...
-    'Ts',seconds(dataTrain.Properties.TimeStep) );
-toc
-
-plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
-
-%% combo ZIR-ZSR
 
 % isolate ZSR
 yZIR = predict(bgLTI, dataTrain(:,1:(end-1)), 1);
@@ -130,16 +118,19 @@ yZSR = [yZSR, dataTrain(:,end)];
 % estimate ZSR tf 
 disp('tf - estimating')
 tic
-bgZSRTF = tfest(yZSR, floor(StateSize/width(dataTrain)), ...
+bgTF = tfest(yZSR, floor(StateSize/width(dataTrain)), ...
     tfestOptions('Display','on', 'EstimateCovariance',false, ...
     'InitialCondition','estimate', 'SearchMethod','gna'), ...
     'InputName',InputName,'OutputName',OutputName, ...
     'Ts',seconds(dataTrain.Properties.TimeStep) );
 toc
 
-%% extract components for combined system 
+% plot
+plothelper(bgTF, dataTrainVal, dataTestVal, kstep, chdisp);
+
+%% combo ZIR-ZSR
 Azir = bgLTI_A.A; Bzir = bgLTI_A.B; Czir = bgLTI_A.C; Dzir = bgLTI_A.D; 
-bgZSRss = ss(bgZSRTF);
+bgZSRss = ss(bgTF);
 Azsr = bgZSRss.A; Bzsr = bgZSRss.B; Czsr = bgZSRss.C; Dzsr = bgZSRss.D; 
 
 % transform to block-diagonal
