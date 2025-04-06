@@ -108,17 +108,19 @@ plothelper(bgLTI_NA2A, dataTrainVal, dataTestVal, kstep, chdisp);
 
 %% transfer function 
 
+%{
 % isolate ZSR
 yZIR = predict(bgLTI, dataTrain(:,1:(end-1)), 1);
 yZIR.Time = yZIR.Time + dataTrain.Time(1);
 yZIR = retime(yZIR, dataTrain.Time, 'nearest');
 yZSR = dataTrain(:,1:(end-1)) - yZIR; 
 yZSR = [yZSR, dataTrain(:,end)];
+%}
 
-% estimate ZSR tf 
+% estimate tf 
 disp('tf - estimating')
 tic
-bgTF = tfest(yZSR, floor(StateSize/width(dataTrain)), ...
+bgTF = tfest(dataTrain, floor(StateSize/width(dataTrain)), ...
     tfestOptions('Display','on', 'EstimateCovariance',false, ...
     'InitialCondition','estimate', 'SearchMethod','gna'), ...
     'InputName',InputName,'OutputName',OutputName, ...
