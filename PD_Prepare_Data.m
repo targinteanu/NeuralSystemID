@@ -208,7 +208,8 @@ end
 %}
 
 %% saving 
-save([folder,filesep,pName,'_DataTimeTables.mat'], 'DataTimeTables');
+save([folder,filesep,pName,'_',num2str(width(tblBL1)),'chan','_DataTimeTables.mat'], ...
+    'DataTimeTables');
 saveas(fig1, [folder,filesep,pName,'_ChannelSummary'],'fig'); 
 saveas(fig1, [folder,filesep,pName,'_ChannelSummary'],'png'); 
 saveas(fig2, [folder,filesep,pName,'_Data'],'fig'); 
