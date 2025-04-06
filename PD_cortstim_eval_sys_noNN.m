@@ -25,7 +25,7 @@ for s = 1:length(sysName)
 end
 
 %% select training/testing validation (subsets) 
-%%{
+%{
 Lval = 2000; % # samples 
 disp([num2str(Lval/fsNew),' seconds selected for validation.'])
 dataTest = dataTest(1:Lval,:); dataTrain = dataTrain(1:Lval,:);
