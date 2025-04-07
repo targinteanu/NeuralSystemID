@@ -287,8 +287,19 @@ for idx = 1:mIR:length(iStim)
         else
             IC = pinv(sysC{s}) * dataTrainRT{it1, 1:(end-1)}';
         end
-        yIR = sim(S, dataTrainRT(it1:it2, end), ...
-            simOptions('InitialCondition', IC));
+        try
+            yIR = sim(S, dataTrainRT(it1:it2, end), ...
+                simOptions('InitialCondition', IC));
+        catch ME
+            if contains(ME.identifier, 'dataModelTsMismatch2')
+                D = retime(dataTrainRT, ...
+                    'regular', 'nearest', 'TimeStep', seconds(S.Ts));
+                yIR = sim(S, D(it1:it2, end), ...
+                    simOptions('InitialCondition', IC));
+            else
+                rethrow(ME);
+            end
+        end
         yIR.Time = yIR.Time - yIR.Time(1);
         yIRtrain{s, nIdx} = yIR;
         clear yIR
@@ -314,8 +325,19 @@ for idx = 1:mIR:length(iStim)
         else
             IC = pinv(sysC{s}) * dataTestRT{it1, 1:(end-1)}';
         end
-        yIR = sim(S, dataTestRT(it1:it2, end), ...
-            simOptions('InitialCondition', IC));
+        try
+            yIR = sim(S, dataTestRT(it1:it2, end), ...
+                simOptions('InitialCondition', IC));
+        catch ME
+            if contains(ME.identifier, 'dataModelTsMismatch2')
+                D = retime(dataTestRT, ...
+                    'regular', 'nearest', 'TimeStep', seconds(S.Ts));
+                yIR = sim(S, D(it1:it2, end), ...
+                    simOptions('InitialCondition', IC));
+            else
+                rethrow(ME);
+            end
+        end
         yIR.Time = yIR.Time - yIR.Time(1);
         yIRtest{s, nIdx} = yIR;
         clear yIR
