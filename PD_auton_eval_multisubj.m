@@ -86,14 +86,13 @@ for h = 1:H
     x = b.XData; y = b.YData;  
 
     % individual pts 
-    lgd = {}; yl_ = -inf;
+    lgd = {}; 
     for subj = 1:width(namesAll)
         lgd = [lgd, ['Subject ',num2str(subj)]];
         Y = 100*errsAll{subj}(h,:,:);
         yy = []; xx = [];
         for m = 1:size(Y,3)
             yyy = Y(:,:,m); yy = [yy, yyy]; 
-            yl_ = max(yl_, max(yyy(:)));
             xxx = x(m)*ones(size(yyy));
             xxx = xxx + ( (0:(length(xxx)-1))*W/length(xxx) -W/2 ); % distribute points horizontally
             xx = [xx, xxx];
@@ -105,16 +104,16 @@ for h = 1:H
     % pval 
     p = errsP(h);
     if p < alph
-        %yl = ylim(); yl_ = max(yl);
-        yl_ = 1.2*yl_;
+        yl = ylim(); yl_ = max(yl);
         errorbar(mean(x),yl_, 0,0, diff(x)/2,diff(x/2), '.k', 'LineWidth',2);
         text(mean(x),yl_, ...
             ... '*', ...
             ['p = ',num2str(p,1)], ...
             'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
-            'FontSize',13);
+            'FontSize',15);
     end
     axis tight;
+    yl(2) = 1.2*yl(2); ylim(yl);
     legend(['Mean', namesAll(1,:), '±1SD'])
     %legend(['Mean', lgd, '±1SD'])
     xticks(x); xticklabels({'AR', 'LTI'}); xlabel('Model');
@@ -128,13 +127,11 @@ for h = 1:H
     x = b.XData; y = b.YData; 
 
     % individual pts 
-    yl_ = -inf;
     for subj = 1:width(namesAll)
         Y = corsAll{subj}(h,:,:);
         yy = []; xx = [];
         for m = 1:size(Y,3)
             yyy = Y(:,:,m); yy = [yy, yyy]; 
-            yl_ = max(yl_, max(yyy(:)));
             xxx = x(m)*ones(size(yyy));
             xxx = xxx + ( (0:(length(xxx)-1))*W/length(xxx) -W/2 ); % distribute points horizontally
             xx = [xx, xxx];
@@ -146,16 +143,16 @@ for h = 1:H
     % pval 
     p = corsP(h);
     if p < alph
-        %yl = ylim(); yl_ = max(yl);
-        yl_ = 1.2*yl_;
+        yl = ylim(); yl_ = max(yl);
         errorbar(mean(x),yl_, 0,0, diff(x)/2,diff(x/2), '.k', 'LineWidth',2);
         text(mean(x),yl_, ...
             ... '*', ...
             ['p = ',num2str(p,1)], ...
             'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
-            'FontSize',13);
+            'FontSize',15);
     end
     axis tight;
+    yl(2) = 1.2*yl(2); ylim(yl);
     legend(['Mean', namesAll(1,:), '±1SD'])
     %legend(['Mean', lgd, '±1SD'])
     xticks(x); xticklabels({'AR', 'LTI'}); xlabel('Model');
