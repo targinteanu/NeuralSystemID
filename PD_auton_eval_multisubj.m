@@ -81,17 +81,19 @@ W = .6; % width range for individual points scatter
 for h = 1:H
 
     % RMSE 
-    ax(h,1) = subplot(H,2, 2*(h-1)+1); 
+    ax(1,h) = subplot(2,H, h); 
     b = bar(squeeze(errsMean(h,:,:)), 'FaceAlpha',.2, 'LineWidth',2); grid on; hold on;
     x = b.XData; y = b.YData;  
-    axis tight;
 
     % individual pts 
+    lgd = {}; yl_ = -inf;
     for subj = 1:width(namesAll)
+        lgd = [lgd, ['Subject ',num2str(subj)]];
         Y = 100*errsAll{subj}(h,:,:);
         yy = []; xx = [];
         for m = 1:size(Y,3)
             yyy = Y(:,:,m); yy = [yy, yyy]; 
+            yl_ = max(yl_, max(yyy(:)));
             xxx = x(m)*ones(size(yyy));
             xxx = xxx + ( (0:(length(xxx)-1))*W/length(xxx) -W/2 ); % distribute points horizontally
             xx = [xx, xxx];
@@ -103,30 +105,36 @@ for h = 1:H
     % pval 
     p = errsP(h);
     if p < alph
-        yl = ylim(); yl_ = .8*max(yl);
+        %yl = ylim(); yl_ = max(yl);
+        yl_ = 1.2*yl_;
         errorbar(mean(x),yl_, 0,0, diff(x)/2,diff(x/2), '.k', 'LineWidth',2);
-        text(mean(x),yl_, ['p = ',num2str(p,1)], ...
+        text(mean(x),yl_, ...
+            ... '*', ...
+            ['p = ',num2str(p,1)], ...
             'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
             'FontSize',13);
     end
+    axis tight;
     legend(['Mean', namesAll(1,:), '±1SD'])
+    %legend(['Mean', lgd, '±1SD'])
     xticks(x); xticklabels({'AR', 'LTI'}); xlabel('Model');
     ylabel('% RMSE');
     title([num2str(hznsAll(h)),'ms prediction'])
     set(gca, 'FontSize',16)
 
     % corr 
-    ax(h,1) = subplot(H,2, 2*(h-1)+2); 
+    ax(2,h) = subplot(2,H, H+h); 
     b = bar(squeeze(corsMean(h,:,:)), 'FaceAlpha',.2, 'LineWidth',2); grid on; hold on;
     x = b.XData; y = b.YData; 
-    axis tight;
 
     % individual pts 
+    yl_ = -inf;
     for subj = 1:width(namesAll)
         Y = corsAll{subj}(h,:,:);
         yy = []; xx = [];
         for m = 1:size(Y,3)
             yyy = Y(:,:,m); yy = [yy, yyy]; 
+            yl_ = max(yl_, max(yyy(:)));
             xxx = x(m)*ones(size(yyy));
             xxx = xxx + ( (0:(length(xxx)-1))*W/length(xxx) -W/2 ); % distribute points horizontally
             xx = [xx, xxx];
@@ -138,16 +146,23 @@ for h = 1:H
     % pval 
     p = corsP(h);
     if p < alph
-        yl = ylim(); yl_ = .8*max(yl);
+        %yl = ylim(); yl_ = max(yl);
+        yl_ = 1.2*yl_;
         errorbar(mean(x),yl_, 0,0, diff(x)/2,diff(x/2), '.k', 'LineWidth',2);
-        text(mean(x),yl_, ['p = ',num2str(p,1)], ...
+        text(mean(x),yl_, ...
+            ... '*', ...
+            ['p = ',num2str(p,1)], ...
             'HorizontalAlignment','center', 'VerticalAlignment','bottom', ...
             'FontSize',13);
     end
+    axis tight;
     legend(['Mean', namesAll(1,:), '±1SD'])
+    %legend(['Mean', lgd, '±1SD'])
     xticks(x); xticklabels({'AR', 'LTI'}); xlabel('Model');
     ylabel('Pearsons \rho');
     title([num2str(hznsAll(h)),'ms prediction'])
     set(gca, 'FontSize',16)
 
 end
+
+linkaxes(ax(1,:), 'y'); linkaxes(ax(2,:), 'y');
