@@ -142,7 +142,9 @@ dataStim = FilterTimetable(filtfun,filtwts,dataStim);
 %% envelope/power
 %%{
 dataBaseline.Variables = log(max(eps, envelope(dataBaseline.Variables)));
-dataBaseline2.Variables = log(max(eps, envelope(dataBaseline2.Variables)));
+if numel(dataBaseline2)
+    dataBaseline2.Variables = log(max(eps, envelope(dataBaseline2.Variables)));
+end
 dataStim.Variables = log(max(eps, envelope(dataStim.Variables)));
 %dataBaseline.Variables = envelope(dataBaseline.Variables);
 %{
