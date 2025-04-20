@@ -8,7 +8,7 @@ hznsAll = [];
 errsAll = {}; corsAll = {}; pcorsAll = {};
 namesAll = {};
 for f = files'
-    load(fullfile(f.folder, f.name), 'hzns', 'errsTest', 'corsTest', 'pcorsTest', 'dataTest');
+    load(fullfile(f.folder, f.name), 'hzns', 'errsTest', 'corsTest', 'pcorsTest', 'dataTest', 'dataTrain');
     % row = hzn 
     % col = channel 
     % sheet = model 
@@ -24,14 +24,14 @@ for f = files'
     pName = pName(1:min(8, length(pName))); % -> PDyyNxxx
     namesAll = [namesAll, [pName; {chNames}]];
 
-    fs = dataTest.Properties.SampleRate; % Hz
+    fs = dataTrain.Properties.SampleRate; % Hz
     if isnan(fs)
-        fs = 1/seconds(mean(diff(dataTest.Time)));
+        fs = 1/seconds(mode(diff(dataTrain.Time)));
     end
     hzns = round(hzns*1000/fs); % ms
     hznsAll = [hznsAll; hzns]; % horizontal elements 
 
-    clear dataTest hzns errsTest corsTest pcorsTest
+    clear dataTest dataTrain hzns errsTest corsTest pcorsTest
 end
 
 hznsAll = unique(hznsAll, "rows");
