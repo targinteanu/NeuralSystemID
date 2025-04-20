@@ -19,11 +19,15 @@ end
 
 NEVtime = [];
 for f = NEVfiles
-    fEV = openNEV([f.folder,filesep,f.name]);
-    ft0 = datetime(fEV.MetaTags.DateTime);
-    ftRel = fEV.Data.SerialDigitalIO.TimeStampSec;
-    fTime = ft0 + seconds(ftRel);
-    NEVtime = [NEVtime; fTime];
+    try
+        fEV = openNEV([f.folder,filesep,f.name]);
+        ft0 = datetime(fEV.MetaTags.DateTime);
+        ftRel = fEV.Data.SerialDigitalIO.TimeStampSec;
+        fTime = ft0 + seconds(ftRel);
+        NEVtime = [NEVtime; fTime];
+    catch ME
+        warning(ME.message)
+    end
 end
 if ~isempty(NEVtime)
     NS2tbl.Properties.Events = eventtable(NEVtime, ...
