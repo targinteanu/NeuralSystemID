@@ -114,8 +114,6 @@ for h = 1:H
     end
     axis tight;
     yl(2) = 1.2*yl(2); ylim(yl);
-    legend(['Mean', namesAll(1,:), '±1SD'])
-    %legend(['Mean', lgd, '±1SD'])
     xticks(x); xticklabels({'AR', 'LTI'}); xlabel('Model');
     ylabel('% RMSE');
     title([num2str(hznsAll(h)),'ms prediction'])
@@ -153,8 +151,6 @@ for h = 1:H
     end
     axis tight;
     yl(2) = 1.2*yl(2); ylim(yl);
-    legend(['Mean', namesAll(1,:), '±1SD'])
-    %legend(['Mean', lgd, '±1SD'])
     xticks(x); xticklabels({'AR', 'LTI'}); xlabel('Model');
     ylabel('Pearsons \rho');
     title([num2str(hznsAll(h)),'ms prediction'])
@@ -162,4 +158,6 @@ for h = 1:H
 
 end
 
+legend(['Mean', namesAll(1,:), '±1SD'])
+%legend(['Mean', lgd, '±1SD'])
 linkaxes(ax(1,:), 'y'); linkaxes(ax(2,:), 'y');
