@@ -43,24 +43,44 @@ for d = 1:height(dataTest)
                 YsLTI(:,:,si) = ysLTI.Variables;
                 %t.Time = t.Time + t.Properties.TimeStep; % shift to next timestep
                 si = si+1;
+                clear ysLTI
             end
 
             % AR simulations 
             sN = ceil( (height(dataTest_)-N)/simSkipNum );
-            YsAR = nan(height(dataTest_)-N, width(dataTest_), sN );
+            YsAR = nan(height(dataTest_)-N+1, width(dataTest_), sN );
             si = 1;
             for ti = (N+1):simSkipNum:height(dataTest_)
                 disp(['AR: simulation ',num2str(si),' of ',num2str(sN)])
                 ysAR = myFastForecastAR(sysAR, dataTest_{(ti-N):(ti-1),:}, ...
                     height(dataTest_)-N);
+                ysAR = [dataTest_{ti-1,:}; ysAR]; % ??
                 YsAR(:,:,si) = ysAR;
                 si = si+1;
+                clear ysAR
             end
 
             Ysim{d,1} = YsLTI; Ysim{d,2} = YsAR;
+            clear YsLTI YsAR
         end
     end
+    clear dataTest_
 end
 
 %% sim eval 
-% rmse and corr
+
+for d = 1:height(dataTest)
+    dataTest_ = dataTest{d};
+    if ~isempty(dataTest_)
+        YsLTI = Ysim{d,1}; YsAR = Ysim{d,2};
+
+        for h = 1:height(YsLTI)
+            y = dataTest_{h:simSkipNum:end, :}; 
+            y = y(1:ceil(height(y)/2), :); 
+            yp = squeeze(YsLTI(h,:,:))';
+        end
+
+        for h = 1:height(YsAR)
+        end
+    end
+end
