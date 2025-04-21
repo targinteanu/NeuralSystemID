@@ -61,26 +61,72 @@ for d = 1:height(dataTest)
             end
 
             Ysim{d,1} = YsLTI; Ysim{d,2} = YsAR;
-            clear YsLTI YsAR
+            %clear YsLTI YsAR
         end
     end
     clear dataTest_
 end
 
-%% sim eval 
+%% sim -> pred 
+Ypred = cell(height(dataTest), width(sys)); % test set * sys * hzn
 
 for d = 1:height(dataTest)
     dataTest_ = dataTest{d};
     if ~isempty(dataTest_)
         YsLTI = Ysim{d,1}; YsAR = Ysim{d,2};
 
+        YpLTI = cell(height(YsLTI),1);
         for h = 1:height(YsLTI)
             y = dataTest_{h:simSkipNum:end, :}; 
-            y = y(1:ceil(height(y)/2), :); 
+            y = y(1:ceil(height(YsLTI)/(simSkipNum)), :); 
             yp = squeeze(YsLTI(h,:,:))';
+            YpLTI{h} = cat(3,y,yp);
+            clear y yp
         end
 
+        YpAR = cell(height(YsAR),1);
         for h = 1:height(YsAR)
+            y = dataTest_{h:simSkipNum:end, :}; 
+            y = y(1:ceil(height(YsAR)/(simSkipNum)), :); 
+            %y = y(N:end,:);
+            yp = squeeze(YsAR(h,:,:))';
+            YpAR{h} = cat(3,y,yp);
+            clear y yp
         end
+
+        Ypred{d,1} = YpLTI; Ypred{d,2} = YpAR;
+        % clear YpLTI YpAR
     end
+end
+
+% collapse test sets 
+Ypred_ = cell(1, width(Ypred));
+for s = 1:width(Ypred)
+    h = cellfun(@height, Ypred(:,s));
+    Yp = cell(max(h),1);
+    for d = 1:height(Ypred)
+        yp = Ypred{d,s};
+        for h = 1:height(yp)
+            Yp{h} = [Yp{h}; yp{h}];
+        end
+        clear yp
+    end
+    Ypred_{s} = Yp;
+    clear Yp
+end
+Ypred = Ypred_; clear Ypred_
+
+%% evaluate pred 
+Yp = Ypred{1};
+cors = nan(height(Yp), width(dataTrain)+1); % hzn * chan (incl overall)
+pcor = cors;
+for h = 1:height(cors)
+    for c = 1:width(dataTrain)
+        y = Yp{h}(:,c,1); yp = Yp{h}(:,c,2);
+        [cors(h,c), pcor(h,c)] = corr(y,yp,"tail","right");
+    end
+    y = Yp{h}(:,:,1); yp = Yp{h}(:,:,2);
+    y = y(:); yp = yp(:);
+    [cors(h,c+1), pcor(h,c+1)] = corr(y,yp,"tail","right");
+    clear y yp
 end
