@@ -13,12 +13,13 @@ disp([fp,' --- ',fn]);
 sysName = {'sysAR', 'bgLTI'};
 sysColr = {'b',     'r'};
 sys = cellfun(@eval,sysName, 'UniformOutput',false);
-fsNew = dataTrain.Properties.SampleRate;
+sysName = {'AR', 'LTI'};
+fs = dataTrain.Properties.SampleRate;
 
 %% simulation 
 N = width(sysAR.A{1,1}) - 1; % order of AR model
 Cinv = pinv(bgLTI.C); % quick convert outputs to estimate of hidden states 
-simSkipNum = 100; % new sim starts at every _th sample (for time/memory)
+simSkipNum = 50; % new sim starts at every _th sample (for time/memory)
 Ysim = cell(height(dataTest), width(sys)); % all sim results 
 
 % prepare starting point data for each set of test data 
@@ -60,7 +61,7 @@ for d = 1:height(dataTest)
                 clear ysAR
             end
 
-            Ysim{d,1} = YsLTI; Ysim{d,2} = YsAR;
+            Ysim{d,2} = YsLTI; Ysim{d,1} = YsAR;
             %clear YsLTI YsAR
         end
     end
@@ -73,7 +74,7 @@ Ypred = cell(height(dataTest), width(sys)); % test set * sys * hzn
 for d = 1:height(dataTest)
     dataTest_ = dataTest{d};
     if ~isempty(dataTest_)
-        YsLTI = Ysim{d,1}; YsAR = Ysim{d,2};
+        YsLTI = Ysim{d,2}; YsAR = Ysim{d,1};
 
         YpLTI = cell(height(YsLTI),1);
         for h = 1:height(YsLTI)
@@ -94,7 +95,7 @@ for d = 1:height(dataTest)
             clear y yp
         end
 
-        Ypred{d,1} = YpLTI; Ypred{d,2} = YpAR;
+        Ypred{d,2} = YpLTI; Ypred{d,1} = YpAR;
         % clear YpLTI YpAR
     end
 end
@@ -116,17 +117,77 @@ for s = 1:width(Ypred)
 end
 Ypred = Ypred_; clear Ypred_
 
-%% evaluate pred 
-Yp = Ypred{1};
-cors = nan(height(Yp), width(dataTrain)+1); % hzn * chan (incl overall)
-pcor = cors;
-for h = 1:height(cors)
-    for c = 1:width(dataTrain)
-        y = Yp{h}(:,c,1); yp = Yp{h}(:,c,2);
-        [cors(h,c), pcor(h,c)] = corr(y,yp,"tail","right");
+%% evaluate pred correlation and error
+
+cors = cell(size(Ypred)); pcor = cors; % correlation and p-value 
+errs = cell(size(Ypred)); % pRMSE 
+
+for s = 1:length(Ypred)
+    disp(['Evaluating ',sysName{s}])
+    Yp = Ypred{s};
+    cors_ = nan(height(Yp), width(dataTrain)+1); % hzn * chan (incl overall)
+    pcor_ = cors_; errs_ = cors_;
+    for h = 1:height(cors_) % hzn
+        disp([' - timepoint ',num2str(h),' of ',num2str(height(cors_))])
+
+        % eval each channel
+        for c = 1:width(dataTrain)
+            y = Yp{h}(:,c,1); yp = Yp{h}(:,c,2);
+            [cors_(h,c), pcor_(h,c)] = corr(y,yp,"tail","right");
+            errs_(h,c) = rmse(yp,y) ./ rms(y);
+        end
+        
+        % eval overall/agregate channel at end 
+        y = Yp{h}(:,:,1); yp = Yp{h}(:,:,2);
+        y = y(:); yp = yp(:);
+        [cors_(h,c+1), pcor_(h,c+1)] = corr(y,yp,"tail","right");
+        errs_(h,c+1) = rmse(yp,y) ./ rms(y);
+
+        clear y yp 
     end
-    y = Yp{h}(:,:,1); yp = Yp{h}(:,:,2);
-    y = y(:); yp = yp(:);
-    [cors(h,c+1), pcor(h,c+1)] = corr(y,yp,"tail","right");
-    clear y yp
+    cors{s} = cors_; pcor{s} = pcor_; errs{s} = errs_;
+    clear Yp cors_ pcor_ errs_
+end
+
+%% visualize eval 
+H = 2; W = length(Ypred); % [corr, err] * sys 
+fig1 = figure('Units','normalized', 'Position',[.1,.1,.8,.8]);
+for s = 1:W
+    cors_ = cors{s}; errs_ = errs{s}; pcor_ = pcor{s};
+
+    % plot correlation (top)
+    subplot(H,W, s)
+    t = (1:height(cors_)) - 1; % hzn (samples)
+    t = seconds(t/fs); 
+    plot(t, cors_(:,1:(end-1)))
+    hold on; grid on; 
+    plot(t, cors_(:,end), 'k', 'LineWidth',2) % aggregate 
+    plot(t, mean(cors_(:,1:(end-1)),2), '--k', 'LineWidth',2) % avg
+    title(sysName{s}); xlabel('Prediction Horizon');
+    ylabel('Pearsons \rho')
+    
+    % plot error (bottom)
+    subplot(H,W, W+s)
+    t = (1:height(errs_)) - 1; % hzn (samples)
+    t = seconds(t/fs); 
+    plot(t, 100*errs_(:,1:(end-1)))
+    hold on; grid on; 
+    plot(t, 100*errs_(:,end), 'k', 'LineWidth',2) % aggregate 
+    plot(t, 100*mean(errs_(:,1:(end-1)),2), '--k', 'LineWidth',2) % avg
+    title(sysName{s}); xlabel('Prediction Horizon');
+    ylabel('% RMSE')
+
+    clear t cors_ errs_ pcor_
+end
+
+%% save 
+svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
+    {[fn,'_simeval']});
+if ~isempty(svname)
+    svname = svname{1};
+    save(fullfile(fp,[svname,'.mat']), 'sys', 'sysName', ...
+        'dataTrain', 'dataTest', 'fn', 'Ypred', ...
+        'cors', 'pcors', 'errs')
+    saveas(fig1, fullfile(fp,svname),'fig'); 
+    saveas(fig1, fullfile(fp,svname),'png');
 end
