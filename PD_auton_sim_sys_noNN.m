@@ -40,7 +40,9 @@ for d = 1:height(dataTest)
             YsLTI = nan(height(t), width(dataTest_), sN );
             si = 1;
             for ti = 1:simSkipNum:height(dataTest_)
-                disp(['LTI: simulation ',num2str(si),' of ',num2str(sN)])
+                if ~mod(si, 10)
+                    disp(['LTI: simulation ',num2str(si),' of ',num2str(sN)])
+                end
                 x0 = Cinv * dataTest_{ti,:}';
                 ysLTI = sim(bgLTI, t, simOptions('InitialCondition',x0));
                 YsLTI(:,:,si) = ysLTI.Variables;
@@ -54,7 +56,9 @@ for d = 1:height(dataTest)
             YsAR = nan(height(t)-N+1, width(dataTest_), sN );
             si = 1;
             for ti = (N+1):simSkipNum:height(dataTest_)
-                disp(['AR: simulation ',num2str(si),' of ',num2str(sN)])
+                if ~mod(si, 10)
+                    disp(['AR: simulation ',num2str(si),' of ',num2str(sN)])
+                end
                 ysAR = myFastForecastAR(sysAR, dataTest_{(ti-N):(ti-1),:}, ...
                     height(t)-N);
                 ysAR = [dataTest_{ti-1,:}; ysAR]; % ??
@@ -132,7 +136,9 @@ for s = 1:length(Ypred)
     cors_ = nan(height(Yp), width(dataTrain)+1); % hzn * chan (incl overall)
     pcor_ = cors_; errs_ = cors_;
     for h = 1:height(cors_) % hzn
-        disp([' - timepoint ',num2str(h),' of ',num2str(height(cors_))])
+        if ~mod(h, 10)
+            disp([' - timepoint ',num2str(h),' of ',num2str(height(cors_))])
+        end
 
         % eval each channel
         for c = 1:width(dataTrain)
