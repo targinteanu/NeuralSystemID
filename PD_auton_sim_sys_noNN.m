@@ -19,8 +19,8 @@ fs = dataTrain.Properties.SampleRate;
 %% simulation 
 N = width(sysAR.A{1,1}) - 1; % order of AR model
 Cinv = pinv(bgLTI.C); % quick convert outputs to estimate of hidden states 
-simSkipNum = 50; % new sim starts at every _th sample (for time/memory)
-simMaxDur = 35000; % samples; 8.75 min
+simSkipNum = 10; % new sim starts at every _th sample (for time/memory)
+simMaxDur = 5000; % samples; 75 sec
 Ysim = cell(height(dataTest), width(sys)); % all sim results 
 
 % prepare starting point data for each set of test data 
@@ -28,16 +28,16 @@ for d = 1:height(dataTest)
     dataTest_ = dataTest{d};
     if ~isempty(dataTest_)
         dataTest_ = dataTest_(1:floor(height(dataTest_)/2), :);
-        dataTest_ = dataTest_(1:(min(simMaxDur, height(dataTest_))), :);
         if ~isempty(dataTest_)
             dataTest_ = retime(dataTest_, 'regular','nearest',...
                 'TimeStep', seconds(bgLTI.Ts) );
             dataTest_.Time = dataTest_.Time - dataTest_.Time(1);
             t = dataTest_(:,[]); % timetable of time only 
+            t = t(1:min(simMaxDur, height(t)), :);
 
             % LTI simulations 
             sN = ceil(height(dataTest_)/simSkipNum);
-            YsLTI = nan(height(dataTest_), width(dataTest_), sN );
+            YsLTI = nan(height(t), width(dataTest_), sN );
             si = 1;
             for ti = 1:simSkipNum:height(dataTest_)
                 disp(['LTI: simulation ',num2str(si),' of ',num2str(sN)])
@@ -51,12 +51,12 @@ for d = 1:height(dataTest)
 
             % AR simulations 
             sN = ceil( (height(dataTest_)-N)/simSkipNum );
-            YsAR = nan(height(dataTest_)-N+1, width(dataTest_), sN );
+            YsAR = nan(height(t)-N+1, width(dataTest_), sN );
             si = 1;
             for ti = (N+1):simSkipNum:height(dataTest_)
                 disp(['AR: simulation ',num2str(si),' of ',num2str(sN)])
                 ysAR = myFastForecastAR(sysAR, dataTest_{(ti-N):(ti-1),:}, ...
-                    height(dataTest_)-N);
+                    height(t)-N);
                 ysAR = [dataTest_{ti-1,:}; ysAR]; % ??
                 YsAR(:,:,si) = ysAR;
                 si = si+1;
@@ -81,8 +81,9 @@ for d = 1:height(dataTest)
         YpLTI = cell(height(YsLTI),1);
         for h = 1:height(YsLTI)
             y = dataTest_{h:simSkipNum:end, :}; 
-            y = y(1:ceil(height(YsLTI)/(simSkipNum)), :); 
+            %y = y(1:ceil(height(YsLTI)/(simSkipNum)), :); 
             yp = squeeze(YsLTI(h,:,:))';
+            y = y(1:height(yp), :);
             YpLTI{h} = single(cat(3,y,yp));
             clear y yp
         end
@@ -90,9 +91,10 @@ for d = 1:height(dataTest)
         YpAR = cell(height(YsAR),1);
         for h = 1:height(YsAR)
             y = dataTest_{(h+N-1):simSkipNum:end, :}; 
-            y = y(1:ceil(height(YsAR)/(simSkipNum)), :); 
+            %y = y(1:ceil(height(YsAR)/(simSkipNum)), :); 
             %y = y(N:end,:);
             yp = squeeze(YsAR(h,:,:))';
+            y = y(1:height(yp), :);
             YpAR{h} = single(cat(3,y,yp));
             clear y yp
         end
