@@ -81,17 +81,17 @@ for d = 1:height(dataTest)
             y = dataTest_{h:simSkipNum:end, :}; 
             y = y(1:ceil(height(YsLTI)/(simSkipNum)), :); 
             yp = squeeze(YsLTI(h,:,:))';
-            YpLTI{h} = cat(3,y,yp);
+            YpLTI{h} = single(cat(3,y,yp));
             clear y yp
         end
 
         YpAR = cell(height(YsAR),1);
         for h = 1:height(YsAR)
-            y = dataTest_{h:simSkipNum:end, :}; 
+            y = dataTest_{(h+N-1):simSkipNum:end, :}; 
             y = y(1:ceil(height(YsAR)/(simSkipNum)), :); 
             %y = y(N:end,:);
             yp = squeeze(YsAR(h,:,:))';
-            YpAR{h} = cat(3,y,yp);
+            YpAR{h} = single(cat(3,y,yp));
             clear y yp
         end
 
@@ -186,8 +186,8 @@ svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
 if ~isempty(svname)
     svname = svname{1};
     save(fullfile(fp,[svname,'.mat']), 'sys', 'sysName', ...
-        'dataTrain', 'dataTest', 'fn', 'Ypred', ...
-        'cors', 'pcors', 'errs')
+        'dataTrain', 'dataTest', 'fn', ...'Ypred', ...
+        'cors', 'pcor', 'errs')
     saveas(fig1, fullfile(fp,svname),'fig'); 
     saveas(fig1, fullfile(fp,svname),'png');
 end
