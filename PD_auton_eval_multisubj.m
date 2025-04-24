@@ -1,3 +1,9 @@
+%% Parkinson's Disease (PD) project - evaluate multiple subjects 
+% Return bar plots comparing different models' error and correlation with
+% actual data across multiple subjects. 
+% Autonomous: no brain stimulation. 
+% Only looking at AR and LTI models. 
+
 %% user selects folder; necessary files are pulled 
 folder = uigetdir; 
 files = dir([folder,filesep,'*.mat']);
