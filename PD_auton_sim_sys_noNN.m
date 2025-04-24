@@ -20,6 +20,7 @@ fs = dataTrain.Properties.SampleRate;
 N = width(sysAR.A{1,1}) - 1; % order of AR model
 Cinv = pinv(bgLTI.C); % quick convert outputs to estimate of hidden states 
 simSkipNum = 50; % new sim starts at every _th sample (for time/memory)
+simMaxDur = 35000; % samples; 8.75 min
 Ysim = cell(height(dataTest), width(sys)); % all sim results 
 
 % prepare starting point data for each set of test data 
@@ -27,6 +28,7 @@ for d = 1:height(dataTest)
     dataTest_ = dataTest{d};
     if ~isempty(dataTest_)
         dataTest_ = dataTest_(1:floor(height(dataTest_)/2), :);
+        dataTest_ = dataTest_(1:(min(simMaxDur, height(dataTest_))), :);
         if ~isempty(dataTest_)
             dataTest_ = retime(dataTest_, 'regular','nearest',...
                 'TimeStep', seconds(bgLTI.Ts) );
