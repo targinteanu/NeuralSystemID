@@ -58,7 +58,7 @@ end
 %% stats and plotting 
 
 lgd = sysName';
-lgd = [lgd; repmat({'99% C.I.'}, size(lgd))];
+lgd = [lgd; repmat({'±S.D.'}, size(lgd))];
 lgd = lgd(:);
 
 figure;
@@ -68,13 +68,14 @@ ax(1) = subplot(2,1,1);
 for sys = 1:height(cors)
     t = 1:H(sys); t = t-1; t = (t/fs); t = t';
     X = cors{sys};
-    xMean = mean(X,2);
-    xSEM = std(X,[],2) / sqrt(width(X));
+    xMean = mean(X,2, 'omitnan');
+    xSD = std(X,[],2, 'omitnan');
+    xSEM = xSD / sqrt(width(X));
     Tval = tinv(.005, width(X)-1);
     xCI = Tval*xSEM;
     plot(t, xMean, sysColr{sys}, 'LineWidth',2);
     hold on; grid on;
-    patch([t; flipud(t)], [xMean+xCI; flipud(xMean-xCI)], ...
+    patch([t; flipud(t)], [xMean+xSD; flipud(xMean-xSD)], ...
         sysColr{sys}, 'FaceAlpha',.25, 'EdgeColor','none');
 end
 %set(gca,'XScale','log');
@@ -87,13 +88,14 @@ ax(2) = subplot(2,1,2);
 for sys = 1:height(errs)
     t = 1:H(sys); t = t-1; t = (t/fs); t = t';
     X = errs{sys}*100;
-    xMean = mean(X,2);
+    xMean = mean(X,2, 'omitnan');
+    xSD = std(X,[],2, 'omitnan');
     xSEM = std(X,[],2) / sqrt(width(X));
     Tval = tinv(.005, width(X)-1);
     xCI = Tval*xSEM;
     plot(t, xMean, sysColr{sys}, 'LineWidth',2);
     hold on; grid on;
-    patch([t; flipud(t)], [xMean+xCI; flipud(xMean-xCI)], ...
+    patch([t; flipud(t)], [xMean+xSD; flipud(xMean-xSD)], ...
         sysColr{sys}, 'FaceAlpha',.25, 'EdgeColor','none');
 end
 %set(gca,'XScale','log');
