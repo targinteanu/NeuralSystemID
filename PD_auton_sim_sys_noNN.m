@@ -17,6 +17,11 @@ sysName = {'AR', 'LTI'};
 fs = dataTrain.Properties.SampleRate;
 
 %% simulation 
+% Ysim will have entries for each system (AR and LTI) and each testing data
+% set (should be 2). Entries have timepoints as rows and channels as
+% columns. Simulations starting at regular intervals are stacked in the
+% third dimension. 
+
 N = width(sysAR.A{1,1}) - 1; % order of AR model
 Cinv = pinv(bgLTI.C); % quick convert outputs to estimate of hidden states 
 simSkipNum = 10; % new sim starts at every _th sample (for time/memory)
@@ -75,6 +80,11 @@ for d = 1:height(dataTest)
 end
 
 %% sim -> pred 
+% Ypred entries will have rows corresponding to prediction horizons, and
+% these entries should be similar to a downsampled output of MATLAB's
+% predict function ("yp") at that horizon, stacked along the third
+% dimension with the corresponding actual data ("y").
+
 Ypred = cell(height(dataTest), width(sys)); % test set * sys * hzn
 
 for d = 1:height(dataTest)
@@ -126,6 +136,9 @@ end
 Ypred = Ypred_; clear Ypred_
 
 %% evaluate pred correlation and error
+% In each channel (and across all channels together), evaluate the
+% correlation and the fraction RMS error between the predicted and actual
+% data as a function of prediction horizon. 
 
 cors = cell(size(Ypred)); pcor = cors; % correlation and p-value 
 errs = cell(size(Ypred)); % pRMSE 
