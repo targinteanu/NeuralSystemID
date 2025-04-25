@@ -22,7 +22,6 @@ dataTestState = cell(size(dataTest));
 for d = 1:height(dataTest)
     Y = dataTest{d};
     if ~isempty(Y)
-        %%
         %kalmL = lqe(bgLTI.A,bgLTI.B,bgLTI.C,eye(width(bgLTI.B)),eye(height(bgLTI.C)));
         %kalmF = ss(bgLTI.A - kalmL*bgLTI.C, kalmL, eye(height(bgLTI.A)), 0);
         bgLTI_ = ss(bgLTI.A, ...
@@ -33,9 +32,14 @@ for d = 1:height(dataTest)
         bgLTI_.StateName  = bgLTI.StateName;
         bgLTI_.OutputName = bgLTI.OutputName;
         bgLTI_.InputName  = u.Properties.VariableNames;
-        kalmF = kalman(bgLTI_, eye(height(bgLTI_.C)), 1e-4*diag(std(Y.Variables).^2), 0, 'current');
+        kalmF = kalman(bgLTI_, ...
+            eye(height(bgLTI_.C)), 1e-4*diag(std(Y.Variables).^2), ...
+            0, 'current');
         YX = sim(idss(kalmF), [u Y]);
-        figure; plot(Y{:,1}); hold on; plot(YX{2:end,1}); xlim([0,350])
+        %X = YX{2:end, (width(Y)+1):end}; % unknown one sample delay
+        X = YX{:, (width(Y)+1):end};
+        dataTestState{d} = X;
+        clear X YX bgLTI_ kalmF
     end
 end
 
@@ -71,7 +75,8 @@ for d = 1:height(dataTest)
                 if ~mod(si, 10)
                     disp(['LTI: simulation ',num2str(si),' of ',num2str(sN)])
                 end
-                x0 = Cinv * dataTest_{ti,:}';
+                %x0 = Cinv * dataTest_{ti,:}';
+                x0 = dataTestState{d}(ti,:)';
                 ysLTI = sim(bgLTI, t, simOptions('InitialCondition',x0));
                 YsLTI(:,:,si) = ysLTI.Variables;
                 %t.Time = t.Time + t.Properties.TimeStep; % shift to next timestep
