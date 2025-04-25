@@ -282,11 +282,12 @@ for idx = 1:mIR:length(iStim)
     it1 = max(1, it2-hzn);
     for s = 2:length(sys)
         S = sys{s};
-        if isnan(sysC{s})
-            IC = 'z';
-        else
-            IC = pinv(sysC{s}) * dataTrainRT{it1, 1:(end-1)}';
-        end
+        %if isnan(sysC{s})
+        %    IC = 'z';
+        %else
+            %IC = pinv(sysC{s}) * dataTrainRT{it1, 1:(end-1)}';
+            IC = findstates(S,dataTrainRT(it1:end,:),hzn);
+        %end
         try
             yIR = sim(S, dataTrainRT(it1:it2, end), ...
                 simOptions('InitialCondition', IC));
@@ -320,11 +321,12 @@ for idx = 1:mIR:length(iStim)
     it1 = max(1, it2-hzn);
     for s = 2:length(sys)
         S = sys{s};
-        if isnan(sysC{s})
-            IC = 'z';
-        else
-            IC = pinv(sysC{s}) * dataTestRT{it1, 1:(end-1)}';
-        end
+        %if isnan(sysC{s})
+        %    IC = 'z';
+        %else
+            %IC = pinv(sysC{s}) * dataTestRT{it1, 1:(end-1)}';
+            IC = findstates(S,dataTrainRT(it1:end,:),hzn);
+        %end
         try
             yIR = sim(S, dataTestRT(it1:it2, end), ...
                 simOptions('InitialCondition', IC));
