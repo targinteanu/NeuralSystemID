@@ -16,29 +16,6 @@ sys = cellfun(@eval,sysName, 'UniformOutput',false);
 sysName = {'AR', 'LTI'};
 fs = dataTrain.Properties.SampleRate;
 
-%% state estimation 
-% use Kalman filter to estimate hidden states at each point of dataTest
-dataTestState = cell(size(dataTest));
-for d = 1:height(dataTest)
-    Y = dataTest{d};
-    if ~isempty(Y)
-        %%
-        %kalmL = lqe(bgLTI.A,bgLTI.B,bgLTI.C,eye(width(bgLTI.B)),eye(height(bgLTI.C)));
-        %kalmF = ss(bgLTI.A - kalmL*bgLTI.C, kalmL, eye(height(bgLTI.A)), 0);
-        bgLTI_ = ss(bgLTI.A, ...
-                    eye(height(bgLTI.B)), ...
-                    bgLTI.C, ...
-                    zeros(height(bgLTI.D),height(bgLTI.B)) );
-        u = zeros(height(Y),height(bgLTI_.B)); u = array2timetable(u,'RowTimes',Y.Time);
-        bgLTI_.StateName  = bgLTI.StateName;
-        bgLTI_.OutputName = bgLTI.OutputName;
-        bgLTI_.InputName  = u.Properties.VariableNames;
-        kalmF = kalman(bgLTI_, eye(height(bgLTI_.C)), 1e-4*diag(std(Y.Variables).^2), 0, 'current');
-        YX = sim(idss(kalmF), [u Y]);
-        figure; plot(Y{:,1}); hold on; plot(YX{2:end,1}); xlim([0,350])
-    end
-end
-
 %% simulation 
 % Ysim will have entries for each system (AR and LTI) and each testing data
 % set (should be 2). Entries have timepoints as rows and channels as
