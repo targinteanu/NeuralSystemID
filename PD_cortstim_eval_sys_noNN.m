@@ -325,7 +325,7 @@ for idx = 1:mIR:length(iStim)
         %    IC = 'z';
         %else
             %IC = pinv(sysC{s}) * dataTestRT{it1, 1:(end-1)}';
-            IC = findstates(S,dataTrainRT(it1:end,:),hzn);
+            IC = findstates(S,dataTestRT(it1:end,:),hzn);
         %end
         try
             yIR = sim(S, dataTestRT(it1:it2, end), ...
