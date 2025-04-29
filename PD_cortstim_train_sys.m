@@ -21,7 +21,7 @@ InputName = OutputName(end); OutputName = OutputName(1:(end-1));
 OutputUnits = dataStim.Properties.VariableUnits(1:(end-1));
 
 % reserve 4 min for training 
-trainReserveDur = 4 * 60; % s
+trainReserveDur = 3 * 60; % s
 trainReserveN = ceil(trainReserveDur * fs);
 dataTrain = dataStim(1:trainReserveN, :);
 dataTest = dataStim((trainReserveN+1):end, :);
@@ -106,6 +106,8 @@ toc
 plothelper(bgLTI_A, dataTrainVal, dataTestVal, kstep, chdisp);
 plothelper(bgLTI_NA2A, dataTrainVal, dataTestVal, kstep, chdisp);
 %plothelper(bgLTI_A2NA, dataTrainVal, dataTestVal, kstep, chdisp);
+
+%{
 
 %% transfer function 
 
@@ -233,9 +235,14 @@ toc
 plothelper(bgHWdn, dataTrainVal, dataTestVal, kstep, chdisp);
 %}
 
+%}
+
 %% legend 
+%{
 legend('true', 'LTI-NA', 'LTI-A', 'LTI-NA2A', 'TF', 'ZIR-ZSR', ...
     'HWwiso', 'HWnn')
+%}
+legend('true', 'LTI-NA', 'LTI-A', 'LTI-NA2A')
 
 %% saving 
 svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
@@ -243,10 +250,10 @@ svname = inputdlg('Save systems as:', 'File Save Name', 1, ...
 if ~isempty(svname)
     svname = svname{1};
     save(fullfile(fp,[svname,'.mat']), 'sysNull', 'sysLTI', 'sysAR', ...
-        'bgLTI_NA', 'bgLTI_A', 'bgLTI_NA2A', 'bgTF', 'bgZIRZSR', ...
+        'bgLTI_NA', 'bgLTI_A', 'bgLTI_NA2A', ...'bgTF', 'bgZIRZSR', ...
         ...'bgHWsg', 'bgHWwl', ...
-        'bgHWnn', ... 'bgHWdn', ...
-        'bgHWwiso', ...
+        ...'bgHWnn', ... 'bgHWdn', ...
+        ...'bgHWwiso', ...
         'dataTrain', 'dataTest', 'fn')
     saveas(fig1, fullfile(fp,svname),'fig'); 
     saveas(fig1, fullfile(fp,svname),'png'); 
