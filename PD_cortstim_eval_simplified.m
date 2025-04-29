@@ -54,11 +54,13 @@ for hzn = hzns
     disp('Training Eval');
     ypTrain_ = cell(size(sys)); 
     for s = 1:length(sys)
-        if isnan(sysC{s})
-            IC = 'z';
-        else
-            IC = pinv(sysC{s}) * dataTrain{1,1:(end-1)}';
-        end
+        %if isnan(sysC{s})
+        %    IC = 'z';
+        %else
+            dataTrainIDD = iddata(dataTrain{:,1:(end-1)}, ...
+                dataTrain.stim, seconds(dataTrain.Properties.TimeStep));
+            IC = findstates(sys{s},dataTrainIDD);
+        %end
         ypTrain_{s} = predict(sys{s}, dataTrain, hzn, ...
             predictOptions('InitialCondition',IC));
     end
@@ -67,11 +69,13 @@ for hzn = hzns
     disp('Testing Eval');
     ypTest_ = cell(size(sys));
     for s = 1:length(sys)
-        if isnan(sysC{s})
-            IC = 'z';
-        else
-            IC = pinv(sysC{s}) * dataTest{1,1:(end-1)}';
-        end
+        %if isnan(sysC{s})
+        %    IC = 'z';
+        %else
+            dataTestIDD = iddata(dataTest{:,1:(end-1)}, ...
+                dataTest.stim, seconds(dataTest.Properties.TimeStep));
+            IC = findstates(sys{s},dataTestIDD);
+        %end
         ypTest_{s} = predict(sys{s}, dataTest, hzn, ...
             predictOptions('InitialCondition',IC));
     end
