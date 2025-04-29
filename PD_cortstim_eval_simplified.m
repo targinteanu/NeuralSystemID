@@ -352,7 +352,8 @@ for idx = 1:mIR:length(iStim)
     nIdx = nIdx + 1;
 end
 
-Y = [ysTrain, yIRtrain, yIRtest];
+%Y = [ysTrain, yIRtrain, yIRtest];
+Y = yIRtrain;
 %%{
 % transform from log to uV 
 for c = 1:width(Y)
@@ -386,14 +387,9 @@ for n = 1:W
     ax2(H+1,n) = subplot(H+1,W, W*H +n); 
     stem(seconds(Y{end,n}.Time), 5*Y{end,n}.stim, 'k'); % convert from per .2s to per s
     xlabel('Time (sec.)')
+    ylabel({'Stim. Freq.', '(Hz)'});
     axis tight;
     set(ax2(H+1,n), "FontSize", 12);
-end
-subplot(H+1,W, W*H +1); ylabel({'Stim. Freq.', '(Hz)'});
-for c = 1:(H+1)
-    linkaxes(ax2(c,:), 'y');
-end
-for n = 1:W
     linkaxes(ax2(:,n), 'x');
 end
 
