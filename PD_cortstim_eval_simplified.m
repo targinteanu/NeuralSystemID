@@ -8,7 +8,7 @@
 load(fullfile(fp,fn), 'bgLTI_A', 'bgLTI_NA', ...
         'dataTrain', 'dataTest');
 disp([fp,' --- ',fn]);
-[~,fn] = fileparts(fn);
+[~,fn,fe] = fileparts(fn);
 sysName = {'bgLTI_A', 'bgLTI_NA'};
 sysColr = {'r',       [.39,.76,.06]};
 sysC    = {bgLTI_A.C, bgLTI_NA.C};
@@ -22,6 +22,12 @@ for s = 1:length(sysName)
     sysName{s} = str;
     clear str
 end
+
+% get original autonomous system 
+fnA = fn((find(fn=='_')+1):end);
+fnAe = sscanf(fnA, 'andsyscortstim%s');
+fnA = [fn(1:(find(fn=='_'))),'andsys',fnAe,fe];
+load(fullfile(fp,fnA), 'bgLTI');
 
 %% select training/testing validation (subsets) 
 %{
@@ -53,6 +59,11 @@ for hzn = hzns
     %%{
     disp('Training Eval');
     ypTrain_ = cell(size(sys)); 
+    ypTrain_{1} = predict(bgLTI, dataTrain(:,1:(end-1)), hzn, ...
+        predictOptions('InitialCondition', 'z'));
+    ypTrain_{2} = predict(bgLTI_NA, dataTrain, hzn, ...
+        predictOptions('InitialCondition', 'z'));
+    %{
     for s = 1:length(sys)
         %if isnan(sysC{s})
         %    IC = 'z';
@@ -64,10 +75,16 @@ for hzn = hzns
         ypTrain_{s} = predict(sys{s}, dataTrain, hzn, ...
             predictOptions('InitialCondition',IC));
     end
+    %}
     ypTrain = [ypTrain; ypTrain_];
     %}
     disp('Testing Eval');
     ypTest_ = cell(size(sys));
+    ypTest_{1} = predict(bgLTI, dataTest(:,1:(end-1)), hzn, ...
+        predictOptions('InitialCondition', 'z'));
+    ypTest_{2} = predict(bgLTI_NA, dataTest, hzn, ...
+        predictOptions('InitialCondition', 'z'));
+    %{
     for s = 1:length(sys)
         %if isnan(sysC{s})
         %    IC = 'z';
@@ -79,6 +96,7 @@ for hzn = hzns
         ypTest_{s} = predict(sys{s}, dataTest, hzn, ...
             predictOptions('InitialCondition',IC));
     end
+    %}
     ypTest = [ypTest; ypTest_];
 end
 clear ypTrain_ ypTest_ 
