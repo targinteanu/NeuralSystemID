@@ -123,7 +123,8 @@ for p = 1:H
 end
 
 %% nontrivial LTI system 
-StateSize = 6 * width(dataTrain); 
+StateSize = 128;
+%StateSize = 6 * width(dataTrain); 
     % make state space multiple of output space
 n4hzn = [ceil(1.5*StateSize), 7, 7];
 disp('LTI - n4sid Training')
