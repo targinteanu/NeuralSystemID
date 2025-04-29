@@ -24,3 +24,9 @@ stimTime = stimevt.Time;
 isi = seconds(diff(stimTime));
 disp('inter-stim-interval min, median, mean, max (s): ')
 disp([min(isi), median(isi), mean(isi), max(isi)])
+
+[~,splidx] = max(isi);
+splTime1 = stimTime(splidx); splTime2 = stimTime(splidx+1);
+splTime = mean([splTime1, splTime2]);
+disp('split into periods of duration: ')
+disp([splTime-stimtbl.Time(1), stimtbl.Time(end)-splTime])
