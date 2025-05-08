@@ -90,8 +90,9 @@ for c = 1:length(ch)
     plot(TStim, XStimAvg(:,:,c)+XStimStd(:,:,c), '--k', 'LineWidth', 2);
     plot(TStim, XStimAvg(:,:,c)-XStimStd(:,:,c), '--k', 'LineWidth', 2);
     for trl = 1:numArtToSkip:size(XStim,1)
-        plot(TStim, XStim(trl,:,c), ':r');
+        plot(TStim, XStim(trl,:,c), '--r');
     end
+    plot(TStim, XStimAvg(:,:,c), 'k', 'LineWidth', 2);
     axis tight
     legend('Avg', '+1SD', '-1SD', 'individual');
     ylabel([dataStim.Properties.VariableNames{ch(c)},' (',...
