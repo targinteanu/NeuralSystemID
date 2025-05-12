@@ -2,7 +2,7 @@
 
 load("Ch59.mat"); 
 ind_bl_str = 4.5e5; ind_bl_end = 9.5e5; % no-stim baseline 
-ind_rec_end = 2e6; % exclude dbs stim that is not 
+ind_rec_end = 2e6; % exclude dbs stim that is not annotated
 
 Tr=NS2.Data(64,:);
 Tr = Tr(1:ind_rec_end);
@@ -11,10 +11,11 @@ Fs = NS2.MetaTags.SamplingFreq;
 
 dta = ns2timetable(NS2); 
 dta = dta(:,1:63); % exclude stim (analog in)
+dta = dta(:,[1:56,58:60,62:end]); % exclude stim channels from analysis
 dta = dta(1:ind_rec_end,:); 
 
-chnum_to_plot = 59;
-chtoplot = dta.Properties.VariableNames{chnum_to_plot};
+chnum_to_plot = 58; % was 59, but one prior channel was removed
+chtoplot = dta.Properties.VariableNames{chnum_to_plot}
 
 %% preprocess 
 
@@ -46,7 +47,7 @@ adaptTstEval
 
 %% LMS filter artifact removal 
 
-dta59 = dta(:,59);
+dta59 = dta(:,chnum_to_plot);
 g = diff(double(Tr))'; g = g.*(g > 1e4); 
 
 % find the optimal weights 
@@ -120,10 +121,10 @@ dtaKal = AdaptKalmanAuton(g,dta,Am,KA,A,1,Qcov,[],true);
 figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
 hold on; grid on; 
 %plot(predAll, chtoplot); 
-%plot(predSO,chtoplot); 
+plot(predSO,chtoplot); 
 plot(adaptAll, chtoplot);
 plot(dtaLMS, chtoplot); 
 %plot(dtaLMSd, chtoplot);
 plot(dtaKal, chtoplot);
-legend('orig', 'AID', 'LMS', 'Kal'); title(chtoplot);
+legend('orig', 'LTI', 'AID', 'LMS', 'Kal'); title(chtoplot);
 ylim(ybnd); 
