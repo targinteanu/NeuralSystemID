@@ -7,6 +7,8 @@ ind_rec_end = 2e6; % exclude dbs stim that is not annotated
 Tr=NS2.Data(64,:);
 Tr = Tr(1:ind_rec_end);
 Tr_thr = Tr > 1e4;
+nDelay = 1;
+Tr_thr = [Tr_thr((nDelay+1):end), false(1,nDelay)]; % start nDelay samples earlier
 Fs = NS2.MetaTags.SamplingFreq;
 
 dta = ns2timetable(NS2); 
@@ -41,7 +43,7 @@ KA = (1e-4)*eye(width(dta));
 Am = (-1e3)*eye(width(dta));
 tic
 [adaptBL,adaptAll,adaptTrnEval,adaptTstEval] = ...
-    AID_LTI_auton(dtaBL,dta,Am,KA,Tr_thr,false);
+    AID_LTI_auton(dtaBL,dta,Am,KA,Tr_thr,true);
 toc
 adaptTstEval
 
@@ -49,6 +51,7 @@ adaptTstEval
 
 dta59 = dta(:,chnum_to_plot);
 g = diff(double(Tr))'; g = g.*(g > 1e4); 
+g = [g((nDelay+1):end); false(nDelay,1)]; % start nDelay samples earlier
 
 % find the optimal weights 
 ind_stim_str = find(Tr_thr); 
@@ -125,6 +128,6 @@ plot(predSO,chtoplot);
 plot(adaptAll, chtoplot);
 plot(dtaLMS, chtoplot); 
 %plot(dtaLMSd, chtoplot);
-plot(dtaKal, chtoplot);
+%plot(dtaKal, chtoplot);
 legend('orig', 'LTI', 'AID', 'LMS', 'Kal'); title(chtoplot);
 ylim(ybnd); 
