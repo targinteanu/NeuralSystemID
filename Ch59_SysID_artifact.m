@@ -7,7 +7,7 @@ ind_rec_end = 2e6; % exclude dbs stim that is not annotated
 Tr=NS2.Data(64,:);
 Tr = Tr(1:ind_rec_end);
 Tr_thr = Tr > 1e4;
-nDelay = 1;
+nDelay = 3;
 Tr_thr = [Tr_thr((nDelay+1):end), false(1,nDelay)]; % start nDelay samples earlier
 Fs = NS2.MetaTags.SamplingFreq;
 
@@ -48,6 +48,7 @@ toc
 adaptTstEval
 
 %% LMS filter artifact removal 
+N = 20; % filter # taps
 
 dta59 = dta(:,chnum_to_plot);
 g = diff(double(Tr))'; g = g.*(g > 1e4); 
@@ -56,18 +57,19 @@ g = [g((nDelay+1):end); false(nDelay,1)]; % start nDelay samples earlier
 % find the optimal weights 
 ind_stim_str = find(Tr_thr); 
 ind_stim_end = ind_stim_str(end); ind_stim_str = ind_stim_str(1);
-ind_stim_str = max(1, ind_stim_str-16);
-ind_stim_end = min(ind_rec_end, ind_stim_end+16);
+ind_stim_str = max(1, ind_stim_str-N);
+ind_stim_end = min(ind_rec_end, ind_stim_end+N);
 g_noise_train = g(ind_stim_str:ind_stim_end);
 dta_noise_train = dta59(ind_stim_str:ind_stim_end,:);
-w0 = preTrainWtsLMS(g_noise_train,dta_noise_train,16,2,false);
+w0 = preTrainWtsLMS(g_noise_train,dta_noise_train,N,2,false);
 
 dta59 = dta59(1000000:end,:);
 g = g((1000000-1):end);
-dtaLMS  = filterLMS(g,dta59,1,16,w0,100,false,true);
+dtaLMS  = filterLMS(g,dta59,1,N,w0,100,false,true);
 %dtaLMSd = filterLMS(double(Tr(1000000:end))',dta59,.01,32,[],100,true, true);
 
 %% Kalman filter 
+%{
 
 % characterize process noise waveform 
 noise_ind = find(Tr_thr); 
@@ -119,6 +121,8 @@ rmse(Qvar(:), Qstd(:).^2)
 % run filter on data 
 g = [0, diff(double(Tr))]'; g = g.*(g > 1e4);
 dtaKal = AdaptKalmanAuton(g,dta,Am,KA,A,1,Qcov,[],true);
+
+%}
 
 %% plot chan 59
 figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
