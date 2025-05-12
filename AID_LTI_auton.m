@@ -103,6 +103,7 @@ end
 for t = 2:width(Xtest)
     dA = -KA*(xest-x)*x';
     if ~shutoff(t)
+        % adaptively update the system 
         Ac = Ac + dA*Th; 
         %[Ad,Bd] = c2d(Am,Ac-Am,Th);
         Bd = Bd0*(Ac-Am);
@@ -110,8 +111,15 @@ for t = 2:width(Xtest)
         %dxest = Am*xest + (Ac-Am)*x;
         %xest = xest + dxest*Th;
     else
+        %%{
+        if ~shutoff(t-1)
+            % at start of shutoff, should xest be manually set to last reliable x??
+            xest = x;
+        end
+        %}
+        % no adaptive updates during shutoff
         Ad2 = expm(Ac*Th);
-        xest = Ad2*xest; % at start of shutoff, should xest be manually set to last reliable x??
+        xest = Ad2*xest; 
     end
     xtest_est_t(:,t) = xest;
     x = Xtest(:,t);
