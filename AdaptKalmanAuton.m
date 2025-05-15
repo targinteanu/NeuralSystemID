@@ -106,7 +106,7 @@ for t = 2:width(Y)
 
     % update 
     R = QQ(:,:,min(n,N));
-    K = Ppri + (Ppri + R)^-1;
+    K = Ppri * (Ppri + R)^-1;
     y = Y(:,t);
     xpos = xpri + K*(y-xpri);
     Ppos = (eye(size(K)) - K)*Ppri;
