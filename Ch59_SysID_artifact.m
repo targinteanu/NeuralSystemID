@@ -13,10 +13,10 @@ Fs = NS2.MetaTags.SamplingFreq;
 
 dta = ns2timetable(NS2); 
 dta = dta(:,1:63); % exclude stim (analog in)
-dta = dta(:,[1:56,58:60,62:end]); % exclude stim channels from analysis
+dta = dta(:,[1:2,4:53,55:56,58:60,62:end]); % exclude stim/noisy/ref channels from analysis
 dta = dta(1:ind_rec_end,:); 
 
-chnum_to_plot = 58; % was 59, but one prior channel was removed
+chnum_to_plot = 56; % should be LS59
 chtoplot = dta.Properties.VariableNames{chnum_to_plot}
 
 %% preprocess 
@@ -69,7 +69,6 @@ dtaLMS  = filterLMS(g,dta59,1,N,w0,100,false,true);
 %dtaLMSd = filterLMS(double(Tr(1000000:end))',dta59,.01,32,[],100,true, true);
 
 %% Kalman filter 
-%{
 
 % characterize process noise waveform 
 noise_ind = find(Tr_thr); 
@@ -91,7 +90,7 @@ end
 title('artifacts')
 
 % evaluate process noise (co)variance 
-N = 16; % samples 
+N = 19; % samples 
 Qt = tbl.Time(1:N);
 QQ = nan(width(dta),length(noise_tbls),N);
 for m = 1:length(noise_tbls)
@@ -120,9 +119,8 @@ rmse(Qvar(:), Qstd(:).^2)
 
 % run filter on data 
 g = [0, diff(double(Tr))]'; g = g.*(g > 1e4);
+g = [g((nDelay+1):end); false(nDelay,1)]; % start nDelay samples earlier
 dtaKal = AdaptKalmanAuton(g,dta,Am,KA,A,1,Qcov,[],true);
-
-%}
 
 %% plot chan 59
 figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
@@ -132,6 +130,6 @@ plot(predSO,chtoplot);
 plot(adaptAll, chtoplot);
 plot(dtaLMS, chtoplot); 
 %plot(dtaLMSd, chtoplot);
-%plot(dtaKal, chtoplot);
+plot(dtaKal, chtoplot);
 legend('orig', 'LTI', 'AID', 'LMS', 'Kal'); title(chtoplot);
 ylim(ybnd); 
