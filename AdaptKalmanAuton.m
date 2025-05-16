@@ -106,6 +106,9 @@ for t = 2:width(Y)
 
     % update 
     R = QQ(:,:,min(n,N));
+        % R is observer noise, which depends on the noiseRef signal. 
+        % As R vanishes, K becomes I, and xpos becomes y (only observation
+        % is used, not state transition estimate). 
     K = Ppri * (Ppri + R)^-1;
     y = Y(:,t);
     xpos = xpri + K*(y-xpri);
