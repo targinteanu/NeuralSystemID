@@ -1,6 +1,6 @@
-function dtaPred = AdaptKalmanAuton(noiseRef, dtaTbl, Am, KA, A0, mu, QQ, w0, showfit)
+function dtaPred = AdaptKalmanAuton(noiseRef, dtaTbl, Am, KA, A0, mu, Q, RR, w0, showfit)
 % Adaptive LTV sys ID plus artifact removal with Kalman filter 
-% TO DO: replace QQ with N and have QQ calculated using the output of a LMS
+% TO DO: replace RR with N and have QQ calculated using the output of a LMS
 % filter 
 
 %% arg handling 
@@ -10,7 +10,7 @@ if nargin < 9
     showfit = false;
 end
 
-N = size(QQ,3);
+N = size(RR,3);
 
 % handle empty args 
 if isempty(Am)
@@ -60,7 +60,8 @@ Xest(:,1) = xest;
 Ac0 = d2c(A,zeros(size(A,1),1),Th);
 Ac = Ac0;
 n = N;
-Q = cov(Y(:,1:N)'); P = Q;
+%Q = cov(Y(:,1:N)'); 
+P = Q;
 
 if showfit 
     figure('Units','Normalized','Position',[.1 .3 .8 .4]); 
@@ -105,7 +106,7 @@ for t = 2:width(Y)
     xpri = Ad2*xest;
 
     % update 
-    R = QQ(:,:,min(n,N));
+    R = RR(:,:,min(n,N));
         % R is observer noise, which depends on the noiseRef signal. 
         % As R vanishes, K becomes I, and xpos becomes y (only observation
         % is used, not state transition estimate). 

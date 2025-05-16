@@ -37,6 +37,10 @@ toc
 tstEval
 evalSO
 
+% use training residual to estimate process noise Q
+res = predBL - dtaBL; % residual 
+Qcov = cov(res.Variables);
+
 %% adaptive Sys ID
 
 KA = (1e-4)*eye(width(dta));
@@ -89,38 +93,38 @@ for tbl = noise_tbls
 end
 title('artifacts')
 
-% evaluate process noise (co)variance 
+% evaluate measurement noise (co)variance 
 N = 19; % samples 
-Qt = tbl.Time(1:N);
-QQ = nan(width(dta),length(noise_tbls),N);
+Rt = tbl.Time(1:N);
+RR = nan(width(dta),length(noise_tbls),N);
 for m = 1:length(noise_tbls)
     tbl = noise_tbls{m};
     for n = 1:N
-        QQ(:,m,n) = tbl{n,:};
+        RR(:,m,n) = tbl{n,:};
     end
 end
-Qstd = std(QQ,[],2); Qstd = squeeze(Qstd);
-Qavg = mean(QQ,2); Qavg = squeeze(Qavg);
-qavg = Qavg(chnum_to_plot,:);
-plot(Qt,qavg, 'k', 'LineWidth',1);
-plot(Qt,qavg+Qstd(chnum_to_plot,:), '--k', 'LineWidth',1);
-plot(Qt,qavg-Qstd(chnum_to_plot,:), '--k', 'LineWidth',1);
-Qcov = nan(width(dta),width(dta),N);
+Rstd = std(RR,[],2); Rstd = squeeze(Rstd);
+Ravg = mean(RR,2); Ravg = squeeze(Ravg);
+ravg = Ravg(chnum_to_plot,:);
+plot(Rt,ravg, 'k', 'LineWidth',1);
+plot(Rt,ravg+Rstd(chnum_to_plot,:), '--k', 'LineWidth',1);
+plot(Rt,ravg-Rstd(chnum_to_plot,:), '--k', 'LineWidth',1);
+Rcov = nan(width(dta),width(dta),N);
 for n = 1:N
-    Qcov(:,:,n) = cov(QQ(:,:,n)');
+    Rcov(:,:,n) = cov(RR(:,:,n)');
 end
-Qvar = nan(size(Qstd)); 
+Rvar = nan(size(Rstd)); 
 for n = 1:N
-    Qvar(:,n) = diag(Qcov(:,:,n));
+    Rvar(:,n) = diag(Rcov(:,:,n));
 end
-plot(Qt,qavg'+sqrt(squeeze(Qcov(chnum_to_plot,chnum_to_plot,:))), ...
+plot(Rt,ravg'+sqrt(squeeze(Rcov(chnum_to_plot,chnum_to_plot,:))), ...
     ':b', 'LineWidth',1);
-rmse(Qvar(:), Qstd(:).^2)
+rmse(Rvar(:), Rstd(:).^2)
 
 % run filter on data 
 g = [0, diff(double(Tr))]'; g = g.*(g > 1e4);
 g = [g((nDelay+1):end); false(nDelay,1)]; % start nDelay samples earlier
-dtaKal = AdaptKalmanAuton(g,dta,Am,KA,A,1,Qcov,[],true);
+dtaKal = AdaptKalmanAuton(g,dta,Am,KA,A,1,Qcov,Rcov,[],true);
 
 %% plot chan 59
 figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
