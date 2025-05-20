@@ -28,6 +28,40 @@ hpf = designfilt('highpassiir', 'SampleRate',Fs, 'DesignMethod','butter', ...
 dta = FilterTimetable(@(d,x) filtfilt(d,x), hpf, dta);
 dtaBL = dta(ind_bl_str:ind_bl_end,:);
 
+%% AR model 
+
+% best fit AR
+N = 10; % order 
+ARmdl = ar(dtaBL(:,chnum_to_plot), N, 'yw');
+W0 = ARmdl.A; W01 = W0(1); W0 = W0(2:end); W0 = -W0/W01; % AR model wts 
+W0 = fliplr(W0);
+
+% setup for dynamic updating and plotting 
+stepsize = 1e-8;
+W1 = zeros(size(W0)); W = zeros(height(dtaBL), length(W1));
+figure; stem(W0); hold on; w1plt = stem(W1); grid on;
+legend('Yule-Walker', 'Adaptive');
+ttl = title(['Step 0 of ',num2str(height(dtaBL))]);
+pause(.1);
+progticksteps = 1000;
+
+% dynamic updating AR by online least squares gradient descent
+for t = (N+1):height(dtaBL)
+    y = dtaBL{t,chnum_to_plot}; 
+    x = dtaBL{(t-N):(t-1),chnum_to_plot};
+    del = x*(y-W1*x);
+    W1 = W1 + stepsize*del'; 
+    W(t,:) = W1;
+    if ~mod(t,progticksteps)
+        w1plt.YData = W1;
+        ttl.String = ['Step ',num2str(t),' of ',num2str(height(dtaBL))];
+        pause(.001);
+    end
+end
+
+% show 
+figure; imagesc([W; W0]); colorbar; 
+
 %% LTI fit sys ID 
 
 tic
