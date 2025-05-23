@@ -92,8 +92,8 @@ sgtitle(pName);
 
 %% Beta Power -> color map
 BetaColor = BetaPower(1:(end-1))'; % exclude ainp1 
-BetaColor = normalize(BetaColor, "range"); BetaShade = BetaColor;
-BetaColor = colorwheel(BetaColor);
+BetaColor = normalize(BetaColor, "range"); 
+BetaColor = [1,1,0].*BetaColor; % yellow
 BetaColor = BetaColor.*BetaShade;
 
 %% main plotting - edited 
