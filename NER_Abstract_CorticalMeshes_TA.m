@@ -94,7 +94,6 @@ sgtitle(pName);
 BetaColor = BetaPower(1:(end-1))'; % exclude ainp1 
 BetaColor = normalize(BetaColor, "range"); 
 BetaColor = [1,1,0].*BetaColor; % yellow
-BetaColor = BetaColor.*BetaShade;
 
 %% main plotting - edited 
 
@@ -109,16 +108,21 @@ load(elec_acpc_fr_file);
 figure; 
 ft_plot_mesh(pial_lh);
 ft_plot_mesh(pial_rh);
+ax = gca;
+ax.Children(1).FaceColor = [.8 .8 .8];
+ax.Children(2).FaceColor = [.8 .8 .8];
 el=ft_plot_sens(elec_acpc_fr);
+el.ZData = el.ZData + 5;
 el.CData = BetaColor;
-el.SizeData = 25;
+el.SizeData = 50;
 el.Marker = "o";
 el.MarkerFaceColor = 'flat';
-el.MarkerEdgeColor = 'k';
+el.MarkerEdgeColor = 'r';
 % view([66.1890, 39.71]);
-material dull;
+material shiny;
 lighting gouraud;
 camlight;
+camlight headlight;
 
 %% main plotting - Jack
 %{
