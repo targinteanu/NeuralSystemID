@@ -18,20 +18,36 @@ PD_Phase_Data = instPhaseFreqTbl(PDdata);
 PD_Channel_Names = PDdata.Properties.VariableNames;
 
 %% phase locking 
+betaPower = bandpower(PDdata.Variables, srate, [13, 30]);
 PLV_VectorMatrix = compute_PLV_VectorMatrix(PD_Phase_Data); %Get the PLV vector matrix for every channel (64x64)
 PLV_Average = getAveragePLV(PLV_VectorMatrix); %Get the Average PLV for every channel (64x1)
 PLV_Relative_ref = getPLV_wrt_Ref(PLV_VectorMatrix, ref_channel); %Get PLV relative to ref channel (64x1)
 plot_PLV_Relative(PD_Phase_Data,PLV_Relative_ref, ref_channel, PD_Channel_Names);  
     %Plot a 21x3 grid - color corresponds to PLV wrt ref channel, # corresponds to avg. phase difference wrt ref channel
 PLV_Relative_ref = PLV_Relative_ref([1:(ref_channel-1), (ref_channel+1):end]); % remove ref channel 
+PLV_CortexCortex_matrix = PLV_VectorMatrix([1:(ref_channel-1), (ref_channel+1):end], [1:(ref_channel-1), (ref_channel+1):end]);
+PLV_Average_Cortex = getAveragePLV(PLV_CortexCortex_matrix);
+betaPowerCortex = betaPower([1:(ref_channel-1), (ref_channel+1):end]);
 
 %% mesh plots 
 
+fileElec = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/PD25N006_elec_acpc_fr.mat';
+fileMesh = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/freesurfer/surf/rh.pial.T1';
+
 figure; 
-load_ACPC_FR_mesh(...
-    '/Users/torenarginteanu/Desktop/Data_PD/PD22N009/PD22N009/SubjectPD22N009_elec_acpc_fr.mat', ...
-    '/Users/torenarginteanu/Desktop/Data_PD/PD22N009/PD22N009/freesurfer/surf/lh.pial.T1', ...
+load_ACPC_FR_mesh(fileElec, fileMesh, ...
     PLV_Relative_ref);
+title('Cortex-STN PLV')
+
+figure; 
+load_ACPC_FR_mesh(fileElec, fileMesh, ...
+    PLV_Average_Cortex);
+title('Cortex-Cortex Average PLV')
+
+figure; 
+load_ACPC_FR_mesh(fileElec, fileMesh, ...
+    betaPowerCortex);
+title('Beta Power')
 
 %{
 figure;
@@ -103,7 +119,7 @@ function load_ACPC_FR_mesh(acpc_path, pial_lh_path, data)
 
     ft_sourceplot(cfg, interp_source, pial_lh);
 
-    view([-55 10]);
+    %view([-55 10]);
     material dull;
     lighting gouraud;
     camlight;
