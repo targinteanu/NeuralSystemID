@@ -4,19 +4,19 @@ function [trainPred, testPred, trainEval, testEval, A_t_train, A_t_test] = ...
 % handle incomplete args 
 if nargin < 6
     showfit = false;
-    if nargin < 4
-        KA = [];
-        if nargin < 3
-            Am = [];
-            if nargin < 2
-                testData = trainData;
-                trainData = [];
+    if nargin < 5
+        shutoff = [];
+        if nargin < 4
+            KA = [];
+            if nargin < 3
+                Am = [];
+                if nargin < 2
+                    testData = trainData;
+                    trainData = [];
+                end
             end
         end
     end
-end
-if nargin < 5
-    shutoff = false(1,height(testData));
 end
 
 % handle empty args 
@@ -25,6 +25,9 @@ if isempty(Am)
 end
 if isempty(KA)
     KA = lyap(Am',eye(size(Am)));
+end
+if isempty(shutoff)
+    shutoff = false(1,height(testData));
 end
 
 % check Am Hurwitz 
