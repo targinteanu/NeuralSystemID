@@ -4,9 +4,15 @@ function yf = myFastForecastAR(arMdl, yPast, k)
 
 y = [yPast; nan(k,width(yPast))]; % [yPast; yf]
 
-AA = arMdl.A; 
-if ~iscell(AA)
-    AA = {AA};
+if isnumeric(arMdl)
+    AA = {arMdl};
+elseif iscell(arMdl)
+    AA = arMdl;
+else
+    AA = arMdl.A;
+    if ~iscell(AA)
+        AA = {AA};
+    end
 end
 
 for chan = 1:height(AA)
