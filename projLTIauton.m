@@ -1,5 +1,9 @@
 function [testPred,testEval] = projLTIauton(A,testData,shutoff)
 
+if nargin < 3
+    shutoff = false(1, height(testData));
+end
+
 Xtest = table2array(testData)';
 testPredX = Xtest;
 
