@@ -62,7 +62,7 @@ if (length(t1Rel) > 1) || (length(datadur) > 1)
     tStartEnd = [t1Rel; t1Rel + datadur];
     packetdur = diff(tStartEnd);
     packetgap = tStartEnd(1,2:end) - tStartEnd(2,1:(end-1));
-    Dta = ns.Data;
+    Dta = NS.Data;
     TRel = arrayfun(@(p) linspace(tStartEnd(1,p), tStartEnd(2,p), datalen(p)), ...
         1:max(length(t1Rel), length(datadur)), 'UniformOutput',false);
     if sum(packetgap < 0)
@@ -88,7 +88,7 @@ if (length(t1Rel) > 1) || (length(datadur) > 1)
     dta = cell2mat(Dta); tRel = cell2mat(TRel);
 else
     packetLoss = false;
-    dta = ns.Data;
+    dta = NS.Data;
     tRel = linspace(0, datadur, datalen) + t1Rel;
 end
 
@@ -96,7 +96,7 @@ end
 % t = absolute date/time 
 % t0 = date/time at start of recording 
 t = seconds(tRel);
-t0 = datetime(ns.MetaTags.DateTime, 'TimeZone','UTC'); 
+t0 = datetime(NS.MetaTags.DateTime, 'TimeZone','UTC'); 
 t = t+t0; 
 
 lbl = {NS.ElectrodesInfo.Label};
@@ -104,6 +104,7 @@ lbl = upper(lbl);
 unitname = {NS.ElectrodesInfo.AnalogUnits};
 
 %% correct labels
+
 % limit names to characters that will behave well as plot labels 
 for l = 1:length(lbl)
     L = lbl{l}; 
@@ -116,6 +117,21 @@ for l = 1:length(unitname)
     L = L((L >= 33)&(L <= 126));
     L(L=='_') = ' ';
     unitname{l} = L;
+end
+
+% handle duplicate labels 
+for l = 1:length(lbl)
+    L = lbl{l};
+    dups = strcmp(lbl, L);
+    dups = find(dups);
+    if length(dups) > 1
+        warning(['Channel name ',L,' is duplicated.'])
+        n = 1;
+        for d = dups
+            lbl{d} = [L,'(',num2str(n),')'];
+            n = n+1;
+        end
+    end
 end
 
 %% construct table
