@@ -37,7 +37,7 @@ dtaBL1ch = dtaBL(:,chnum_to_plot);
 N = 10; % order 
 tic
 [aarBL,aarAll,aarTrnEval,aarTstEval,ARmdl] = ...
-    AdaptAR(dtaBL1ch,dta1ch,N,1e-12,Tr_thr,true);
+    AdaptAR(dtaBL1ch,dta1ch,N,1e-3,Tr_thr,true,true);
 [arSO,arEval] = projAR(ARmdl,dta1ch,Tr_thr);
 toc
 aarTstEval

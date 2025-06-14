@@ -1,18 +1,21 @@
 function [testPred, trainPred, trainEval, testEval, W_t_train, W_t_test, ARmdl] = ...
-    AdaptAR(trainData, testData, N, stepsize, shutoff, showfit)
+    AdaptAR(trainData, testData, N, stepsize, shutoff, donorm, showfit)
 
 % handle incomplete args 
-if nargin < 6
+if nargin < 7
     showfit = false;
-    if nargin < 5
-        shutoff = [];
-        if nargin < 4
-            stepsize = [];
-            if nargin < 3
-                N = [];
-                if nargin < 2
-                    testData = trainData;
-                    trainData = [];
+    if nargin < 6
+        donorm = false;
+        if nargin < 5
+            shutoff = [];
+            if nargin < 4
+                stepsize = [];
+                if nargin < 3
+                    N = [];
+                    if nargin < 2
+                        testData = trainData;
+                        trainData = [];
+                    end
                 end
             end
         end
@@ -79,6 +82,9 @@ for t = (N+1):height(testData)
     if ~shutoff(t)
         % update weights only when there is not artifact
         del = x*E(t);
+        if donorm
+            del = del./(x'*x + eps);
+        end
         W1 = W1 + stepsize*del';
     end
     W_t_test(t,:) = W1;
@@ -121,6 +127,9 @@ for t = (N+1):height(trainData)
     ypred = W1*x; trainPred{t,1} = ypred;
     E(t) = y-ypred;
     del = x*E(t);
+    if donorm
+        del = del./(x'*x + eps);
+    end
     W1 = W1 + stepsize*del'; 
     W_t_train(t,:) = W1;
     if showfit
