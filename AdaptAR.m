@@ -22,23 +22,29 @@ if nargin < 7
     end
 end
 
-% handle empty args
-if isempty(shutoff)
-    shutoff = false(1,height(testData));
-end
-if isempty(stepsize)
-    stepsize = 1e-8;
-end
-if isempty(N)
-    N = 10;
-end
-
 % handle multi-variable 
 if width(testData) > 1
     error('Testing data should be single variable.')
 end
 if width(trainData) > 1
     error('Training data should be single variable.')
+end
+
+% handle empty args
+if isempty(shutoff)
+    shutoff = false(1,height(testData));
+end
+if isempty(stepsize)
+    if donorm
+        stepsize = 1e-3;
+    else
+        % use data autocorrelation to get step size
+        stepsize = LearnrateEst(trainData.Variables,N);
+        stepsize = stepsize/1000; % for additional safety
+    end
+end
+if isempty(N)
+    N = 10;
 end
 
 %% starting estimate 
@@ -103,7 +109,7 @@ if ~isempty(trainData)
 
 W1 = zeros(size(W0)); W_t_train = zeros(height(trainData), length(W1));
 E = nan(size(trainData));
-trainPred = trainData; trainPred.Variables = nan;
+trainPred = trainData; trainPred{:,:} = nan;
 
 if showfit
     figure('Units','Normalized','Position',[.1 .3 .8 .4]); 
