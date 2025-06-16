@@ -36,7 +36,7 @@ dtaBL1ch = dtaBL(:,chnum_to_plot);
 % best fit and dynamic AR
 N = 10; % order 
 tic
-[aarBL,aarAll,aarTrnEval,aarTstEval,ARmdl] = ...
+[aarAll,aarBL,aarTrnEval,aarTstEval,~,~,ARmdl] = ...
     AdaptAR(dtaBL1ch,dta1ch,N,1e-3,Tr_thr,true,true);
 [arSO,arEval] = projAR(ARmdl,dta1ch,Tr_thr);
 toc
@@ -81,11 +81,12 @@ ind_stim_end = min(ind_rec_end, ind_stim_end+N);
 g_noise_train = g(ind_stim_str:ind_stim_end);
 dta_noise_train = dta59(ind_stim_str:ind_stim_end,:);
 w0 = preTrainWtsLMS(g_noise_train,dta_noise_train,N,2,false);
+w0d = preTrainWtsLMS(g_noise_train,dta_noise_train,N,2,true);
 
 dta59 = dta59(1000000:end,:);
 g = g((1000000-1):end);
 dtaLMS  = filterLMS(g,dta59,1,N,w0,100,false,true);
-%dtaLMSd = filterLMS(double(Tr(1000000:end))',dta59,.01,32,[],100,true, true);
+dtaLMSd = filterLMS(g,dta59,.01,N,w0d,100,true, true);
 
 %% Kalman filter 
 
@@ -142,13 +143,15 @@ g = [g((nDelay+1):end); false(nDelay,1)]; % start nDelay samples earlier
 dtaKal = AdaptKalmanAuton(g,dta,Am,KA,A,1,Qcov,Rcov,[],true);
 
 %% plot chan 59
-figure; plot(dta, chtoplot, 'LineWidth',1); ybnd = ylim;
+figure; plot(dta, chtoplot, 'LineWidth',1.5, 'Color','k'); ybnd = ylim;
 hold on; grid on; 
-%plot(predAll, chtoplot); 
-plot(predSO,chtoplot); 
-plot(adaptAll, chtoplot);
-plot(dtaLMS, chtoplot); 
-%plot(dtaLMSd, chtoplot);
-plot(dtaKal, chtoplot);
-legend('orig', 'LTI', 'AID', 'LMS', 'Kal'); title(chtoplot);
+plot(arSO, 1, 'LineWidth',1, 'Color','b'); 
+plot(aarAll, 1, 'LineWidth',1, 'Color','b', 'LineStyle','--');
+plot(predSO,chtoplot, 'LineWidth',1, 'Color','r'); 
+plot(adaptAll, chtoplot, 'LineWidth',1, 'Color','r', 'LineStyle','--');
+plot(dtaLMS, chtoplot, 'LineWidth',1, 'Color','g', 'LineStyle','--'); 
+plot(dtaLMSd, chtoplot, 'LineWidth',1, 'Color','g', 'LineStyle',':');
+plot(dtaKal, chtoplot, 'LineWidth',1, 'Color','r', 'LineStyle',':');
+legend('orig', 'AR','aAR', 'LTI','aLTI', 'LMS','LMSd', 'Kal'); 
+title(chtoplot);
 ylim(ybnd); 
