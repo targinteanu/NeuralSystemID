@@ -86,7 +86,7 @@ w0d = preTrainWtsLMS(g_noise_train,dta_noise_train,N,2,true);
 dta59 = dta59(1000000:end,:);
 g = g((1000000-1):end);
 dtaLMS  = filterLMS(g,dta59,1,N,w0,100,false,true);
-dtaLMSd = filterLMS(g,dta59,.01,N,w0d,100,true, true);
+dtaLMSd = filterLMS(g,dta59,.5,N,w0d,100,true,true);
 
 %% Kalman filter 
 
