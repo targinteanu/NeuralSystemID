@@ -36,7 +36,7 @@ dtaBL1ch = dtaBL(:,chnum_to_plot);
 % best fit and dynamic AR
 N = 10; % order 
 tic
-[aarAll,aarBL,aarTrnEval,aarTstEval,~,~,ARmdl] = ...
+[aarBL,aarAll,aarTrnEval,aarTstEval,~,~,ARmdl] = ...
     AdaptAR(dtaBL1ch,dta1ch,N,1e-3,Tr_thr,true,true);
 [arSO,arEval] = projAR(ARmdl,dta1ch,Tr_thr);
 toc

@@ -1,4 +1,4 @@
-function [testPred, trainPred, trainEval, testEval, W_t_train, W_t_test, ARmdl] = ...
+function [trainPred, testPred, trainEval, testEval, W_t_train, W_t_test, ARmdl] = ...
     AdaptAR(trainData, testData, N, stepsize, shutoff, donorm, showfit)
 
 % handle incomplete args 
@@ -81,17 +81,31 @@ end
 
 % dynamic updating AR by online least squares gradient descent
 for t = (N+1):height(testData)
-    y = testData{t,1}; 
-    x = testData{(t-N):(t-1),1};
-    ypred = W1*x; testPred{t,1} = ypred;
-    E(t) = y-ypred;
     if ~shutoff(t)
         % update weights only when there is not artifact
+        y = testData{t,1};
+        x = testData{(t-N):(t-1),1};
+        ypred = W1*x; testPred{t,1} = ypred;
+        E(t) = y-ypred;
         del = x*E(t);
         if donorm
             del = del./(x'*x + eps);
         end
         W1 = W1 + stepsize*del';
+    else
+        % forecast over the entire "shutoff" period 
+        shutoff_ = shutoff(t:end);
+        dtNext = find(~shutoff_); 
+        if isempty(dtNext)
+            dtNext = height(shutoff_);
+        else
+            dtNext = dtNext(1);
+        end
+        ypred = myFastForecastAR([1,W1],x,dtNext);
+        testPred{t + ((1:dtNext)-1), 1} = ypred;
+        testData{t + ((1:dtNext)-1), 1} = ypred;
+        %shutoff_(1:dtNext) = false;
+        %shutoff = [shutoff(1:(t-1)), shutoff_];
     end
     W_t_test(t,:) = W1;
     if showfit
