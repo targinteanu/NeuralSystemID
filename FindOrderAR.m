@@ -1,5 +1,5 @@
-maxOrd = 20;
-numTests = 10;
+maxOrd = 50;
+numTests = 100;
 L = floor(height(dtaBL1ch)/numTests);
 datarat = L/maxOrd;
 disp(['Data size is ',num2str(datarat),' times variable size.'])
@@ -21,10 +21,17 @@ for t = ts
     pause(.001)
 end
 
+%% plot
 Wavg = mean(W);
 Wstd = std(W);
+Wp = zeros(size(Wavg));
+for c = 1:width(W)
+    [~,Wp(c)] = ttest(W(:,c));
+end
 figure; b = bar(Wavg);
 hold on; grid on; 
-errorbar(Wavg,3*Wstd,'.');
+errorbar(Wavg,Wstd,'.');
+text(b.XData, b.YData, string(Wp), ...
+    "HorizontalAlignment","center", "VerticalAlignment","middle");
 xlabel('tap'); ylabel('coefficient');
-legend('Expected', '3SD');
+legend('Expected', 'SD');
