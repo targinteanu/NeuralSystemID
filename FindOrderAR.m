@@ -24,14 +24,18 @@ end
 %% plot
 Wavg = mean(W);
 Wstd = std(W);
+Wsem = Wstd/sqrt(numTests);
+Ts = tinv(.998, numTests-1);
 Wp = zeros(size(Wavg));
 for c = 1:width(W)
     [~,Wp(c)] = ttest(W(:,c));
 end
 figure; b = bar(Wavg);
 hold on; grid on; 
-errorbar(Wavg,Wstd,'.');
+errorbar(Wavg,Wsem*Ts,'.');
+%{
 text(b.XData, b.YData, string(Wp), ...
     "HorizontalAlignment","center", "VerticalAlignment","middle");
+%}
 xlabel('tap'); ylabel('coefficient');
-legend('Expected', 'SD');
+legend('Expected', '99.9%CI');
