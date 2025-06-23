@@ -11,13 +11,13 @@ ts = round(ts);
 W = nan(numTests, maxOrd+1);
 r = 1;
 for t = ts
-    tic
+    %tic
     trng = t + [-1,1]*(l-1);
     y = dtaBL1ch(trng(1):trng(2),:);
     mdl = ar(y, maxOrd, 'ls');
     W(r,:) = mdl.A;
     r = r+1;
-    toc
+    %toc
     pause(.001)
 end
 
@@ -39,3 +39,9 @@ text(b.XData, b.YData, string(Wp), ...
 %}
 xlabel('tap'); ylabel('coefficient');
 legend('Expected', '99.9%CI');
+
+%% forecast 
+LL = floor(height(dtaBL1ch)/2);
+dtaPred = myFastForecastAR(mdl, dtaBL1ch{1:LL,1}, LL);
+figure; plot(dtaBL1ch{:,1}); grid on; hold on; 
+plot([dtaBL1ch{1:LL,1}; dtaPred]);
