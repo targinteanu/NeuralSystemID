@@ -1,6 +1,6 @@
 %% load, define 
 
-load("Ch59.mat"); 
+load("Ch59.mat", "NS2"); 
 ind_bl_str = 4.5e5; ind_bl_end = 9.5e5; % no-stim baseline 
 ind_rec_end = 2e6; % exclude dbs stim that is not annotated
 
@@ -11,12 +11,17 @@ nDelay = 3;
 Tr_thr = [Tr_thr((nDelay+1):end), false(1,nDelay)]; % start nDelay samples earlier
 Fs = NS2.MetaTags.SamplingFreq;
 
+% noisy/ref channels are 3, 54, 57, 61
+% include motor channels expected to have beta activity
+chincl = {...
+    'LS13','LS14','LS15','LS16','LS17',...
+    'LS35','LS36','LS37','LS38','LS39','LS40','LS41',...
+    'LS56','LS58','LS59','LS60','LS62'};
 dta = ns2timetable(NS2); 
-dta = dta(:,1:63); % exclude stim (analog in)
-dta = dta(:,[1:2,4:53,55:56,58:60,62:end]); % exclude stim/noisy/ref channels from analysis
+dta = dta(:,chincl); 
 dta = dta(1:ind_rec_end,:); 
 
-chnum_to_plot = 56; % should be LS59
+chnum_to_plot = 17; % should be LS59
 chtoplot = dta.Properties.VariableNames{chnum_to_plot}
 
 %% preprocess 
