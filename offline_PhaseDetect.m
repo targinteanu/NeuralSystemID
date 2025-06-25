@@ -210,6 +210,12 @@ w = fliplr(w);
 W = nan(length(dataOneChannel), length(w)); 
 w0 = w;
 
+% calculate "actual" ground truth data that will be compared afterwards
+%dataOneChannelFilt2 = Myeegfilt(dataOneChannel,SamplingFreq,loco,hico);
+dataOneChannelFilt2 = filtfilt(filtwts,1,dataOneChannel);
+[phAll, frAll] = instPhaseFreq(dataOneChannelFilt2, SamplingFreq);
+frAll = min(frAll, hico); frAll = max(frAll, loco);
+
 progTick = .05; prog = 0; % track progress
 
 for tind = packetLength:packetLength:length(dataOneChannel)
@@ -314,10 +320,6 @@ ylabel('ainp1');
 grid on; linkaxes(ax, 'x'); 
 
 % compare instantaneous phase, frequency: estimated vs actual
-%dataOneChannelFilt2 = Myeegfilt(dataOneChannel,SamplingFreq,loco,hico);
-dataOneChannelFilt2 = filtfilt(filtwts,1,dataOneChannel);
-[phAll, frAll] = instPhaseFreq(dataOneChannelFilt2, SamplingFreq);
-frAll = min(frAll, hico); frAll = max(frAll, loco);
 %phAll2 = sin(phAll); phEst2 = sin(phEst);
 phErr = phEst - phAll; % [-2*pi -> 2*pi];
 %phErr = mod(phErr + 2*pi, 2*pi); % [0 -> 2*pi];
