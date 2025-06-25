@@ -194,6 +194,7 @@ filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 ARmdl_filt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 ARmdl_filt = ARmdl_filt.A;
+ARmdl_filt_new = ARmdl_filt;
 
 %% Part B: Real-Time Algorithm 
 % Loop through each sample of data and perform the algorithm as if the data
@@ -252,7 +253,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % Step 3: update AR coefficients 
         % Update weights using gradient descent
         if stepsize > 0
-            w = -ARmdl_filt(2:end)/ARmdl_filt(1);
+            w = -ARmdl_filt(2:end)/ARmdl_filt(1); w1 = w;
             w = fliplr(w);
             x = dataPast((end-ARlen+1):end);
             ypred = w*x;
@@ -263,14 +264,23 @@ for tind = packetLength:packetLength:length(dataOneChannel)
                 end
                 w = w + stepsize*del';
                 W(tind,:) = w;
-                ARmdl_filt = [1, -fliplr(w)];
+                ARmdl_filt_new = [norm(w)/norm(w0), -fliplr(w)];
             end
         end
 
         % Step 4: AR-based forecasting 
         % Predict some duration ahead using the AR model; this will be used
         % to pad the Hilbert transform
-        dataFuture = myFastForecastAR(ARmdl_filt, dataPast, predWin);
+        dataFuture = myFastForecastAR(ARmdl_filt_new, dataPast, predWin);
+        if stepsize > 0
+            % prevent updated model from blowing up 
+            if norm(dataFuture) <= norm(dataPast) % set blowup threshold here
+                ARmdl_filt = ARmdl_filt_new;
+            else
+                % revert 
+                dataFuture = myFastForecastAR(ARmdl_filt, dataPast, predWin);
+            end
+        end
 
         % Step 5: Phase and Frequency Estimation
         % Using the Hilbert transform, estimate the current instantaneous
@@ -287,6 +297,27 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             toStim(tinds(1)-1+i2nextStim_prev) = true;
         end
         i2nextStim_prev = i2nextStim - filtdelay;
+
+        %{
+        % debugging erroneous predictions 
+        if tind > filtdelay
+            phErrNow = phEst(tind) - phAll(tind-filtdelay);
+            phErrNow = abs(phErrNow);
+            phErrNow = mod(phErrNow, 2*pi);
+            if phErrNow > pi
+                phErrNow = 2*pi - phErrNow;
+            end
+            if norm(dataFuture) > 10*norm(dataPast)
+                % 
+            end
+            if phErrNow > pi/4 % set threshold to begin debugging 
+                % do debugging
+                if (abs(phEst(tind)-pi/2) < .1) || (abs(phEst(tind)+pi/2) < .1)
+                    %keyboard;
+                end
+            end
+        end
+        %}
     end
 end
 
