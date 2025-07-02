@@ -194,7 +194,7 @@ filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 ARmdl_filt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 ARmdl_filt = ARmdl_filt.A;
-ARmdl_filt_new = ARmdl_filt;
+ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
 
 %% Part B: Real-Time Algorithm 
 % Loop through each sample of data and perform the algorithm as if the data
@@ -279,6 +279,12 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             else
                 % revert 
                 dataFuture = myFastForecastAR(ARmdl_filt, dataPast, predWin);
+                if norm(dataFuture) > norm(dataPast)
+                    dataFuture = myFastForecastAR(ARmdl_filt_orig, dataPast, predWin);
+                    if norm(dataFuture) > norm(dataPast)
+                        %keyboard
+                    end
+                end
             end
         end
 
