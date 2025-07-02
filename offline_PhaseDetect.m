@@ -270,8 +270,8 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % Update weights using gradient descent
         if stepsize > 0
             r1 = r;
-            w = -ARmdl_filt(2:end)/ARmdl_filt(1); w1 = w;
-            w = fliplr(w);
+            w = -ARmdl_filt(2:end)/ARmdl_filt(1); 
+            w = fliplr(w); w1 = w;
             x = dataPast((end-ARlen+1):end);
             if (artDur <= 0) || ~isArt(tind)
                 if stbl
