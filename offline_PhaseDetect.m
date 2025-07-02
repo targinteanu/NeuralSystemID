@@ -264,7 +264,10 @@ for tind = packetLength:packetLength:length(dataOneChannel)
                 end
                 w = w + stepsize*del';
                 W(tind,:) = w;
-                ARmdl_filt_new = [norm(w)/norm(w0), -fliplr(w)];
+                rr = roots([1, -fliplr(w)]);
+                if max(abs(rr)) < 1 % ensure stability
+                    ARmdl_filt_new = [norm(w)/norm(w0), -fliplr(w)];
+                end
             end
         end
 
@@ -274,12 +277,12 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         dataFuture = myFastForecastAR(ARmdl_filt_new, dataPast, predWin);
         if stepsize > 0
             % prevent updated model from blowing up 
-            if norm(dataFuture) <= norm(dataPast) % set blowup threshold here
+            if norm(dataFuture) <= 10*norm(dataPast) % set blowup threshold here
                 ARmdl_filt = ARmdl_filt_new;
             else
                 % revert 
                 dataFuture = myFastForecastAR(ARmdl_filt, dataPast, predWin);
-                if norm(dataFuture) > norm(dataPast)
+                if norm(dataFuture) > 100*norm(dataPast)
                     dataFuture = myFastForecastAR(ARmdl_filt_orig, dataPast, predWin);
                     if norm(dataFuture) > norm(dataPast)
                         %keyboard
