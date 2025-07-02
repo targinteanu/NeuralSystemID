@@ -263,10 +263,12 @@ for tind = packetLength:packetLength:length(dataOneChannel)
                     del = del./(x'*x + eps);
                 end
                 w = w + stepsize*del';
-                W(tind,:) = w;
                 rr = roots([1, -fliplr(w)]);
                 if max(abs(rr)) < 1 % ensure stability
                     ARmdl_filt_new = [norm(w)/norm(w0), -fliplr(w)];
+                    W(tind,:) = w;
+                else
+                    W(tind,:) = w1;
                 end
             end
         end
@@ -282,8 +284,10 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             else
                 % revert 
                 dataFuture = myFastForecastAR(ARmdl_filt, dataPast, predWin);
+                W(tind,:) = w1;
                 if norm(dataFuture) > 100*norm(dataPast)
                     dataFuture = myFastForecastAR(ARmdl_filt_orig, dataPast, predWin);
+                    W(tind,:) = w0;
                     if norm(dataFuture) > norm(dataPast)
                         %keyboard
                     end
