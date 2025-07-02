@@ -17,7 +17,7 @@
 % 
 % An overview of the phase detection algorithm is as follows: ...
 
-function [phAll, phEst, frAll, frEst, toStim, phStim, W] = ...
+function [phAll, phEst, frAll, frEst, toStim, phStim, W, R] = ...
     offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength, ...
     stepsize, donorm, showplots)
@@ -185,6 +185,7 @@ if filtord < min_filtorder
     filtord = min_filtorder;
 end
 
+% build filter and filtered baseline 
 filtwts = fir1(filtord, [loco, hico]./(SamplingFreq/2));
 dataBaseline = filtfilt(filtwts,1,dataBaseline);
 %[dataBaseline, filtwts] = Myeegfilt(dataBaseline,SamplingFreq,loco,hico);
@@ -193,6 +194,7 @@ filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
 filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 
+% setup filtered AR model
 ARmdl_filt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 ARmdl_filt = ARmdl_filt.A;
 ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
@@ -211,6 +213,19 @@ w = -ARmdl_filt(2:end)/ARmdl_filt(1);
 w = fliplr(w);
 W = nan(length(dataOneChannel), length(w)); 
 w0 = w;
+
+% transform model into eigenvalue domain for stability
+r = roots([1, -fliplr(w)])';
+rAmp = abs(r); rAng = angle(r);
+stbl = max(rAmp) <= 1;
+if stbl
+    rAmpArg = 1./rAmp; rAmpArg = rAmpArg-1; 
+    rAmpArg = -log(rAmpArg);
+else
+    warning('Initial AR model estimate is not stable.')
+end
+R = nan(length(dataOneChannel), length(r));
+r0 = r;
 
 % calculate "actual" ground truth data that will be compared afterwards
 %dataOneChannelFilt2 = Myeegfilt(dataOneChannel,SamplingFreq,loco,hico);
@@ -254,16 +269,22 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % Step 3: update AR coefficients 
         % Update weights using gradient descent
         if stepsize > 0
+            r1 = r;
             w = -ARmdl_filt(2:end)/ARmdl_filt(1); w1 = w;
             w = fliplr(w);
             x = dataPast((end-ARlen+1):end);
             if (artDur <= 0) || ~isArt(tind)
-                w = updateWts(w, x, dataOneChannelFilt(tind));
-                rr = roots([1, -fliplr(w)]);
-                if max(abs(rr)) < 1 % ensure stability
+                if stbl
+                    [w, r, rAmpArg, rAng] = updateWtsStbl(...
+                        w, r, rAmpArg, rAng, x, dataOneChannelFilt(tind));
+                else
+                    w = updateWts(w, x, dataOneChannelFilt(tind));
+                    r = roots([1, -fliplr(w)]);
+                end
+                if max(abs(r)) < 1 % ensure stability
                     ARmdl_filt_new = [norm(w)/norm(w0), -fliplr(w)];
                 else
-                    w = w1;
+                    w = w1; r = r1;
                 end
             end
         end
@@ -272,7 +293,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % Predict some duration ahead using the AR model; this will be used
         % to pad the Hilbert transform
         dataFuture = myFastForecastAR(ARmdl_filt_new, dataPast, predWin);
-        W(tind,:) = w;
+        W(tind,:) = w; R(tind,:) = r;
         if stepsize > 0
             % prevent updated model from blowing up 
             if norm(dataFuture) <= 10*norm(dataPast) % set blowup threshold here
@@ -280,10 +301,10 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             else
                 % revert 
                 dataFuture = myFastForecastAR(ARmdl_filt, dataPast, predWin);
-                W(tind,:) = w1;
+                W(tind,:) = w1; R(tind,:) = r1;
                 if norm(dataFuture) > 100*norm(dataPast)
                     dataFuture = myFastForecastAR(ARmdl_filt_orig, dataPast, predWin);
-                    W(tind,:) = w0;
+                    W(tind,:) = w0; R(tind,:) = r1;
                     if norm(dataFuture) > norm(dataPast)
                         %keyboard
                     end
@@ -335,6 +356,7 @@ dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
 phEst = [phEst(filtdelay:end), nan(1,filtdelay-1)]; 
 frEst = [frEst(filtdelay:end), nan(1,filtdelay-1)]; 
 W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
+R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 
 %% Part C: Evaluate Real-Time results 
 % Compare simulated real-time output with offline-computed ground truth 
@@ -397,10 +419,16 @@ title('Actual Phase of Recorded Stim');
 % show AR mdl changes
 W = W(~isnan(phEst),:);
 W = [w0; W];
+R = R(~isnan(phEst),:);
+R = [r0; R];
 if stepsize > 0
-    figure; imagesc(W); colorbar; 
+    figure; 
+    subplot(1,2,1); imagesc(W); colorbar; 
     title('Dynamic AR model update');
     xlabel('tap'); ylabel('iteration');
+    subplot(1,2,2); imagesc(abs(R)); colorbar;
+    title('System Pole Magnitudes');
+    xlabel('pole'); ylabel('iteration');
 end
 
 end
@@ -412,6 +440,9 @@ frAll = frAll(~isnan(frEst)); frEst = frEst(~isnan(frEst));
 
 %% helper(s) 
 % gradient descent update of AR model weights 
+
+
+    % Update based on gradient wrt weights; no guarantee of stability.
     function w = updateWts(w, x, y)
         ypred = w*x;
         E = y-ypred; del = x*E;
@@ -419,6 +450,65 @@ frAll = frAll(~isnan(frEst)); frEst = frEst(~isnan(frEst));
             del = del./(x'*x + eps);
         end
         w = w + stepsize*del';
+    end
+
+
+    % Update stably based on gradient wrt roots of c.p. which are
+    % forced to have magnitude less than 1.
+    function [w, r, rAmpArg, rAng] = updateWtsStbl(w, r, rAmpArg, rAng, x, y)
+
+        % grad err wrt wts
+        ypred = w*x;
+        E = y-ypred; dEdw = x*E;
+
+        % grad err wrt rts
+        N = length(w); K = length(r);
+        dwdr = zeros(N,K);
+        dwdr(N,:) = 1; 
+        for nn = 1:(N-1)
+            n = N-nn; s = 1-2*mod(nn,2);
+            for k = 1:K
+                rr = r([(1:(k-1)),((k+1):end)]);
+                dwdr(n,k) = s * SumAllProds(rr, nn);
+            end
+        end
+        dEdr = dEdw' * dwdr;
+
+        % grad err wrt mag, phase
+        drdAmp = exp(1i*rAng - rAmpArg)./((1+exp(-rAmpArg)).^2);
+        drdAng = 1i*exp(1i*rAng)./(1+exp(-rAmpArg));
+        dEdAmp = dEdr .* drdAmp; dEdAng = dEdr .* drdAng;
+
+        % iterate grad. desc.
+        if donorm
+            dEdAmp = dEdAmp./(x'*x + eps);
+            dEdAng = dEdAng./(x'*x + eps);
+        end
+        rAmpArg = rAmpArg + stepsize*dEdAmp;
+        rAng = rAng + stepsize*dEdAng;
+        r = exp(1i*rAng) ./ (1+exp(-rAmpArg));
+
+        % convert rts to wts
+        for nn = 0:(N-1)
+            n = N-nn; s = 1-2*mod(nn,2);
+            w(n) = s * SumAllProds(r, nn+1);
+        end
+        if rms(imag(w)) > .05*rms(abs(w))
+            % this shouldn't happen, because weights should be real
+            keyboard
+        end
+        w = real(w);
+    end
+
+    function S = SumAllProds(vals, ord)
+        if ord == 1
+            S = sum(vals); % base case
+        else 
+            S = 0;
+            for k = 2:length(vals)
+                S = S + vals(k-1)*SumAllProds(vals(k:end), ord-1);
+            end
+        end
     end
 
 end
