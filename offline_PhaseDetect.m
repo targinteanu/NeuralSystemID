@@ -192,6 +192,7 @@ filtord = length(filtwts);
 filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
 filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
+
 ARmdl_filt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 ARmdl_filt = ARmdl_filt.A;
 ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
@@ -256,19 +257,13 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             w = -ARmdl_filt(2:end)/ARmdl_filt(1); w1 = w;
             w = fliplr(w);
             x = dataPast((end-ARlen+1):end);
-            ypred = w*x;
             if (artDur <= 0) || ~isArt(tind)
-                E = dataOneChannelFilt(tind)-ypred; del = x*E;
-                if donorm
-                    del = del./(x'*x + eps);
-                end
-                w = w + stepsize*del';
+                w = updateWts(w, x, dataOneChannelFilt(tind));
                 rr = roots([1, -fliplr(w)]);
                 if max(abs(rr)) < 1 % ensure stability
                     ARmdl_filt_new = [norm(w)/norm(w0), -fliplr(w)];
-                    W(tind,:) = w;
                 else
-                    W(tind,:) = w1;
+                    w = w1;
                 end
             end
         end
@@ -277,6 +272,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % Predict some duration ahead using the AR model; this will be used
         % to pad the Hilbert transform
         dataFuture = myFastForecastAR(ARmdl_filt_new, dataPast, predWin);
+        W(tind,:) = w;
         if stepsize > 0
             % prevent updated model from blowing up 
             if norm(dataFuture) <= 10*norm(dataPast) % set blowup threshold here
@@ -413,5 +409,16 @@ end
 phStim = phAll(toStim);
 phAll = phAll(~isnan(phEst)); phEst = phEst(~isnan(phEst));
 frAll = frAll(~isnan(frEst)); frEst = frEst(~isnan(frEst));
+
+%% helper(s) 
+% gradient descent update of AR model weights 
+    function w = updateWts(w, x, y)
+        ypred = w*x;
+        E = y-ypred; del = x*E;
+        if donorm
+            del = del./(x'*x + eps);
+        end
+        w = w + stepsize*del';
+    end
 
 end
