@@ -500,6 +500,7 @@ frAll = frAll(~isnan(frEst)); frEst = frEst(~isnan(frEst));
         w = real(w);
     end
 
+%{
     function S = SumAllProds(vals, ord)
         if ord == 1
             S = sum(vals); % base case
@@ -510,5 +511,32 @@ frAll = frAll(~isnan(frEst)); frEst = frEst(~isnan(frEst));
             end
         end
     end
+%}
+
+function S = SumAllProds(vals, n)
+    % Fast computation of sum of all products of combinations of n elements
+    % Input:
+    %   vals: vector of numeric values
+    %   n: number of elements in each combination (positive integer)
+    % Output:
+    %   S: sum of products of all n-element combinations (no repetitions)
+
+    if n == 0
+        S = 1; % Convention: product of 0 elements is 1
+        return;
+    elseif n > numel(vals)
+        S = 0;
+        return;
+    end
+
+    if n == 1
+        S = sum(vals);
+        return;
+    end
+
+    C = nchoosek(1:numel(vals), n);       % All index combinations
+    P = prod(vals(C), 2);                 % Product along each row
+    S = sum(P);                           % Sum of all products
+end
 
 end
