@@ -356,6 +356,7 @@ end
 dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
 phEst = [phEst(filtdelay:end), nan(1,filtdelay-1)]; 
 frEst = [frEst(filtdelay:end), nan(1,filtdelay-1)]; 
+toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
 W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
 R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 
