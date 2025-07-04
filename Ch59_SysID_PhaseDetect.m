@@ -44,6 +44,10 @@ ARwin = 1000; ARlen = 10; predWin = 100;
     phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, -1, [], true);
 phErrConst = phEst-phAll; frErrConst = frEst - frAll;
 
+pause(.001); 
+drawnow;
+pause(.001);
+
 % with dynamic AR model: 
 [phAll, phEst, frAll, frEst] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
