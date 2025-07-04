@@ -477,12 +477,13 @@ frAll = frAll(~isnan(frEst)); frEst = frEst(~isnan(frEst));
         % grad err wrt mag, phase
         drdAmp = exp(1i*rAng - rAmpArg)./((1+exp(-rAmpArg)).^2);
         drdAng = 1i*exp(1i*rAng)./(1+exp(-rAmpArg));
-        dEdAmp = dEdr .* drdAmp; dEdAng = dEdr .* drdAng;
+        dEdAmp = dEdr .* conj(drdAmp); dEdAng = dEdr .* conj(drdAng);
+        dEdAmp = real(dEdAmp); dEdAng = real(dEdAng);
 
         % iterate grad. desc.
         if donorm
-            dEdAmp = dEdAmp./(x'*x + eps);
-            dEdAng = dEdAng./(x'*x + eps);
+            dEdAmp = -dEdAmp./(x'*x + eps);
+            dEdAng = -dEdAng./(x'*x + eps);
         end
         rAmpArg = rAmpArg + stepsize*dEdAmp;
         rAng = rAng + stepsize*dEdAng;
