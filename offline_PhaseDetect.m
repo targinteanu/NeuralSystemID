@@ -226,6 +226,7 @@ else
 end
 R = nan(length(dataOneChannel), length(r));
 r0 = r;
+stbl = false;
 
 % calculate "actual" ground truth data that will be compared afterwards
 %dataOneChannelFilt2 = Myeegfilt(dataOneChannel,SamplingFreq,loco,hico);
