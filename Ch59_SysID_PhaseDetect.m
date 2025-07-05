@@ -51,7 +51,7 @@ pause(.001);
 % with dynamic AR model: 
 [phAll, phEst, frAll, frEst] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
-    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, .001, true, true);
+    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, .0001, true, true);
 phErrDyn = phEst-phAll; frErrDyn = frEst - frAll;
 
 %% compare constant vs dynamic AR results
