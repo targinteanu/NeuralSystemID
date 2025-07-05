@@ -413,10 +413,13 @@ legend('Data', 'Stim', 'Location','westoutside')
 figure; sgtitle(['Goal = ',num2str(PhaseOfInterest*180/pi),' degrees'])
 subplot(2,2,1); polarhistogram(phAll(toStim), 18); 
 title('Actual Phase of Stim'); 
+subtitle(['RMSE ',num2str(rms(phAll(toStim)-PhaseOfInterest, 'omitnan'))])
 subplot(2,2,2); polarhistogram(phEst(toStim), 18);
-title('Est. Phase of Stim');
+title('Online Est. Phase of Stim');
+subtitle(['RMSE ',num2str(rms(phEst(toStim)-PhaseOfInterest, 'omitnan'))])
 subplot(2,2,3); polarhistogram(phAll(StimTrainRec), 18);
 title('Actual Phase of Recorded Stim');
+subtitle(['RMSE ',num2str(rms(phAll(StimTrainRec)-PhaseOfInterest, 'omitnan'))])
 
 % show AR mdl changes
 W = W(~isnan(phEst),:);
