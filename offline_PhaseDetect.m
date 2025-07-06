@@ -389,7 +389,7 @@ phErr = phEst - phAll; % [-2*pi -> 2*pi];
 %phErr = mod(phErr + 2*pi, 2*pi); % [0 -> 2*pi];
 %phErr = phErr - 2*pi*(phErr >= pi); % [-pi -> pi]
 frErr = frEst - frAll;
-figure; 
+figure; sgtitle(channelName);
 subplot(2,2,1); plot(phAll, phEst, '.'); 
 grid on; title('Phase Accuracy'); 
 xlabel('Offline Calc. Phase (rad)'); ylabel('RealTime Pred. Phase (rad)'); 
@@ -408,9 +408,11 @@ plot(t, dataOneChannelFilt2); hold on; grid on;
 stem(t(toStim), dataOneChannelFilt2(toStim));
 title('Stimulus Timing');
 legend('Data', 'Stim', 'Location','westoutside')
+ylabel(channelName); xlabel('time');
 
 % show true phase of intended stim
-figure; sgtitle(['Goal = ',num2str(PhaseOfInterest*180/pi),' degrees'])
+figure; sgtitle({channelName, ...
+    ['Goal = ',num2str(PhaseOfInterest*180/pi),' degrees']})
 subplot(2,2,1); polarhistogram(phAll(toStim), 18); 
 title('Actual Phase of Stim'); 
 subtitle(['RMSE ',num2str(rms(phAll(toStim)-PhaseOfInterest, 'omitnan'))])
@@ -427,7 +429,7 @@ W = [w0; W];
 R = R(~isnan(phEst),:);
 R = [r0; R];
 if stepsize > 0
-    figure; 
+    figure; sgtitle(channelName);
     subplot(1,2,1); imagesc(W); colorbar; 
     title('Dynamic AR model update');
     xlabel('tap'); ylabel('iteration');
