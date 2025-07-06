@@ -6,6 +6,9 @@ function [phiTbl, fTbl] = instPhaseFreqTblSmooth(tbl, freqRng)
 loco = freqRng(1); hico = freqRng(2);
 
 fs = tbl.Properties.SampleRate; 
+if isnan(fs)
+    fs = 1/mean(seconds(diff(tbl.Time)));
+end
 [phi_block, f_block] = instPhaseFreq(tbl.Variables, fs);
 
 % clop freq to range 

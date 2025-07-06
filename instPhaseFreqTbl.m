@@ -4,6 +4,9 @@ function [phiTbl, fTbl] = instPhaseFreqTbl(tbl)
 % 
 
 fs = tbl.Properties.SampleRate; 
+if isnan(fs)
+    fs = 1/mean(seconds(diff(tbl.Time)));
+end
 [phi_block, f_block] = instPhaseFreq(tbl.Variables, fs);
 
 phiTbl = tbl; phiTbl.Variables = phi_block; 
