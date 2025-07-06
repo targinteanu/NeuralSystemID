@@ -21,7 +21,7 @@ dta = ns2timetable(NS2);
 dta = dta(:,chincl); 
 dta = dta(1:ind_rec_end,:); 
 
-chnum_to_plot = 17; % should be LS59
+chnum_to_plot = 15; % should be LS59
 chtoplot = dta.Properties.VariableNames{chnum_to_plot}
 
 %% preprocess 
