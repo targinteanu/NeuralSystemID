@@ -357,8 +357,8 @@ for tind = packetLength:packetLength:length(dataOneChannel)
 
         % Step 6: Send a stimulus pulse when appropriate 
         i2nextStim_prev = i2nextStim_prev - packetLength; % one packet passed
-        if i2nextStim_prev < packetLength
-            toStim(tinds(1)-1+i2nextStim_prev) = true;
+        if i2nextStim_prev < 0
+            toStim(tind+i2nextStim_prev) = true;
         end
         i2nextStim_prev = i2nextStim;
 
