@@ -28,16 +28,26 @@ T=1/f_inst;
 
 % time to next [desired] phi 
 t2phi = zeros(size(phi)); i2phi = t2phi;
+imin = ceil(tmin*fs); phi_future = phi_block((N+imin):end,:);
 for p = 1:length(phi)
     phi_ = phi(p);
-    t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
 
+    % accurate & full-cycle AR model assumption 
+    [~,i] = min(abs(phi_future)-phi_);
+    i = i + imin;
+    i2phi(p) = i; 
+    t2phi(p) = i/fs;
+
+    %{
+    % const freq assumption
+    t = (mod(phi_+2*pi-phi_inst,2*pi)./f_inst)/(2*pi); 
     % account for minimum delay time tmin 
     if t < tmin
         nT = (tmin-t)/T; % how many periods needed to add 
         t = t + ceil(nT)*T; 
     end
-
     t2phi(p) = t;
     i2phi(p) = floor(fs*t2phi(p));
+    %}
+
 end
