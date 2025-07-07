@@ -278,12 +278,12 @@ for tind = packetLength:packetLength:length(dataOneChannel)
 
     ind0 = tinds(1) - ARwin;
     if ind0 > 0
-        dataPast = dataOneChannelFilt(ind0:(tind-1))';
+        dataPast = dataOneChannelFilt(ind0:tind)';
         dataPastOrig = dataPast;
         % downsample, if applicable 
         if doresample
             dataPast = flipud(dataPast);
-            dataPast = dataPast(samplerat:samplerat:end);
+            dataPast = dataPast(1:samplerat:end);
             dataPast = flipud(dataPast);
         end
 
@@ -293,7 +293,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             r1 = r;
             w = -ARmdl_filt(2:end)/ARmdl_filt(1); 
             w = fliplr(w); w1 = w;
-            x = dataPast((end-ARlen+1):end);
+            x = dataPast((end-ARlen):(end-1));
             if (artDur <= 0) || ~isArt(tind)
                 if stbl
                     [w, r, rAmpArg, rAng] = updateWtsStbl(...
@@ -388,11 +388,11 @@ end
 % re-align timing; correct for filter delay 
 phEst = [phEst(filtdelay:end), nan(1,filtdelay-1)]; 
 frEst = [frEst(filtdelay:end), nan(1,filtdelay-1)]; 
+W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
+R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 filtdelay = ceil(filtdelay/2);
 toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
 dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
-W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
-R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 
 %% Part C: Evaluate Real-Time results 
 % Compare simulated real-time output with offline-computed ground truth 
