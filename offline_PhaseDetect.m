@@ -175,7 +175,7 @@ ARmdl_unfilt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 % filtered data. 
 
 % filtering bound rules 
-minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % filter order 
@@ -194,7 +194,8 @@ dataBaseline = filtfilt(filtwts,1,dataBaseline);
 %[dataBaseline, filtwts] = Myeegfilt(dataBaseline,SamplingFreq,loco,hico);
 filtord = length(filtwts);
 filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
-filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
+%filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
+filtdelay = filtord;
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 
 % downsample, if applicable
@@ -337,8 +338,12 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             tiFutureDown = 1:length(dataFuture); 
             tiFutureUp = linspace(1, length(dataFuture), samplerat*length(dataFuture));
             dataFuture = interp1(tiFutureDown, dataFuture, tiFutureUp, 'nearest');
-            dataFuture = filter(filtwts,1,dataFuture,filtinit)';
+            %dataFuture = filter(filtwts,1,dataFuture,filtinit);
+            dataFuture = dataFuture';
         end
+        % smooth out the kink at past/future interface
+        [dataPast, filtinit2] = filter(filtwts,1,dataPast, filtinit);
+        dataFuture = filter(filtwts,1,dataFuture,filtinit2);
 
         % Step 5: Phase and Frequency Estimation
         % Using the Hilbert transform, estimate the current instantaneous
@@ -348,13 +353,14 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             dataPast, dataFuture, SamplingFreq, PhaseOfInterest, ...
             filtdelay/SamplingFreq, ... FIR filter imposes this delay (s)
             loco, hico);
+        i2nextStim = i2nextStim - filtdelay; % in terms of current time
 
         % Step 6: Send a stimulus pulse when appropriate 
         i2nextStim_prev = i2nextStim_prev - packetLength; % one packet passed
         if i2nextStim_prev < packetLength
             toStim(tinds(1)-1+i2nextStim_prev) = true;
         end
-        i2nextStim_prev = i2nextStim - filtdelay;
+        i2nextStim_prev = i2nextStim;
 
         %{
         % debugging erroneous predictions 
@@ -380,10 +386,11 @@ for tind = packetLength:packetLength:length(dataOneChannel)
 end
 
 % re-align timing; correct for filter delay 
-dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
 phEst = [phEst(filtdelay:end), nan(1,filtdelay-1)]; 
 frEst = [frEst(filtdelay:end), nan(1,filtdelay-1)]; 
+filtdelay = ceil(filtdelay/2);
 toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
+dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
 W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
 R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 
