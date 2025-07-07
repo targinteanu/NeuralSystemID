@@ -32,7 +32,7 @@ dtaBL = dta(ind_bl_str:ind_bl_end,:);
 
 packetSize = 10; 
 phTarget = 0;
-ARwin = 1000; ARlen = 10; predWin = 100;
+ARwin = 1000; ARlen = 50; predWin = 100;
 
 errResults = cell(3, width(dtaBL), 2);
 % dim 1: phase est err, freq est err, phase target err 
@@ -48,7 +48,7 @@ chtoplot = dtaBL.Properties.VariableNames{c}
 % with constant AR model: 
 [phAll, phEst, frAll, frEst, ~, phStimConst] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
-    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, -1, [], false);
+    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, -1, [], true, true);
 phErrConst = phEst-phAll; frErrConst = frEst - frAll;
 
 pause(.001); 
@@ -58,7 +58,7 @@ pause(.001);
 % with dynamic AR model: 
 [phAll, phEst, frAll, frEst, ~, phStimDyn] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
-    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, .0001, true, false);
+    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, .0001, true, true, false);
 phErrDyn = phEst-phAll; frErrDyn = frEst - frAll;
 
 pause(.001); 

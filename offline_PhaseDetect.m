@@ -20,39 +20,42 @@
 function [phAll, phEst, frAll, frEst, toStim, phStim, W, R] = ...
     offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength, ...
-    stepsize, donorm, showplots)
+    stepsize, donorm, doresample, showplots)
 
 if height(dataOneChannel) > 1
     error('Data should be one channel only and horizontal.')
 end
 
-% signal to use default values if any arguments are not passed in 
-if nargin < 15
+% signal to use default values if any arguments are not passed in
+if nargin < 16
     showplots = false;
-    if nargin < 14
-        donorm = false;
-        if nargin < 13
-            stepsize = [];
-            if nargin < 12
-                packetLength = [];
-                if nargin < 11
-                    artDur = [];
-                    if nargin < 10
-                        predWin = [];
-                        if nargin < 9
-                            ARlen = [];
-                            if nargin < 8
-                                ARwin = [];
-                                if nargin < 7
-                                    FreqRange = [];
-                                    if nargin < 6
-                                        PhaseOfInterest = [];
-                                        if nargin < 5
-                                            channelName = '';
-                                            if nargin < 4
-                                                t = [];
-                                                if nargin < 3
-                                                    StimTrainRec = [];
+    if nargin < 15
+        doresample = false;
+        if nargin < 14
+            donorm = false;
+            if nargin < 13
+                stepsize = [];
+                if nargin < 12
+                    packetLength = [];
+                    if nargin < 11
+                        artDur = [];
+                        if nargin < 10
+                            predWin = [];
+                            if nargin < 9
+                                ARlen = [];
+                                if nargin < 8
+                                    ARwin = [];
+                                    if nargin < 7
+                                        FreqRange = [];
+                                        if nargin < 6
+                                            PhaseOfInterest = [];
+                                            if nargin < 5
+                                                channelName = '';
+                                                if nargin < 4
+                                                    t = [];
+                                                    if nargin < 3
+                                                        StimTrainRec = [];
+                                                    end
                                                 end
                                             end
                                         end
@@ -194,8 +197,17 @@ filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
 filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 
+% downsample, if applicable
+downsampledFreq = SamplingFreq; samplerat = 1;
+if doresample
+    samplerat = 10; % downsample by this factor (must be integer). TO DO: replace with something based on nyquist rate!
+    dataBaseline1 = movmean(dataBaseline1, samplerat);
+    dataBaseline1 = downsample(dataBaseline1, samplerat);
+    downsampledFreq = SamplingFreq/samplerat;
+end
+
 % setup filtered AR model
-ARmdl_filt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
+ARmdl_filt = ar(iddata(dataBaseline1', [], 1/downsampledFreq), ARlen, 'yw');
 ARmdl_filt = ARmdl_filt.A;
 ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
 
@@ -266,6 +278,13 @@ for tind = packetLength:packetLength:length(dataOneChannel)
     ind0 = tinds(1) - ARwin;
     if ind0 > 0
         dataPast = dataOneChannelFilt(ind0:(tind-1))';
+        dataPastOrig = dataPast;
+        % downsample, if applicable 
+        if doresample
+            dataPast = flipud(dataPast);
+            dataPast = dataPast(samplerat:samplerat:end);
+            dataPast = flipud(dataPast);
+        end
 
         % Step 3: update AR coefficients 
         % Update weights using gradient descent
@@ -311,6 +330,14 @@ for tind = packetLength:packetLength:length(dataOneChannel)
                     end
                 end
             end
+        end
+        % upsample, if applicable 
+        if doresample
+            dataPast = dataPastOrig;
+            tiFutureDown = 1:length(dataFuture); 
+            tiFutureUp = linspace(1, length(dataFuture), samplerat*length(dataFuture));
+            dataFuture = interp1(tiFutureDown, dataFuture, tiFutureUp, 'nearest');
+            dataFuture = filter(filtwts,1,dataFuture,filtinit)';
         end
 
         % Step 5: Phase and Frequency Estimation
