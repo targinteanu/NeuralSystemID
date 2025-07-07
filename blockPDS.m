@@ -26,15 +26,21 @@ f_inst = f_block(N);
 %[~,f_inst] = zerocrossrate(blockData); f_inst = f_inst*fs/(2*length(blockData));
 T=1/f_inst;
 
+% examine the next full phase cycle
+imin = ceil(tmin*fs); phi_future = phi_block((N+imin):end,:);
+phi_fut_1 = phi_future(1); phi_fut_ = unwrap(phi_future);
+[~,phi_fut_end] = min(abs(phi_fut_-(2*pi + phi_fut_1)));
+phi_fut_end = min(length(phi_future), phi_fut_end+1);
+phi_future = phi_future(1:phi_fut_end);
+
 % time to next [desired] phi 
 t2phi = zeros(size(phi)); i2phi = t2phi;
-imin = ceil(tmin*fs); phi_future = phi_block((N+imin):end,:);
 for p = 1:length(phi)
     phi_ = phi(p);
 
     % accurate & full-cycle AR model assumption 
-    [~,i] = min(abs(phi_future)-phi_);
-    i = i + imin;
+    [~,i] = min(abs(phi_future-phi_));
+    i = i + imin - 1;
     i2phi(p) = i; 
     t2phi(p) = i/fs;
 
