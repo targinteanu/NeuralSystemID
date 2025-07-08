@@ -39,6 +39,8 @@ errResults = cell(3, width(dtaBL), 2);
 % dim 2: channel 
 % dim 3: const vs dynamic AR model 
 
+durConst = []; durDyn = [];
+
 for c = 1:width(dtaBL)
 
 chtoplot = dtaBL.Properties.VariableNames{c}
@@ -46,20 +48,22 @@ chtoplot = dtaBL.Properties.VariableNames{c}
 %% run phase detection 
 
 % with constant AR model: 
-[phAll, phEst, frAll, frEst, ~, phStimConst] = ...
+[phAll, phEst, frAll, frEst, ~, phStimConst, ~, ~, durC] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
-    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, -1, [], true, true);
+    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, -1, [], true, false);
 phErrConst = phEst-phAll; frErrConst = frEst - frAll;
+durConst = [durConst, durC];
 
 pause(.001); 
 drawnow;
 pause(.001);
 
 % with dynamic AR model: 
-[phAll, phEst, frAll, frEst, ~, phStimDyn] = ...
+[phAll, phEst, frAll, frEst, ~, phStimDyn, ~, ~, durD] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
-    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, .0001, true, true, false);
+    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, .1, true, true, false);
 phErrDyn = phEst-phAll; frErrDyn = frEst - frAll;
+durDyn = [durDyn, durD];
 
 pause(.001); 
 drawnow;
@@ -96,6 +100,11 @@ errResults{3,c,2} = phStimDyn-phTarget;
 end
 
 %% aggregate all channel results 
+
+durConst = durConst(~isnan(durConst)); durDyn = durDyn(~isnan(durDyn));
+figure; histogram(durConst); hold on; histogram(durDyn);
+xlabel('duration (s)'); legend('Constant', 'Dynamic');
+title('Loop Processing Time')
 
 errResultsAll = cell(size(errResults,1), size(errResults,3));
 for r = 1:size(errResults,1)

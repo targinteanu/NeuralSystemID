@@ -17,7 +17,7 @@
 % 
 % An overview of the phase detection algorithm is as follows: ...
 
-function [phAll, phEst, frAll, frEst, toStim, phStim, W, R] = ...
+function [phAll, phEst, frAll, frEst, toStim, phStim, W, R, dur] = ...
     offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength, ...
     stepsize, donorm, doresample, showplots)
@@ -226,6 +226,7 @@ phEst = nan(size(dataOneChannel)); % instantaneous phase estimate (rad)
 frEst = nan(size(dataOneChannel)); % instantaneous frequency estimate (Hz)
 i2nextStim_prev = Inf; % #samples to next stim pulse 
 dataOneChannelFilt = zeros(size(dataOneChannel));
+dur = nan(size(dataOneChannel));
 
 % track AR mdl updates 
 w = -ARmdl_filt(2:end)/ARmdl_filt(1);
@@ -256,6 +257,7 @@ frAll = min(frAll, hico); frAll = max(frAll, loco);
 progTick = .05; prog = 0; % track progress
 
 for tind = packetLength:packetLength:length(dataOneChannel)
+    tic
     tinds = (tind-packetLength+1):tind;
 
     % track progress
@@ -389,6 +391,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         end
         %}
     end
+    dur(tind) = toc;
 end
 
 % re-align timing; correct for filter delay 
