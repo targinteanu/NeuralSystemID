@@ -468,13 +468,13 @@ figure; sgtitle({channelName, ...
     ['Goal = ',num2str(PhaseOfInterest*180/pi),' degrees']})
 subplot(2,2,1); polarhistogram(phAll(toStim), 18); 
 title('Actual Phase of Stim'); 
-subtitle(['RMSE ',num2str(rms(phAll(toStim)-PhaseOfInterest, 'omitnan'))])
+subtitle(['RMSE ',num2str(rms(radfix(phAll(toStim)-PhaseOfInterest), 'omitnan'))])
 subplot(2,2,2); polarhistogram(phEst(toStim), 18);
 title('Online Est. Phase of Stim');
-subtitle(['RMSE ',num2str(rms(phEst(toStim)-PhaseOfInterest, 'omitnan'))])
+subtitle(['RMSE ',num2str(rms(radfix(phEst(toStim)-PhaseOfInterest), 'omitnan'))])
 subplot(2,2,3); polarhistogram(phAll(StimTrainRec), 18);
 title('Actual Phase of Recorded Stim');
-subtitle(['RMSE ',num2str(rms(phAll(StimTrainRec)-PhaseOfInterest, 'omitnan'))])
+subtitle(['RMSE ',num2str(rms(radfix(phAll(StimTrainRec)-PhaseOfInterest), 'omitnan'))])
 
 % show AR mdl changes
 W = W(~isnan(phEst),:);

@@ -51,7 +51,7 @@ chtoplot = dtaBL.Properties.VariableNames{c}
 [phAll, phEst, frAll, frEst, ~, phStimConst, ~, ~, durC] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
     phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, -1, [], true, false);
-phErrConst = phEst-phAll; frErrConst = frEst - frAll;
+phErrConst = radfix(phEst-phAll); frErrConst = frEst - frAll;
 durConst = [durConst, durC];
 
 pause(.001); 
@@ -62,7 +62,7 @@ pause(.001);
 [phAll, phEst, frAll, frEst, ~, phStimDyn, ~, ~, durD] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
     phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, .1, true, true, false);
-phErrDyn = phEst-phAll; frErrDyn = frEst - frAll;
+phErrDyn = radfix(phEst-phAll); frErrDyn = frEst - frAll;
 durDyn = [durDyn, durD];
 
 pause(.001); 
@@ -102,9 +102,10 @@ end
 %% aggregate all channel results 
 
 durConst = durConst(~isnan(durConst)); durDyn = durDyn(~isnan(durDyn));
-figure; histogram(durConst); hold on; histogram(durDyn);
-xlabel('duration (s)'); legend('Constant', 'Dynamic');
-title('Loop Processing Time')
+fspc = 'took avg. %f, min %f, max %f seconds';
+fspf = @(t) sprintf(fspc, mean(t), min(t), max(t));
+disp(['Constant ',fspf(durConst)]);
+disp(['Dynamic ',fspf(durDyn)]);
 
 errResultsAll = cell(size(errResults,1), size(errResults,3));
 for r = 1:size(errResults,1)
