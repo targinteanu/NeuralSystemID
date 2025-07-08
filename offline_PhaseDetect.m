@@ -116,6 +116,12 @@ if isempty(stepsize)
     end
 end
 
+
+samplerat = 1;
+if doresample
+    samplerat = 10; % downsample by this factor (must be integer). TO DO: replace with something based on nyquist rate!
+end
+
 %% Part A: Setup 
 % Load and preprocess brain recording data from a file. 
 % Setup the signals, filter, and AR model that will be used to simulate the
@@ -161,7 +167,7 @@ artIndAll = find(artIndAll);
 baselineEndInd = artIndAll(baselineStartInd+1); 
 baselineStartInd = artIndAll(baselineStartInd); 
 dataBaseline = dataOneChannel(baselineStartInd:baselineEndInd); 
-baselineWin = (baselineEndInd-baselineStartInd) + [-3,3]*ARwin; 
+baselineWin = (baselineEndInd-baselineStartInd) + samplerat*[-3,3]*ARwin; 
 baselineWin = baselineWin/2; baselineWin = round(baselineWin); 
 baselineWin(1) = max(1,baselineWin(1)); 
 baselineWin(2) = min(length(dataBaseline),baselineWin(2));
@@ -201,13 +207,13 @@ dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 % downsample, if applicable
 downsampledFreq = SamplingFreq; samplerat = 1;
 if doresample
-    samplerat = 10; % downsample by this factor (must be integer). TO DO: replace with something based on nyquist rate!
     dataBaseline1 = movmean(dataBaseline1, samplerat);
     dataBaseline1 = downsample(dataBaseline1, samplerat);
     downsampledFreq = SamplingFreq/samplerat;
 end
 
 % setup filtered AR model
+disp(['Data size is ',num2str(length(dataBaseline1)/ARlen),' times variable size.'])
 ARmdl_filt = ar(iddata(dataBaseline1', [], 1/downsampledFreq), ARlen, 'yw');
 ARmdl_filt = ARmdl_filt.A;
 ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
@@ -391,7 +397,7 @@ frEst = [frEst(filtdelay:end), nan(1,filtdelay-1)];
 W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
 R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 filtdelay = ceil(filtdelay/2);
-toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
+%toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
 dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
 
 %% Part C: Evaluate Real-Time results 

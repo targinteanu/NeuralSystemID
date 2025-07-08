@@ -40,7 +40,7 @@ for p = 1:length(phi)
 
     % accurate & full-cycle AR model assumption 
     [~,i] = min(abs(phi_future-phi_));
-    i = i + imin - 1;
+    i = i + imin;
     i2phi(p) = i; 
     t2phi(p) = i/fs;
 
