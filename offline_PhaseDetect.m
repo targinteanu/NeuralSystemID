@@ -403,6 +403,16 @@ dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
 %% Part C: Evaluate Real-Time results 
 % Compare simulated real-time output with offline-computed ground truth 
 
+% limit signals to central 80% to avoid hilbert edge effects 
+t1 = floor(.1*length(t)); t2 = ceil(.9*length(t));
+for var = [...
+        "t", "dataOneChannel", "dataOneChannelFilt2", "phAll", "frAll", ...
+        "dataOneChannelWithArtifact", "isArt", "StimTrainRec", ...
+        "dataOneChannelFilt", "phEst", "frEst", "toStim"]
+    eval(var+" = "+var+"(t1:t2);");
+end
+W = W(t1:t2,:); R = R(t1:t2,:);
+
 if showplots
 
 % plot artifact removal 
