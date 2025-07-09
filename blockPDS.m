@@ -39,7 +39,7 @@ for p = 1:length(phi)
     phi_ = phi(p);
 
     % accurate & full-cycle AR model assumption 
-    [~,i] = min(abs(phi_future-phi_));
+    [~,i] = min(abs(radfix(phi_future-phi_)));
     i = i + imin;
     i2phi(p) = i; 
     t2phi(p) = i/fs;
