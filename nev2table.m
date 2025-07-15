@@ -30,8 +30,7 @@ else
             end
         end
     else
-        openNEV(fullfile(fp,[fn,fe]));
-        NEV = eval(['NS',fe(end)]);
+        NEV = openNEV(fullfile(fp,[fn,fe]));
     end
     clear vtry
 end
