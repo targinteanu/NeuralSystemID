@@ -100,7 +100,7 @@ try
     SDIOval = SDIOname+": "+SDIOval;
     SDIOtime = seconds(SDIOtime) + t0;
     if numel(SDIOtime)
-        Tsdio = eventtable(SDIOtime, "EventLabels",SDIOval);
+        Tsdio = eventtable(SDIOtime, "EventLabels",SDIOval, "EventEnds",SDIOtime);
     end
     datanames = datanames(~SDIOind);
 catch ME1
@@ -130,7 +130,7 @@ try
     % currently ignoring waveform and unit fields!
     SPKtime = seconds(SPKtime) + t0;
     if numel(SPKtime)
-        Tspk = eventtable(SPKtime, "EventLabels",SPKlbl);
+        Tspk = eventtable(SPKtime, "EventLabels",SPKlbl, "EventEnds",SPKtime);
     end
     datanames = datanames(~SPKind);
 catch ME2
@@ -162,7 +162,7 @@ try
             error('Sampling rate could not be determined.')
         end
     end
-    COMval = COM.Text; COMval = COMval';
+    COMval = COM.Text; COMval = string(COMval);
     COMtime1 = COMtime1'; COMtime2 = COMtime2'; 
     COMtime1 = seconds(COMtime1) + t0; 
     COMtime2 = seconds(COMtime2) + t0; 
