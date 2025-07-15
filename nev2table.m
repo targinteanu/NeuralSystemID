@@ -42,7 +42,7 @@ lbl = upper(lbl);
 
 % limit names to characters that will behave well as plot labels 
 for l = 1:length(lbl)
-    L = lbl{l}; 
+    L = lbl{l}'; 
     L = L((L >= 33)&(L <= 126));
     L(L=='_') = ' ';
     lbl{l} = L;
@@ -50,7 +50,7 @@ end
 
 % handle duplicate labels 
 for l = 1:length(lbl)
-    L = lbl{l}';
+    L = lbl{l};
     dups = strcmp(lbl, L);
     dups = find(dups);
     if length(dups) > 1
@@ -61,7 +61,6 @@ for l = 1:length(lbl)
             n = n+1;
         end
     end
-    lbl{l} = L;
 end
 
 %% interpret data from loaded file 
