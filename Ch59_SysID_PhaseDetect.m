@@ -30,9 +30,9 @@ hpf = designfilt('highpassiir', 'SampleRate',Fs, 'DesignMethod','butter', ...
 dta = FilterTimetable(@(d,x) filtfilt(d,x), hpf, dta);
 dtaBL = dta(ind_bl_str:ind_bl_end,:);
 
-packetSize = 10; 
+packetSize = 20; 
 phTarget = 0;
-ARwin = 1000; ARlen = 50; predWin = 100;
+ARwin = 1000; predWin = 500;
 
 errResults = cell(3, width(dtaBL), 2);
 % dim 1: phase est err, freq est err, phase target err 
@@ -41,7 +41,7 @@ errResults = cell(3, width(dtaBL), 2);
 
 durConst = []; durDyn = [];
 
-for c = 1:width(dtaBL)
+for c = 1:6:width(dtaBL)
 
 chtoplot = dtaBL.Properties.VariableNames{c}
 
@@ -50,7 +50,7 @@ chtoplot = dtaBL.Properties.VariableNames{c}
 % with constant AR model: 
 [phAll, phEst, frAll, frEst, ~, phStimConst, ~, ~, durC] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
-    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, -1, [], true, false);
+    phTarget, [13,30], ARwin, 50, predWin, -1, packetSize, -1, [], true, true);
 phErrConst = radfix(phEst-phAll); frErrConst = frEst - frAll;
 durConst = [durConst, durC];
 
@@ -61,7 +61,7 @@ pause(.001);
 % with dynamic AR model: 
 [phAll, phEst, frAll, frEst, ~, phStimDyn, ~, ~, durD] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
-    phTarget, [13,30], ARwin, ARlen, predWin, -1, packetSize, .1, true, true, false);
+    phTarget, [13,30], ARwin, 50, predWin, -1, packetSize, .1, true, true, true);
 phErrDyn = radfix(phEst-phAll); frErrDyn = frEst - frAll;
 durDyn = [durDyn, durD];
 
@@ -73,7 +73,7 @@ pause(.001);
 
 figure; sgtitle(chtoplot);
 subplot(1,2,1); 
-polarhistogram(phErrConst); hold on; polarhistogram(phErrDyn);
+polarhistogram(phErrConst, 18); hold on; polarhistogram(phErrDyn, 18);
 title('Phase error (causal - offline)'); 
 legend( ...
     ['Constant - RMSE ',num2str(rms(phErrConst))], ... 
@@ -118,7 +118,7 @@ end
 
 figure; 
 subplot(1,3,1); 
-polarhistogram(errResultsAll{1,1}); hold on; polarhistogram(errResultsAll{1,2});
+polarhistogram(errResultsAll{1,1}, 18); hold on; polarhistogram(errResultsAll{1,2}, 18);
 title('Phase error (causal - offline)'); 
 legend( ...
     ['Constant - RMSE ',num2str(rms(errResultsAll{1,1}))], ... 
@@ -137,7 +137,7 @@ legend( ...
 [~,p] = ttest2(errResultsAll{2,1}.^2, errResultsAll{2,2}.^2, 'tail', 'right');
 subtitle(['p = ',num2str(p)])
 subplot(1,3,3); 
-polarhistogram(errResultsAll{3,1}); hold on; polarhistogram(errResultsAll{3,2});
+polarhistogram(errResultsAll{3,1}, 18); hold on; polarhistogram(errResultsAll{3,2}, 18);
 title('Stim error (causal - offline)'); 
 legend( ...
     ['Constant - RMSE ',num2str(rms(errResultsAll{3,1}))], ... 
