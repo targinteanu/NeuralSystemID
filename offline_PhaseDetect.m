@@ -213,7 +213,7 @@ if doresample
     dataBaseline1 = movmean(dataBaseline1, samplerat);
     dataBaseline1 = downsample(dataBaseline1, samplerat);
     downsampledFreq = SamplingFreq/samplerat;
-    predWin = ceil(predWin)/samplerat;
+    predWin = ceil(predWin/samplerat);
 end
 
 % setup filtered AR model
