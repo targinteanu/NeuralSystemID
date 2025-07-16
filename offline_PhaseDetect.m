@@ -166,11 +166,14 @@ artIndAll = find(artIndAll);
 [~,baselineStartInd] = max(diff(artIndAll));
 baselineEndInd = artIndAll(baselineStartInd+1); 
 baselineStartInd = artIndAll(baselineStartInd); 
-dataBaseline = dataOneChannel(baselineStartInd:baselineEndInd); 
+dataBaseline = dataOneChannel;%(baselineStartInd:baselineEndInd); 
+%{
 baselineWin = (baselineEndInd-baselineStartInd) + samplerat*[-3,3]*ARwin; 
 baselineWin = baselineWin/2; baselineWin = round(baselineWin); 
 baselineWin(1) = max(1,baselineWin(1)); 
 baselineWin(2) = min(length(dataBaseline),baselineWin(2));
+%}
+baselineWin = [1, samplerat*3*ARwin];
 
 % Train the AR model on unfiltered data. 
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
@@ -205,11 +208,12 @@ filtdelay = filtord;
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 
 % downsample, if applicable
-downsampledFreq = SamplingFreq; samplerat = 1;
+downsampledFreq = SamplingFreq; 
 if doresample
     dataBaseline1 = movmean(dataBaseline1, samplerat);
     dataBaseline1 = downsample(dataBaseline1, samplerat);
     downsampledFreq = SamplingFreq/samplerat;
+    predWin = ceil(predWin)/samplerat;
 end
 
 % setup filtered AR model
@@ -343,9 +347,9 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % upsample, if applicable 
         if doresample
             dataPast = dataPastOrig;
-            tiFutureDown = 1:length(dataFuture); 
-            tiFutureUp = linspace(1, length(dataFuture), samplerat*length(dataFuture));
-            dataFuture = interp1(tiFutureDown, dataFuture, tiFutureUp, 'nearest');
+            tiFutureUp = 1:(samplerat*predWin);
+            tiFutureDown = tiFutureUp(samplerat:samplerat:end);
+            dataFuture = interp1(tiFutureDown, dataFuture, tiFutureUp, 'nearest','extrap');
             %dataFuture = filter(filtwts,1,dataFuture,filtinit);
             dataFuture = dataFuture';
         end
