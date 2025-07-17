@@ -224,15 +224,20 @@ ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt;
 
 % alternate filter with lower delay to be used in real time 
 [filtB, filtA] = butter(1, [loco, hico]./(SamplingFreq/2), "bandpass");
+filtB = -filtB; % unknown why 
 [h,f] = freqz(filtB, filtA, 4096);
 f = f*SamplingFreq/(2*pi);
+%{
 gd = -diff(unwrap(angle(h)))./diff(f); % group delay
 gd = gd/(2*pi);
 f = (f(2:end)+f(1:(end-1)))/2;
-fsel = (f >= loco) & (f <= hico);
 filtdelay = mean(gd(fsel)); % seconds 
+%}
+fsel = (f >= loco) & (f <= hico);
+gdlinfit = [f(fsel), ones(size(f(fsel)))]\unwrap(angle(h(fsel)));
+filtdelay = -gdlinfit(1)/(2*pi); % seconds 
 filtdelay = 2*filtdelay; % because filter is used twice
-filtdelay = ceil(filtdelay*SamplingFreq); % samples 
+filtdelay = round(filtdelay*SamplingFreq); % samples 
 filtdelay = 25;
 filtinit = zeros(max(length(filtA), length(filtB))-1, 1);
 
@@ -370,7 +375,6 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % smooth out the kink at past/future interface
         [dataPast, filtinit2] = filter(filtB,filtA,dataPast, filtinit);
         dataFuture = filter(filtB,filtA,dataFuture,filtinit2);
-        dataPast = -dataPast; dataFuture = -dataFuture;
 
         % Step 5: Phase and Frequency Estimation
         % Using the Hilbert transform, estimate the current instantaneous
