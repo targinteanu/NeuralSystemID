@@ -20,41 +20,44 @@
 function [phAll, phEst, frAll, frEst, toStim, phStim, W, R, dur] = ...
     offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength, ...
-    stepsize, donorm, doresample, showplots)
+    stepsize, donorm, doresample, useIIR, showplots)
 
 if height(dataOneChannel) > 1
     error('Data should be one channel only and horizontal.')
 end
 
 % signal to use default values if any arguments are not passed in
-if nargin < 16
+if nargin < 17
     showplots = false;
-    if nargin < 15
-        doresample = false;
-        if nargin < 14
-            donorm = false;
-            if nargin < 13
-                stepsize = [];
-                if nargin < 12
-                    packetLength = [];
-                    if nargin < 11
-                        artDur = [];
-                        if nargin < 10
-                            predWin = [];
-                            if nargin < 9
-                                ARlen = [];
-                                if nargin < 8
-                                    ARwin = [];
-                                    if nargin < 7
-                                        FreqRange = [];
-                                        if nargin < 6
-                                            PhaseOfInterest = [];
-                                            if nargin < 5
-                                                channelName = '';
-                                                if nargin < 4
-                                                    t = [];
-                                                    if nargin < 3
-                                                        StimTrainRec = [];
+    if nargin < 16
+        useIIR = false;
+        if nargin < 15
+            doresample = false;
+            if nargin < 14
+                donorm = false;
+                if nargin < 13
+                    stepsize = [];
+                    if nargin < 12
+                        packetLength = [];
+                        if nargin < 11
+                            artDur = [];
+                            if nargin < 10
+                                predWin = [];
+                                if nargin < 9
+                                    ARlen = [];
+                                    if nargin < 8
+                                        ARwin = [];
+                                        if nargin < 7
+                                            FreqRange = [];
+                                            if nargin < 6
+                                                PhaseOfInterest = [];
+                                                if nargin < 5
+                                                    channelName = '';
+                                                    if nargin < 4
+                                                        t = [];
+                                                        if nargin < 3
+                                                            StimTrainRec = [];
+                                                        end
                                                     end
                                                 end
                                             end
@@ -222,6 +225,7 @@ ARmdl_filt = ar(iddata(dataBaseline1', [], 1/downsampledFreq), ARlen, 'yw');
 ARmdl_filt = ARmdl_filt.A;
 ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
 
+if useIIR
 % alternate filter with lower delay to be used in real time 
 [filtB, filtA] = butter(2, [loco, hico]./(SamplingFreq/2), "bandpass");
 filtB = -filtB; % unknown why 
@@ -240,6 +244,11 @@ filtdelay = -gdlinfit(1)/(2*pi); % seconds
 filtdelay = round(filtdelay*SamplingFreq); % samples 
 %filtdelay = 25;
 filtinit = zeros(max(length(filtA), length(filtB))-1, 1);
+% alternatively, can be calculated by cross-correlation between filtered
+% and filtfilt baseline; choose lag of max r
+else
+    filtB = filtwts; filtA = 1;
+end
 
 %% Part B: Real-Time Algorithm 
 % Loop through each sample of data and perform the algorithm as if the data
