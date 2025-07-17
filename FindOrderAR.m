@@ -1,4 +1,5 @@
-function FindOrderAR(dtaBL1ch, predHzn, fbnd, doResample, maxOrd, numTests)
+function [bestOrd, bestAIC, mdl] = ...
+    FindOrderAR(dtaBL1ch, predHzn, fbnd, doResample, maxOrd, numTests)
 
 if nargin < 6
     numTests = [];
@@ -60,6 +61,10 @@ if ~isempty(fbnd)
 end
 
 %% compute
+
+disp('Testing models on different training sets.')
+progtick = .05; prog = 0;
+
 L = floor(height(dtaBL1ch)/numTests);
 datarat = L/maxOrd;
 disp(['Data size is ',num2str(datarat),' times variable size.'])
@@ -71,14 +76,16 @@ ts = round(ts);
 W = nan(numTests, maxOrd+1);
 r = 1;
 for t = ts
-    %tic
     trng = t + [-1,1]*(l-1);
     y = dtaBL1ch(trng(1):trng(2),:);
     mdl = ar(y, maxOrd, 'ls');
     W(r,:) = mdl.A;
     r = r+1;
-    %toc
-    %pause(.001)
+    prog = prog + 1/numTests;
+    if prog > progtick
+        disp([' - ',num2str(100*r/numTests),'% complete.'])
+        prog = 0;
+    end
 end
 
 %% plot
@@ -99,6 +106,31 @@ text(b.XData, b.YData, string(Wp), ...
 %}
 xlabel('tap'); ylabel('coefficient');
 legend('Expected', '99.9%CI');
+
+%% compute AICs
+
+disp('Testing models of different orders.')
+progtick = .05; prog = 0;
+
+AICtype = 'nAIC';
+
+AIC = nan(1,maxOrd);
+for ord = 1:maxOrd
+    mdl = ar(y, ord, 'ls');
+    AIC(ord) = aic(mdl, AICtype);
+    prog = prog + 1/maxOrd;
+    if prog > progtick
+        disp([' - ',num2str(100*ord/maxOrd),'% complete.'])
+        prog = 0;
+    end
+end
+
+figure; bar(AIC); grid on;
+xlabel('Model Order'); ylabel(AICtype); 
+title('Model Information Criterion');
+
+[bestAIC,bestOrd] = max(AIC);
+mdl = ar(dtaBL1ch, bestOrd, 'yw');
 
 %% forecast/predict
 
