@@ -222,6 +222,20 @@ ARmdl_filt = ar(iddata(dataBaseline1', [], 1/downsampledFreq), ARlen, 'yw');
 ARmdl_filt = ARmdl_filt.A;
 ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
 
+% alternate filter with lower delay to be used in real time 
+[filtB, filtA] = butter(1, [loco, hico]./(SamplingFreq/2), "bandpass");
+[h,f] = freqz(filtB, filtA, 4096);
+f = f*SamplingFreq/(2*pi);
+gd = -diff(unwrap(angle(h)))./diff(f); % group delay
+gd = gd/(2*pi);
+f = (f(2:end)+f(1:(end-1)))/2;
+fsel = (f >= loco) & (f <= hico);
+filtdelay = mean(gd(fsel)); % seconds 
+filtdelay = 2*filtdelay; % because filter is used twice
+filtdelay = ceil(filtdelay*SamplingFreq); % samples 
+filtdelay = 25;
+filtinit = zeros(max(length(filtA), length(filtB))-1, 1);
+
 %% Part B: Real-Time Algorithm 
 % Loop through each sample of data and perform the algorithm as if the data
 % were being received in real time. 
@@ -285,7 +299,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
 
     % Step 2: Filter 
     % Extract data within desired frequency band, e.g. beta
-    [dataOneChannelFilt(tinds),filtinit] = filter(filtwts,1, ...
+    [dataOneChannelFilt(tinds),filtinit] = filter(filtB,filtA, ...
         dataOneChannel(tinds), filtinit);
 
     ind0 = tinds(1) - ARwin;
@@ -354,8 +368,9 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             dataFuture = dataFuture';
         end
         % smooth out the kink at past/future interface
-        [dataPast, filtinit2] = filter(filtwts,1,dataPast, filtinit);
-        dataFuture = filter(filtwts,1,dataFuture,filtinit2);
+        [dataPast, filtinit2] = filter(filtB,filtA,dataPast, filtinit);
+        dataFuture = filter(filtB,filtA,dataFuture,filtinit2);
+        dataPast = -dataPast; dataFuture = -dataFuture;
 
         % Step 5: Phase and Frequency Estimation
         % Using the Hilbert transform, estimate the current instantaneous
@@ -405,7 +420,7 @@ W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
 R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 filtdelay = ceil(filtdelay/2);
 %toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
-dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
+%dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
 
 %% Part C: Evaluate Real-Time results 
 % Compare simulated real-time output with offline-computed ground truth 
