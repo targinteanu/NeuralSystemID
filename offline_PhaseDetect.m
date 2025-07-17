@@ -184,7 +184,7 @@ ARmdl_unfilt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
 % filtered data. 
 
 % filtering bound rules 
-minfac         = 1;    % this many (lo)cutoff-freq cycles in filter
+minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
 min_filtorder  = 15;   % minimum filter length
 
 % filter order 
@@ -203,8 +203,8 @@ dataBaseline = filtfilt(filtwts,1,dataBaseline);
 %[dataBaseline, filtwts] = Myeegfilt(dataBaseline,SamplingFreq,loco,hico);
 filtord = length(filtwts);
 filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
-%filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
-filtdelay = filtord;
+filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
+%filtdelay = filtord;
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 
 % downsample, if applicable
@@ -223,7 +223,7 @@ ARmdl_filt = ARmdl_filt.A;
 ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
 
 % alternate filter with lower delay to be used in real time 
-[filtB, filtA] = butter(1, [loco, hico]./(SamplingFreq/2), "bandpass");
+[filtB, filtA] = butter(2, [loco, hico]./(SamplingFreq/2), "bandpass");
 filtB = -filtB; % unknown why 
 [h,f] = freqz(filtB, filtA, 4096);
 f = f*SamplingFreq/(2*pi);
@@ -236,9 +236,9 @@ filtdelay = mean(gd(fsel)); % seconds
 fsel = (f >= loco) & (f <= hico);
 gdlinfit = [f(fsel), ones(size(f(fsel)))]\unwrap(angle(h(fsel)));
 filtdelay = -gdlinfit(1)/(2*pi); % seconds 
-filtdelay = 2*filtdelay; % because filter is used twice
+%filtdelay = 2*filtdelay; % because filter is used twice
 filtdelay = round(filtdelay*SamplingFreq); % samples 
-filtdelay = 25;
+%filtdelay = 25;
 filtinit = zeros(max(length(filtA), length(filtB))-1, 1);
 
 %% Part B: Real-Time Algorithm 
@@ -369,12 +369,12 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             tiFutureUp = 1:(samplerat*predWin);
             tiFutureDown = tiFutureUp(samplerat:samplerat:end);
             dataFuture = interp1(tiFutureDown, dataFuture, tiFutureUp, 'nearest','extrap');
-            %dataFuture = filter(filtwts,1,dataFuture,filtinit);
+            dataFuture = filter(filtB,filtA,dataFuture,filtinit);
             dataFuture = dataFuture';
         end
         % smooth out the kink at past/future interface
-        [dataPast, filtinit2] = filter(filtB,filtA,dataPast, filtinit);
-        dataFuture = filter(filtB,filtA,dataFuture,filtinit2);
+        %[dataPast, filtinit2] = filter(filtB,filtA,dataPast, filtinit);
+        %dataFuture = filter(filtB,filtA,dataFuture,filtinit2);
 
         % Step 5: Phase and Frequency Estimation
         % Using the Hilbert transform, estimate the current instantaneous
@@ -422,7 +422,7 @@ phEst = [phEst(filtdelay:end), nan(1,filtdelay-1)];
 frEst = [frEst(filtdelay:end), nan(1,filtdelay-1)]; 
 W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
 R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
-filtdelay = ceil(filtdelay/2);
+%filtdelay = ceil(filtdelay/2);
 %toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
 %dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
 
