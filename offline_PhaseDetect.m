@@ -378,7 +378,9 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             tiFutureUp = 1:(samplerat*predWin);
             tiFutureDown = tiFutureUp(samplerat:samplerat:end);
             dataFuture = interp1(tiFutureDown, dataFuture, tiFutureUp, 'nearest','extrap');
+            dataFuture = [dataPast(end-filtdelay+1:end)', dataFuture];
             dataFuture = filter(filtB,filtA,dataFuture,filtinit);
+            dataFuture = dataFuture(filtdelay:end);
             dataFuture = dataFuture';
         end
         % smooth out the kink at past/future interface
