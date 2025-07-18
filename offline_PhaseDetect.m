@@ -451,22 +451,24 @@ W = W(t1:t2,:); R = R(t1:t2,:);
 if showplots
 
 % plot artifact removal 
-figure; 
-ax(1) = subplot(211); 
-plot(t, dataOneChannelWithArtifact, 'k'); 
-grid on; hold on; 
-plot(t, dataOneChannel, 'b'); 
-hold on; plot(t, dataOneChannel.*(isArt), '--r');
-if artDur > 0
-    title('Artifact Removal'); 
-else
-    title('Artifact Removal Disabled');
+if artdur > 0
+    figure; 
+    ax(1) = subplot(211); 
+    plot(t, dataOneChannelWithArtifact, 'k'); 
+    grid on; hold on; 
+    plot(t, dataOneChannel, 'b'); 
+    hold on; plot(t, dataOneChannel.*(isArt), '--r');
+    if artDur > 0
+        title('Artifact Removal'); 
+    else
+        title('Artifact Removal Disabled');
+    end
+    ylabel(channelName);
+    ax(2) = subplot(212); 
+    plot(t, StimTrainRec); 
+    ylabel('ainp1');
+    grid on; linkaxes(ax, 'x'); 
 end
-ylabel(channelName);
-ax(2) = subplot(212); 
-plot(t, StimTrainRec); 
-ylabel('ainp1');
-grid on; linkaxes(ax, 'x'); 
 
 % compare instantaneous phase, frequency: estimated vs actual
 %phAll2 = sin(phAll); phEst2 = sin(phEst);
