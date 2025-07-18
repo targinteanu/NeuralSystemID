@@ -216,14 +216,13 @@ if doresample
     dataBaseline1 = movmean(dataBaseline1, samplerat);
     dataBaseline1 = downsample(dataBaseline1, samplerat);
     downsampledFreq = SamplingFreq/samplerat;
-    predWin = ceil(predWin/samplerat);
+    %predWin = ceil(predWin/samplerat);
 end
 
 % setup filtered AR model
 disp(['Data size is ',num2str(length(dataBaseline1)/ARlen),' times variable size.'])
 ARmdl_filt = ar(iddata(dataBaseline1', [], 1/downsampledFreq), ARlen, 'yw');
 ARmdl_filt = ARmdl_filt.A;
-ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
 
 if useIIR
 % alternate filter with lower delay to be used in real time 
@@ -265,6 +264,10 @@ w = -ARmdl_filt(2:end)/ARmdl_filt(1);
 w = fliplr(w);
 W = nan(length(dataOneChannel), length(w)); 
 w0 = w;
+if doresample
+    ARmdl_filt = upsamplemdl(ARmdl_filt);
+end
+ARmdl_filt_orig = ARmdl_filt; ARmdl_filt_new = ARmdl_filt; 
 
 % transform model into eigenvalue domain for stability
 r = roots([1, -fliplr(w)])';
@@ -319,6 +322,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
     ind0 = tinds(1) - ARwin;
     if ind0 > 0
         dataPast = dataOneChannelFilt(ind0:tind)';
+        %{
         dataPastOrig = dataPast;
         % downsample, if applicable 
         if doresample
@@ -326,13 +330,15 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             dataPast = dataPast(1:samplerat:end);
             dataPast = flipud(dataPast);
         end
+        %}
 
         % Step 3: update AR coefficients 
         % Update weights using gradient descent
         if stepsize > 0
             r1 = r;
-            w = -ARmdl_filt(2:end)/ARmdl_filt(1); 
-            w = fliplr(w); w1 = w;
+            %w = -ARmdl_filt(2:end)/ARmdl_filt(1); 
+            %w = fliplr(w); 
+            w1 = w;
             x = dataPast((end-ARlen):(end-1));
             if (artDur <= 0) || ~isArt(tind)
                 if stbl
@@ -344,6 +350,9 @@ for tind = packetLength:packetLength:length(dataOneChannel)
                 end
                 if max(abs(r)) < 1 % ensure stability
                     ARmdl_filt_new = [norm(w)/norm(w0), -fliplr(w)];
+                    if doresample
+                        ARmdl_filt_new = upsamplemdl(ARmdl_filt_new);
+                    end
                 else
                     w = w1; r = r1;
                 end
@@ -354,7 +363,6 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % Predict some duration ahead using the AR model; this will be used
         % to pad the Hilbert transform
         dataFuture = myFastForecastAR(ARmdl_filt_new, dataPast, predWin);
-        W(tind,:) = w; R(tind,:) = r;
         if stepsize > 0
             % prevent updated model from blowing up 
             if norm(dataFuture) <= 10*norm(dataPast) % set blowup threshold here
@@ -362,16 +370,18 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             else
                 % revert 
                 dataFuture = myFastForecastAR(ARmdl_filt, dataPast, predWin);
-                W(tind,:) = w1; R(tind,:) = r1;
+                w = w1; r = r1;
                 if norm(dataFuture) > 100*norm(dataPast)
                     dataFuture = myFastForecastAR(ARmdl_filt_orig, dataPast, predWin);
-                    W(tind,:) = w0; R(tind,:) = r1;
+                    w = w0; r = r0;
                     if norm(dataFuture) > norm(dataPast)
                         %keyboard
                     end
                 end
             end
         end
+        W(tind,:) = w; R(tind,:) = r;
+        %{
         % upsample, if applicable 
         if doresample
             dataPast = dataPastOrig;
@@ -383,9 +393,10 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             dataFuture = dataFuture(filtdelay:end);
             dataFuture = dataFuture';
         end
+        %}
         % smooth out the kink at past/future interface
         %[dataPast, filtinit2] = filter(filtB,filtA,dataPast, filtinit);
-        %dataFuture = filter(filtB,filtA,dataFuture,filtinit2);
+        dataFuture = filter(filtB,filtA,dataFuture,filtinit);
 
         % Step 5: Phase and Frequency Estimation
         % Using the Hilbert transform, estimate the current instantaneous
@@ -536,6 +547,12 @@ frAll = frAll(~isnan(frEst)); frEst = frEst(~isnan(frEst));
 
 %% helper(s) 
 % gradient descent update of AR model weights 
+
+    function mdl = upsamplemdl(mdl)
+        % upsample AR mdl
+        mdl = [mdl; zeros(samplerat-1, width(mdl))];
+        mdl = mdl(:)';
+    end
 
 
     % Update based on gradient wrt weights; no guarantee of stability.
