@@ -112,7 +112,7 @@ legend('Expected', '99.9%CI');
 disp('Testing models of different orders.')
 progtick = .05; prog = 0;
 
-AICtype = 'nAIC';
+AICtype = 'BIC';
 
 AIC = nan(1,maxOrd);
 for ord = 1:maxOrd
@@ -129,7 +129,7 @@ figure; bar(AIC); grid on;
 xlabel('Model Order'); ylabel(AICtype); 
 title('Model Information Criterion');
 
-[bestAIC,bestOrd] = max(AIC);
+[bestAIC,bestOrd] = min(AIC);
 mdl = ar(dtaBL1ch, bestOrd, 'yw');
 
 %% forecast/predict
