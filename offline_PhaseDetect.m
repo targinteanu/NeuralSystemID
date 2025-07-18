@@ -451,7 +451,7 @@ W = W(t1:t2,:); R = R(t1:t2,:);
 if showplots
 
 % plot artifact removal 
-if artdur > 0
+if artDur > 0
     figure; 
     ax(1) = subplot(211); 
     plot(t, dataOneChannelWithArtifact, 'k'); 
