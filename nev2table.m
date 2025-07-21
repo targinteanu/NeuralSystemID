@@ -1,4 +1,4 @@
-function [T, packetLoss] = nev2table(nevOrFilename)
+function T = nev2table(nevOrFilename)
 % Extract data from blackrock nev files using the NPMK and output data as 
 % evt table T. Input nevOrFilename can be the data structure obtained by
 % running the NPMK (i.e. openNEV) or a filepath to a .ev or .mat file; If
