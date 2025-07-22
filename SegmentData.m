@@ -176,11 +176,11 @@ SamplingFreq = inputdlg('Select main frequency to resample:', ...
 SamplingFreq = eval(SamplingFreq{1});
 [~,SFi] = min(abs(SampleRates-SamplingFreq));
 MainTable = NStbls{SFi};
-MainTable = smartretime(MainTable, 1/SampleRates(SFi));
+MainTable = myRetime(MainTable, SampleRates(SFi), nan);
 MainTable = retime(MainTable, 'regular', 'nearest', 'SampleRate',SamplingFreq);
 SFj = true(size(SampleRates)); SFj(SFi) = true; SFj = find(SFj);
 for SFi = SFj
-    tbl = smartretime(NStbls{SFi}, 1/SampleRates(SFi));
+    tbl = myRetime(NStbls{SFi}, SampleRates(SFi), nan);
     SampleRatio = ceil(SampleRates(SFi)/SamplingFreq);
     if SampleRatio > 1
         tbl.Variables = movmean(tbl.Variables, SampleRatio, 'omitnan');
@@ -204,15 +204,17 @@ for SFi = 1:width(NStbls)
     disctype = "Data Loss";
         discevt = contains(evtbl.EventLabels, disctype);
         discont = [discont; evtbl.EventEnds(discevt)];
+    inan = isnan(NStbls{SFi}.Variables); inan = sum(inan,2);
+    discont = [discont; NStbls{SFi}.Time(find(inan))];
 end
 
 % canditate periods in between triggers, etc
 candwinds = [];
 boundtime = seconds(.4); % sec 
-trigend = [timeBegin; trigend];
-trigstart = [trigstart; timeEnd];
-for itrig = 1:length(trigstart)
-    t1 = trigend(itrig)+boundtime; t2 = trigstart(itrig)-boundtime;
+trigend_ = [timeBegin; trigend];
+trigstart_ = [trigstart; timeEnd];
+for itrig = 1:length(trigstart_)
+    t1 = trigend_(itrig)+boundtime; t2 = trigstart_(itrig)-boundtime;
     disci = (discont > t1) & (discont < t2);
     disci = discont(disci);
     if ~isempty(disci)        
@@ -223,7 +225,7 @@ for itrig = 1:length(trigstart)
     end
     candwinds = [candwinds; t1, t2];
 end
-candwindslong = candwinds(:,2) - candwinds(1,:) >= minutes(3); % MIN DURATION
+candwindslong = (candwinds(:,2) - candwinds(:,1)) >= minutes(3); % MIN DURATION
 candwinds = candwinds(candwindslong,:);
 
 % outlier detection 
@@ -237,25 +239,31 @@ end
 % outliers during candidate windows 
 OLwinds = zeros(height(candwinds),1);
 for iwind = 1:height(OLwinds)
-    trng = timerange(candwinds(iwind,1), t2 = candwinds(iwind,2));
+    trng = timerange(candwinds(iwind,1), candwinds(iwind,2));
     t1 = timeEnd; t2 = timeBegin;
     for SFi = 1:width(NStbls)
         io = OLtbls{SFi}(trng,:);
         t1 = min(t1, min(io.Time)); t2 = max(t2, max(io.Time));
-        OLwinds(iwind) = OLwinds(iwind) + sum(io.Variables);
+        OLwinds(iwind) = OLwinds(iwind) + sum(io.Variables.^2);
     end
     OLwinds(iwind) = OLwinds(iwind)/seconds(t2-t1);
 end
 
-%% helpers
-function TTout = smartretime(TTin, TsOrig)
-% there may be a faster way to do this
-TTout = retime(TTin, 'regular', 'nearest', 'TimeStep',seconds(TsOrig));
-for r = 1:height(TTout)
-    t = TTout.Time(r);
-    dt = min(seconds(TTin.Time-t));
-    if abs(dt) > 2*TsOrig
-        TTout{r,:} = nan;
-    end
-end
+%% user confirms baseline 
+[~,iwind] = min(OLwinds);
+figure; myStackedPlot(MainTable, ...
+    [channelNameRec, channelNameStim, channelNameInspect]);
+trng = inputdlg({'Start', 'End'}, 'BASELINE Segment', ...
+    1, string(candwinds(iwind,:)));
+trng = datetime(trng, 'TimeZone',candwinds.TimeZone);
+trng = timerange(trng(1), trng(2));
+MainTableBaseline = mySelect(MainTable, trng);
+tblsBaseline = cellfun(@(T) mySelect(T,trng), NStbls, 'UniformOutput',false);
+
+% nan check 
+
+%% helpers 
+function Tbl = mySelect(Tbl, times)
+Tbl = Tbl(times,:);
+Tbl.Properties.Events = Tbl.Properties.Events(times,:);
 end
