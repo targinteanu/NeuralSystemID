@@ -4,6 +4,12 @@ if nargin < 1
     tRangesIn = [];
 end
 
+if isempty(tRangesIn)
+    tzone = '';
+else
+    tzone = tRangesIn.TimeZone;
+end
+
 tRangesOut = [];
 
 fig = uifigure("WindowStyle","modal");
@@ -19,16 +25,18 @@ newmbtn = @(n) uibutton(fig, 'push', 'Position',[500,h0-(n-1)*30,20,20], ...
     'Text','-', 'ButtonPushedFcn', @(src,evt) remrow(n));
 
 newsef = @(n, txt) uieditfield(fig, 'text', ...
-    'Position',[100,h0-(n-1)*30,100,20], 'Value',txt);
+    'Position',[100,h0-(n-1)*30,150,20], 'Value',txt);
 neweef = @(n, txt) uieditfield(fig, 'text', ...
-    'Position',[300,h0-(n-1)*30,100,20], 'Value',txt);
+    'Position',[300,h0-(n-1)*30,150,20], 'Value',txt);
 
+btns = [newpbtn(1), newmbtn(1)]; 
+etfs = [newsef(1,'NaT'), neweef(1,'NaT')];
 if ~height(tRangesIn)
     tRangesIn = [NaT, NaT];
 end
 for n = 1:height(tRangesIn)
-    btns = [newpbtn(n), newmbtn(n)];
-    etfs = [newsef(n, string(tRangesIn(n,1))), ...
+    btns(n,:) = [newpbtn(n), newmbtn(n)];
+    etfs(n,:) = [newsef(n, string(tRangesIn(n,1))), ...
             neweef(n, string(tRangesIn(n,2)))];
 end
 
@@ -57,8 +65,8 @@ end
         for r = 1:height(etfs)
             if etfs(r,1).Visible && etfs(r,2).Visible
                 tRangesOut = [tRangesOut; ...
-                    datetime(etfs(r,1).Value), ...
-                    datetime(etfs(r,2).Value)];
+                    datetime(etfs(r,1).Value, 'TimeZone',tzone), ...
+                    datetime(etfs(r,2).Value, 'TimeZone',tzone)];
             end
         end
         pause(.01); drawnow; pause(.01);

@@ -376,10 +376,10 @@ tblsBaseline = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
 
 %% user confirms marked stimulation 
 figure(fig1);
-trngTrig = VariableCountIntervalSelector(trigwinds);
+trngTrig = VariableCountIntervalSelector(trigwinds)';
 tblTrigMain = []; tblsTrig = cell(size(NStbls));
-for itrig = 1:height(trngTrig)
-    trngTrig_ = trngTrig(itrig,:);
+for itrig = 1:width(trngTrig)
+    trngTrig_ = trngTrig(:,itrig);
     plottrng(trngTrig_, [1,0,0], hAXs); % indicate on plot
     tblTrigMain = [tblTrigMain; mySelect(MainTable, trngTrig_, true)];
     for SFi = 1:width(tblsTrig)
