@@ -1,3 +1,6 @@
+%% definitions 
+t2rng = @(tvector) timerange(tvector(1), tvector(2));
+
 %% user selects folder; necessary files are pulled 
 folder = uigetdir; 
 [~,pName] = fileparts(folder)
@@ -178,7 +181,7 @@ SamplingFreq = eval(SamplingFreq{1});
 MainTable = NStbls{SFi};
 MainTable = myRetime(MainTable, SampleRates(SFi), nan);
 MainTable = retime(MainTable, 'regular', 'nearest', 'SampleRate',SamplingFreq);
-SFj = true(size(SampleRates)); SFj(SFi) = true; SFj = find(SFj);
+SFj = true(size(SampleRates)); SFj(SFi) = false; SFj = find(SFj);
 for SFi = SFj
     tbl = myRetime(NStbls{SFi}, SampleRates(SFi), nan);
     SampleRatio = ceil(SampleRates(SFi)/SamplingFreq);
@@ -251,16 +254,45 @@ end
 
 %% user confirms baseline 
 [~,iwind] = min(OLwinds);
-figure; myStackedPlot(MainTable, ...
+fig1 = figure; [~,hAXs] = myStackedPlot(MainTable, ...
     [channelNameRec, channelNameStim, channelNameInspect]);
-trng = inputdlg({'Start', 'End'}, 'BASELINE Segment', ...
+blrng = inputdlg({'Start', 'End'}, 'BASELINE Segment', ...
     1, string(candwinds(iwind,:)));
-trng = datetime(trng, 'TimeZone',candwinds.TimeZone);
-trng = timerange(trng(1), trng(2));
-MainTableBaseline = mySelect(MainTable, trng);
-tblsBaseline = cellfun(@(T) mySelect(T,trng), NStbls, 'UniformOutput',false);
+blrng = datetime(blrng, 'TimeZone',candwinds.TimeZone);
+MainTableBaseline = mySelect(MainTable, t2rng(blrng));
+tblsBaseline = cellfun(@(T) mySelect(T,t2rng(blrng)), NStbls, 'UniformOutput',false);
+tblsBaseline = [{MainTableBaseline}, tblsBaseline];
 
 % nan check 
+tnan = [];
+for SFi = 1:width(tblsBaseline)
+    TBLi = tblsBaseline{SFi};
+    inan = sum(isnan(TBLi.Variables),2);
+    tnan = [tnan; TBLi.Time(find(inan))];
+end
+if ~isempty(tnan)
+    for hAX = hAXs'
+        hold on; 
+        plot(tnan, zeros(size(tnan)), '*r');
+    end
+    xlim(blrng)
+    trimsel = questdlg('Selection contains missing/nan values.', ...
+        'Reselect due to nan values', ...
+        'Start after nan', 'End before nan', 'Proceed anyway', ...
+        'Proceed anyway');
+    if isempty(trimsel)
+        error('Selection must be made.')
+    elseif strcmp(trimsel, 'Start after nan')
+        blrng(1) = max(tnan) + seconds(.001);
+    elseif strcmp(trimsel, 'End before nan')
+        blrng(2) = min(tnan) - seconds(.001);
+    end
+    if ~strcmp(trimsel, 'Proceed anyway')
+        tblsBaseline = cellfun(@(T) mySelect(T,t2rng(blrng)), ...
+            tblsBaseline, 'UniformOutput',false);
+        MainTableBaseline = tblsBaseline{1};
+    end
+end
 
 %% helpers 
 function Tbl = mySelect(Tbl, times)
