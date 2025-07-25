@@ -310,6 +310,7 @@ if toshowas(1)
     subplot(6,1,1);
     plotstem(BaselineThetaPower, varnames); 
     ylabel('\theta Power'); grid on; axis tight;
+    xl = xlim();
     subplot(6,1,2);
     plotstem(BaselineBetaPower,  varnames); 
     ylabel('\beta Power'); grid on; axis tight;
@@ -324,7 +325,8 @@ if toshowas(1)
     ylabel('# OutL.'); grid on; axis tight;
     subplot(6,1,6);
     text(1:length(varnames), zeros(size(varnames)), vardescs, ...
-        'Rotation',0, 'HorizontalAlignment','center', 'VerticalAlignment','middle');
+        'Rotation',90, 'HorizontalAlignment','center', 'VerticalAlignment','middle');
+    xlim(xl);
     sgtitle('Baseline Properties')
 end
 
