@@ -275,6 +275,8 @@ pause(.01); drawnow; pause(.01);
 BaselineData = tblBaselineMain.Variables;
 varnames = tblBaselineMain.Properties.VariableNames; 
 vardescs = tblBaselineMain.Properties.VariableDescriptions;
+vardescs = cellfun(@(d) [d(1:3),'...',d((end-20):end)], ...
+    vardescs, 'UniformOutput',false);
 
 % ignore nan
 BaselineData_inan = sum(isnan(BaselineData),2);
@@ -326,7 +328,7 @@ if toshowas(1)
     subplot(6,1,6);
     text(1:length(varnames), zeros(size(varnames)), vardescs, ...
         'Rotation',90, 'HorizontalAlignment','center', 'VerticalAlignment','middle');
-    xlim(xl);
+    xlim(xl); xticks([]); yticks([]);
     sgtitle('Baseline Properties')
 end
 

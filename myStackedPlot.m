@@ -40,7 +40,7 @@ for c = 1:N
         if ~sum(strcmp(tbl.Properties.VariableNames, v))
             iv = find(contains(tbl.Properties.VariableNames, v));
             if isempty(iv)
-                error(['No table variables closely match ',v]);
+                error(['No table variables closely match ',char(v)]);
             end
             if length(iv) > 1
                 warning(['Multiple table variables closely match ',v,...
@@ -55,6 +55,18 @@ for c = 1:N
             u = '';
         else
             u = tbl.Properties.VariableUnits{iv};
+        end
+        if isempty(tbl.Properties.VariableDescriptions)
+            d = '';
+        else
+            d = tbl.Properties.VariableDescriptions{iv};
+            if length(d) > 20 % adjust max length here
+                d = [d(1:20),'...'];
+            end
+            di = find(d==' '); % comma instead?
+            if ~isempty(di)
+                d = [d(1:di),'...'];
+            end
         end
         if ~isempty(IsOutlier)
             io = IsOutlier(:,iv);
@@ -82,7 +94,7 @@ for c = 1:N
     else
         xlabel('Time');
     end
-    ylabel({v,['(',u,')']});
+    ylabel({v,['(',u,')'],d});
 
     % plot events
     if ~isempty(evt)
