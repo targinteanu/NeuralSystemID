@@ -156,11 +156,11 @@ for chname = channelNameTrig
 end
 
 % group triggers by time 
-trigboundtime = 1; % sec
+trigboundtime = 10; % sec (defines a burst of triggers)
 trigtime = trigtbl.Time; % all trigger types!
 trigbound = seconds(diff(trigtime)) > trigboundtime;
-trigstart = trigtime([trigbound; false]); 
-trigend = trigtime([false; trigbound]);
+trigend = trigtime([trigbound; false]); 
+trigstart = trigtime([false; trigbound]);
 trigstart = [trigtime(1); trigstart];
 trigend = [trigend; trigtime(end)];
 trigwinds = [trigstart, trigend];
