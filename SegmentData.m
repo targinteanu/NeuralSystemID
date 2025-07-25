@@ -1,6 +1,3 @@
-%% definitions 
-t2rng = @(tvector) timerange(tvector(1), tvector(2));
-
 %% user selects folder; necessary files are pulled 
 folder = uigetdir; 
 [~,pName] = fileparts(folder)
@@ -259,8 +256,8 @@ fig1 = figure; [~,hAXs] = myStackedPlot(MainTable, ...
 trngBaseline = inputdlg({'Start', 'End'}, 'BASELINE Segment', ...
     1, string(candwinds(iwind,:)));
 trngBaseline = datetime(trngBaseline, 'TimeZone',candwinds.TimeZone);
-tblBaselineMain = mySelect(MainTable, t2rng(trngBaseline));
-tblsBaseline = cellfun(@(T) mySelect(T,t2rng(trngBaseline)), ...
+tblBaselineMain = mySelect(MainTable, trngBaseline, true);
+tblsBaseline = cellfun(@(T) mySelect(T, trngBaseline, true), ...
     NStbls, 'UniformOutput',false);
 tblsBaseline = [{tblBaselineMain}, tblsBaseline];
 
@@ -269,23 +266,32 @@ tblsBaseline = [{tblBaselineMain}, tblsBaseline];
 tblBaselineMain = tblsBaseline{1};
 
 % indicate on plot
-xrng = trngBaseline;
-xrng = [xrng, xrng]'; xrng = xrng(:)';
-xrng = [xrng, xrng(1)]; 
-for hAX = hAXs'
-    yrng = ylim(hAX); 
-    yrng = [yrng, fliplr(yrng)];
-    yrng = [yrng, yrng(1)];
-    patch(hAX, xrng, yrng, [0,0,1], 'FaceAlpha',.5);
-end
+plottrng(trngBaseline, [0,0,1], hAXs);
 
 %% user confirms marked stimulation 
+figure(fig1);
+trngTrig = VariableCountIntervalSelector(trigwinds);
+tblTrigMain = []; tblsTrig = cell(size(NStbls));
+for itrig = 1:height(trngTrig)
+    trngTrig_ = trngTrig(itrig,:);
+    plottrng(trngTrig_, [1,0,0], hAXs); % indicate on plot
+    tblTrigMain = [tblTrigMain; mySelect(MainTable, trngTrig_, true)];
+    for SFi = 1:width(tblsTrig)
+        tblsTrig{SFi} = [tblsTrig{SFi}; mySelect(NStbls{SFi}, trngTrig_, true)];
+    end
+end
+tblTrigMain = myRetime(tblTrigMain, SamplingFreq, nan);
+tblTrigMain = retime(tblTrigMain, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+tblsTrig = [{tblTrigMain}, tblsTrig];
 
 %% show channel stats to reject noisy channels 
 
 %% helpers 
 
-function Tbl = mySelect(Tbl, times)
+function Tbl = mySelect(Tbl, times, selbetween)
+if selbetween
+    times = timerange(times(1), times(2));
+end
 Tbl = Tbl(times,:);
 Tbl.Properties.Events = Tbl.Properties.Events(times,:);
 end
@@ -314,8 +320,20 @@ if ~isempty(tnan)
         trngBasleline(2) = min(tnan) - seconds(.001);
     end
     if ~strcmp(trimsel, 'Proceed anyway')
-        tbls = cellfun(@(T) mySelect(T,t2rng(trngBasleline)), ...
+        tbls = cellfun(@(T) mySelect(T, trngBasleline, true), ...
             tbls, 'UniformOutput',false);
     end
+end
+end
+
+function plottrng(trng, colr, hAXs)
+xrng = trng;
+xrng = [xrng, xrng]'; xrng = xrng(:)';
+xrng = [xrng, xrng(1)]; 
+for hAX = hAXs'
+    yrng = ylim(hAX); 
+    yrng = [yrng, fliplr(yrng)];
+    yrng = [yrng, yrng(1)];
+    patch(hAX, xrng, yrng, colr, 'FaceAlpha',.5);
 end
 end
