@@ -268,6 +268,108 @@ tblBaselineMain = tblsBaseline{1};
 % indicate on plot
 plottrng(trngBaseline, [0,0,1], hAXs);
 
+pause(.01); drawnow; pause(.01);
+
+%% show channel stats
+% altered version of tblChannelSummary.m
+BaselineData = tblBaselineMain.Variables;
+varnames = tblBaselineMain.Properties.VariableNames; 
+vardescs = tblBaselineMain.Properties.VariableDescriptions;
+
+% ignore nan
+BaselineData_inan = sum(isnan(BaselineData),2);
+BaselineData = BaselineData(~BaselineData_inan, :);
+
+% band(s) power and range 
+BaselineSD = std(BaselineData);
+BaselineBetaPower = bandpower(BaselineData, SamplingFreq, [13,30]);
+BaselineThetaPower = bandpower(BaselineData, SamplingFreq, [4,9]);
+BaselineGammaPower = bandpower(BaselineData, SamplingFreq, [30,80]);
+
+% # of outliers 
+io = isoutlier(BaselineData, 'mean');
+BaselineNumOL = sum(io,1);
+
+% display format selection 
+toshowas = [false, false]; % stem, grid
+showas = questdlg('Show channel data as:', 'Select data display format', ...
+    'stem', 'grid', 'both', 'both');
+if strcmp(showas, 'stem')
+    toshowas(1) = true;
+end
+if strcmp(showas, 'grid')
+    toshowas(2) = true;
+end
+if strcmp(showas, 'both')
+    toshowas(:) = true;
+end
+
+% stem display
+if toshowas(1)
+    fig2 = figure;
+    subplot(6,1,1);
+    plotstem(BaselineThetaPower, varnames); 
+    ylabel('\theta Power'); grid on; axis tight;
+    subplot(6,1,2);
+    plotstem(BaselineBetaPower,  varnames); 
+    ylabel('\beta Power'); grid on; axis tight;
+    subplot(6,1,3);
+    plotstem(BaselineGammaPower, varnames); 
+    ylabel('\gamma Power'); grid on; axis tight;
+    subplot(6,1,4);
+    plotstem(BaselineSD, varnames); 
+    ylabel('S.D.'); grid on; axis tight;
+    subplot(6,1,5);
+    plotstem(BaselineNumOL, varnames); 
+    ylabel('# OutL.'); grid on; axis tight;
+    subplot(6,1,6);
+    text(1:length(varnames), zeros(size(varnames)), vardescs, ...
+        'Rotation',0, 'HorizontalAlignment','center', 'VerticalAlignment','middle');
+    sgtitle('Baseline Properties')
+end
+
+% grid display 
+if toshowas(2)
+    fig3 = figure;
+    subplot(1,5,1); 
+    plotgrid(BaselineThetaPower, varnames, 21, 3); 
+    title('\theta Power'); axis tight;
+    subplot(1,5,2); 
+    plotgrid(BaselineBetaPower,  varnames, 21, 3); 
+    title('\beta Power'); axis tight;
+    subplot(1,5,3); 
+    plotgrid(BaselineGammaPower, varnames, 21, 3); 
+    title('\gamma Power'); axis tight;
+    subplot(1,5,4); 
+    plotgrid(BaselineSD, varnames, 21, 3); 
+    title('S.D.'); axis tight;
+    subplot(1,5,5); 
+    plotgrid(BaselineNumOL, varnames, 21, 3); 
+    title('# OutL.'); axis tight;
+    sgtitle('Baseline Properties')
+end
+
+pause(.01); drawnow; pause(.01);
+
+%% inspect and reject noisy channels 
+
+% final inspection 
+channelIndexInspect2 = listdlg("PromptString","Inspect Channel(s)", ...
+    "ListString",chnames, "SelectionMode","multiple"); 
+channelNameInspect2 = chnames(channelIndexInspect2);
+fig4 = figure; myStackedPlot(MainTable, channelNameInspect2);
+
+% rejection 
+channelIndexReject = listdlg("PromptString","REJECT Channel(s)", ...
+    "ListString",chnames, "SelectionMode","multiple"); 
+channelNameReject = chnames(channelIndexReject);
+MainTable = removevars(MainTable, channelNameReject);
+tblBaselineMain = removevars(tblBaselineMain, channelNameReject);
+NStbls = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
+    NStbls, 'UniformOutput',false);
+tblsBaseline = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
+    tblsBaseline, 'UniformOutput',false);
+
 %% user confirms marked stimulation 
 figure(fig1);
 trngTrig = VariableCountIntervalSelector(trigwinds);
@@ -284,7 +386,7 @@ tblTrigMain = myRetime(tblTrigMain, SamplingFreq, nan);
 tblTrigMain = retime(tblTrigMain, 'regular', 'nearest', 'SampleRate',SamplingFreq);
 tblsTrig = [{tblTrigMain}, tblsTrig];
 
-%% show channel stats to reject noisy channels 
+pause(.01); drawnow; pause(.01);
 
 %% helpers 
 
@@ -336,4 +438,30 @@ for hAX = hAXs'
     yrng = [yrng, yrng(1)];
     patch(hAX, xrng, yrng, colr, 'FaceAlpha',.5);
 end
+end
+
+function plt = plotstem(vals, names)
+plt = stem(vals); 
+xticks(1:length(vals)); xticklabels(names);
+end
+
+function [img, txt] = plotgrid(vals, names, nrow, ncol)
+for n = 1:length(names)
+    names{n} = [num2str(n),': ',names{n}];
+end
+valgrid = nan(nrow, ncol);
+for idx = 1:min(nrow*ncol, length(vals))
+    valgrid(idx) = vals(idx);
+end
+img = imagesc(valgrid); colorbar;
+hold on;
+[X,Y] = meshgrid(1:ncol, 1:nrow);
+names = names(1:min((ncol*nrow), length(names)));
+X = X(:); X = X(1:length(names));
+Y = Y(:); Y = Y(1:length(names));
+txt = text(X,Y, names, ...
+    'HorizontalAlignment','center', ...
+    'VerticalAlignment','middle', ...
+    'FontWeight', 'bold', ...
+    'Color',[.8 0 0]);
 end
