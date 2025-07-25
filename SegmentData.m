@@ -256,26 +256,52 @@ end
 [~,iwind] = min(OLwinds);
 fig1 = figure; [~,hAXs] = myStackedPlot(MainTable, ...
     [channelNameRec, channelNameStim, channelNameInspect]);
-blrng = inputdlg({'Start', 'End'}, 'BASELINE Segment', ...
+trngBaseline = inputdlg({'Start', 'End'}, 'BASELINE Segment', ...
     1, string(candwinds(iwind,:)));
-blrng = datetime(blrng, 'TimeZone',candwinds.TimeZone);
-MainTableBaseline = mySelect(MainTable, t2rng(blrng));
-tblsBaseline = cellfun(@(T) mySelect(T,t2rng(blrng)), NStbls, 'UniformOutput',false);
-tblsBaseline = [{MainTableBaseline}, tblsBaseline];
+trngBaseline = datetime(trngBaseline, 'TimeZone',candwinds.TimeZone);
+tblBaselineMain = mySelect(MainTable, t2rng(trngBaseline));
+tblsBaseline = cellfun(@(T) mySelect(T,t2rng(trngBaseline)), ...
+    NStbls, 'UniformOutput',false);
+tblsBaseline = [{tblBaselineMain}, tblsBaseline];
 
-% nan check 
+% nan check
+[trngBaseline,tblsBaseline] = nancheck(trngBaseline,tblsBaseline,hAXs);
+tblBaselineMain = tblsBaseline{1};
+
+% indicate on plot
+xrng = trngBaseline;
+xrng = [xrng, xrng]'; xrng = xrng(:)';
+xrng = [xrng, xrng(1)]; 
+for hAX = hAXs'
+    yrng = ylim(hAX); 
+    yrng = [yrng, fliplr(yrng)];
+    yrng = [yrng, yrng(1)];
+    patch(hAX, xrng, yrng, [0,0,1], 'FaceAlpha',.5);
+end
+
+%% user confirms marked stimulation 
+
+%% show channel stats to reject noisy channels 
+
+%% helpers 
+
+function Tbl = mySelect(Tbl, times)
+Tbl = Tbl(times,:);
+Tbl.Properties.Events = Tbl.Properties.Events(times,:);
+end
+
+function [trng, tbls] = nancheck(trng, tbls, hAXs)
 tnan = [];
-for SFi = 1:width(tblsBaseline)
-    TBLi = tblsBaseline{SFi};
+for SFi = 1:width(tbls)
+    TBLi = tbls{SFi};
     inan = sum(isnan(TBLi.Variables),2);
     tnan = [tnan; TBLi.Time(find(inan))];
 end
 if ~isempty(tnan)
     for hAX = hAXs'
-        hold on; 
-        plot(tnan, zeros(size(tnan)), '*r');
+        plot(hAX, tnan, zeros(size(tnan)), '*r');
     end
-    xlim(blrng)
+    xlim(trng)
     trimsel = questdlg('Selection contains missing/nan values.', ...
         'Reselect due to nan values', ...
         'Start after nan', 'End before nan', 'Proceed anyway', ...
@@ -283,19 +309,13 @@ if ~isempty(tnan)
     if isempty(trimsel)
         error('Selection must be made.')
     elseif strcmp(trimsel, 'Start after nan')
-        blrng(1) = max(tnan) + seconds(.001);
+        trngBasleline(1) = max(tnan) + seconds(.001);
     elseif strcmp(trimsel, 'End before nan')
-        blrng(2) = min(tnan) - seconds(.001);
+        trngBasleline(2) = min(tnan) - seconds(.001);
     end
     if ~strcmp(trimsel, 'Proceed anyway')
-        tblsBaseline = cellfun(@(T) mySelect(T,t2rng(blrng)), ...
-            tblsBaseline, 'UniformOutput',false);
-        MainTableBaseline = tblsBaseline{1};
+        tbls = cellfun(@(T) mySelect(T,t2rng(trngBasleline)), ...
+            tbls, 'UniformOutput',false);
     end
 end
-
-%% helpers 
-function Tbl = mySelect(Tbl, times)
-Tbl = Tbl(times,:);
-Tbl.Properties.Events = Tbl.Properties.Events(times,:);
 end
