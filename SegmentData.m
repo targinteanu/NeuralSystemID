@@ -162,6 +162,18 @@ trigstart = [trigtime(1); trigstart];
 trigend = [trigend; trigtime(end)];
 trigwinds = [trigstart, trigend];
 
+% describe triggers 
+trignames = repmat("", height(trigwinds),1);
+for itrig = 1:height(trigwinds)
+    trigname = trignames(itrig);
+    trigtbl_ = trigtbl(timerange(trigwinds(itrig,1),trigwinds(itrig,2)),:);
+    trignames_ = unique(trigtbl_.EventLabels);
+    for trigname_ = trignames_'
+        trigname = trigname+"; "+trigname_;
+    end
+    trignames(itrig) = trigname(3:end);
+end
+
 for SFi = 1:width(NStbls)
     NStbls{SFi}.Properties.Events = [NStbls{SFi}.Properties.Events; trigtbl];
 end
@@ -376,19 +388,30 @@ tblsBaseline = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
 
 %% user confirms marked stimulation 
 figure(fig1);
-trngTrig = VariableCountIntervalSelector(trigwinds)';
-tblTrigMain = []; tblsTrig = cell(size(NStbls));
+[trngTrig, comTrig] = VariableCountIntervalSelector(trigwinds, trignames);
+trngTrig = trngTrig'; 
+[comTrig,~,uInd] = unique(comTrig);
+tblTrigMain = cell(length(comTrig),1); tblsTrig = cell(length(comTrig),length(NStbls));
 for itrig = 1:width(trngTrig)
     trngTrig_ = trngTrig(:,itrig);
     plottrng(trngTrig_, [1,0,0], hAXs); % indicate on plot
-    tblTrigMain = [tblTrigMain; mySelect(MainTable, trngTrig_, true)];
+    tblTrigMain{uInd(itrig)} = [tblTrigMain{uInd(itrig)}; mySelect(MainTable, trngTrig_, true)];
     for SFi = 1:width(tblsTrig)
-        tblsTrig{SFi} = [tblsTrig{SFi}; mySelect(NStbls{SFi}, trngTrig_, true)];
+        tblsTrig{uInd(itrig),SFi} = [tblsTrig{uInd(itrig),SFi}; mySelect(NStbls{SFi}, trngTrig_, true)];
     end
 end
-tblTrigMain = myRetime(tblTrigMain, SamplingFreq, nan);
-tblTrigMain = retime(tblTrigMain, 'regular', 'nearest', 'SampleRate',SamplingFreq);
-tblsTrig = [{tblTrigMain}, tblsTrig];
+for ic = 1:height(tblTrigMain)
+    tblTrigMain{ic,1} = myRetime(tblTrigMain{ic,1}, SamplingFreq, nan);
+    tblTrigMain{ic,1} = retime(tblTrigMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+    tblTrigMain{ic,1}.Properties.Description = comTrig(ic);
+    for SFi = 1:width(tblsTrig)
+        tblsTrig{ic,SFi}.Properties.Description = comTrig(ic);
+    end
+end
+tblsTrig = [tblTrigMain, tblsTrig];
+if isequal(size(tblTrigMain), [1,1])
+    tblTrigMain = tblTrigMain{1};
+end
 
 pause(.01); drawnow; pause(.01);
 
