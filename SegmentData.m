@@ -415,6 +415,71 @@ end
 
 pause(.01); drawnow; pause(.01);
 
+%% determine unmarked stimulation 
+
+% initial screen for outliers 
+stimpoints = detectStimPoints(MainTable.Variables', tblBaselineMain.Variables', .1);
+stimtime = MainTable.Time(stimpoints);
+
+% exclude baseline and marked stim 
+stimtime = stimtime( (stimtime<min(trngBaseline)) | (stimtime>max(trngBaseline)));
+for itrig = 1:width(trngTrig)
+    stimtime = stimtime( ...
+        (stimtime<min(trngTrig(:,itrig))) | ...
+        (stimtime>max(trngTrig(:,itrig))));
+end
+
+% append appropriate events 
+stimevt = eventtable(stimtime, "EventEnds",stimtime, ...
+    "EventLabels","Presumed Stim");
+MainTable.Properties.Events = [MainTable.Properties.Events; stimevt];
+for SFi = 1:width(NStbls)
+    NStbls{SFi}.Properties.Events = [NStbls{SFi}.Properties.Events; stimevt];
+end
+
+% group stim by time 
+stimboundtime = 30; % sec (defines a burst of triggers)
+stimbound = seconds(diff(stimtime)) > stimboundtime;
+stimend = stimtime([stimbound; false]); 
+stimstart = stimtime([false; stimbound]);
+stimstart = [stimtime(1); stimstart];
+stimend = [stimend; stimtime(end)];
+stimwinds = [stimstart, stimend];
+
+% user confirms 
+figure(fig1);
+[trngStim, comStim] = VariableCountIntervalSelector(stimwinds, ...
+    repmat("Presumed Stim", height(stimwinds), 1));
+trngStim = trngStim';
+[comStim,~,uInd] = unique(comStim);
+tblStimNoTrigMain = cell(length(comStim),1); 
+tblsStimNoTrig = cell(length(comStim),length(NStbls));
+for istim = 1:width(trngStim)
+    trngStim_ = trngStim(:,istim);
+    plottrng(trngStim_, [1,0,1], hAXs); % indicate on plot
+    tblStimNoTrigMain{uInd(istim)} = ...
+        [tblStimNoTrigMain{uInd(istim)}; mySelect(MainTable, trngStim_, true)];
+    for SFi = 1:width(tblsStimNoTrig)
+        tblsStimNoTrig{uInd(istim),SFi} = ...
+            [tblsStimNoTrig{uInd(istim),SFi}; ...
+            mySelect(NStbls{SFi}, trngStim_, true)];
+    end
+end
+for ic = 1:height(tblStimNoTrigMain)
+    tblStimNoTrigMain{ic,1} = myRetime(tblStimNoTrigMain{ic,1}, SamplingFreq, nan);
+    tblStimNoTrigMain{ic,1} = retime(tblStimNoTrigMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+    tblStimNoTrigMain{ic,1}.Properties.Description = comStim(ic);
+    for SFi = 1:width(tblsStimNoTrig)
+        tblsStimNoTrig{ic,SFi}.Properties.Description = comStim(ic);
+    end
+end
+tblsStimNoTrig = [tblStimNoTrigMain, tblsStimNoTrig];
+if isequal(size(tblStimNoTrigMain), [1,1])
+    tblStimNoTrigMain = tblStimNoTrigMain{1};
+end
+
+pause(.01); drawnow; pause(.01);
+
 %% helpers 
 
 function Tbl = mySelect(Tbl, times, selbetween)
