@@ -30,6 +30,8 @@ for f = ElecXL
     electbl = [electbl; fTbl];
 end
 
+clear x y z XYZ xyz fTbl
+
 %% get blackrock data into a time/event table 
 
 timeBegin = datetime([inf inf inf], 'TimeZone','UTC'); 
@@ -120,6 +122,8 @@ for SFi = 1:width(NStbls)
 end
 chnames = unique(chnames); chnames = string(chnames);
 
+clear fNS fEV fTbl EVtbl c r cname
+
 %% user selects channels 
 channelIndexRec = listdlg("PromptString","Recording Channel(s)", ...
     "ListString",chnames, "SelectionMode","multiple"); 
@@ -178,6 +182,8 @@ for SFi = 1:width(NStbls)
     NStbls{SFi}.Properties.Events = [NStbls{SFi}.Properties.Events; trigtbl];
 end
 
+clear NStbl t trig lbl trigname trigtbl_ trignames_ trigname_
+
 %% construct main table 
 % everything resampled to the same time rows
 %if length(SampleRates) > 1
@@ -220,6 +226,8 @@ for SFi = 1:width(NStbls)
     discont = [discont; NStbls{SFi}.Time(find(inan))];
 end
 
+clear disctype discevt inan evtbl
+
 % canditate periods in between triggers, etc
 candwinds = [];
 boundtime = seconds(.4); % sec 
@@ -239,6 +247,8 @@ for itrig = 1:length(trigstart_)
 end
 candwindslong = (candwinds(:,2) - candwinds(:,1)) >= minutes(3); % MIN DURATION
 candwinds = candwinds(candwindslong,:);
+
+clear trigstart_ trigend_ t1 t2 disci d
 
 % outlier detection 
 OLtbls = cell(size(NStbls)); 
@@ -260,6 +270,8 @@ for iwind = 1:height(OLwinds)
     end
     OLwinds(iwind) = OLwinds(iwind)/seconds(t2-t1);
 end
+
+clear t1 t2 numOL io trng
 
 %% user confirms baseline 
 [~,iwind] = min(OLwinds);
@@ -366,6 +378,8 @@ if toshowas(2)
 end
 
 pause(.01); drawnow; pause(.01);
+
+clear toshowas showas
 
 %% inspect and reject noisy channels 
 
@@ -479,6 +493,12 @@ if isequal(size(tblStimNoTrigMain), [1,1])
 end
 
 pause(.01); drawnow; pause(.01);
+
+%% segment serial comm periods 
+
+%% segment misc 
+
+%% save all
 
 %% helpers 
 
