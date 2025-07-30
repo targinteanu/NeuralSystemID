@@ -379,7 +379,7 @@ end
 
 pause(.01); drawnow; pause(.01);
 
-clear toshowas showas
+clear showas
 
 %% inspect and reject noisy channels 
 
@@ -462,14 +462,14 @@ stimwinds = [stimstart, stimend];
 
 % user confirms 
 figure(fig1);
-[trngStim, comStim] = VariableCountIntervalSelector(stimwinds, ...
+[trngStimNoTrig, comStim] = VariableCountIntervalSelector(stimwinds, ...
     repmat("Presumed Stim", height(stimwinds), 1));
-trngStim = trngStim';
+trngStimNoTrig = trngStimNoTrig';
 [comStim,~,uInd] = unique(comStim);
 tblStimNoTrigMain = cell(length(comStim),1); 
 tblsStimNoTrig = cell(length(comStim),length(tbls));
-for istim = 1:width(trngStim)
-    trngStim_ = trngStim(:,istim);
+for istim = 1:width(trngStimNoTrig)
+    trngStim_ = trngStimNoTrig(:,istim);
     plottrng(trngStim_, [1,0,1], hAXs); % indicate on plot
     tblStimNoTrigMain{uInd(istim)} = ...
         [tblStimNoTrigMain{uInd(istim)}; mySelect(MainTable, trngStim_, true)];
@@ -512,10 +512,10 @@ for itrig = 1:width(trngTrig)
 end
 % separate out unmarked stimulation 
 srltimeUnmarkedStim = []; 
-for istim = 1:width(trngStim)
+for istim = 1:width(trngStimNoTrig)
     stimtime = ...
-        (srltime > min(trngStim(:,istim))) | ...
-        (srltime < max(trngStim(:,istim)));
+        (srltime > min(trngStimNoTrig(:,istim))) | ...
+        (srltime < max(trngStimNoTrig(:,istim)));
     srltimeUnmarkedStim = [srltimeUnmarkedStim; srltime(stimtime)];
     srltime = srltime(~stimtime);
 end
@@ -642,6 +642,37 @@ clear trngMisc_
 
 %% save all
 
+thisfilename = mfilename("fullpath");
+thisfilever = getFileVersion(thisfilename);
+[~,thisfilename] = fileparts(thisfilename);
+svname = [pName,'_',thisfilename,'_',thisfilever];
+
+tbls = [{MainTable}, tbls];
+
+% make save folder 
+folder = [folder,filesep,svname];
+mkdir(folder);
+svname = fullfile(folder, svname);
+
+% save vars (table lists)
+save(svname, ...
+    "tbls", "tblsMisc", "tblsSrl", "tblsStimNoTrig", "tblsTrig", "tblsBaseline", ...
+    "channelNameRec", "channelNameStim", "channelNameTrig", "channelNameReject", ...
+    "trngMisc", "trngSrl", "trngStimNoTrig", "trngTrig", "trngBaseline", ...
+    "-v7.3");
+
+% save fig1 and fig4 
+saveasmultiple(fig1, [svname,'_TimePlot1']);
+saveasmultiple(fig4, [svname,'_TimePlot2']);
+if toshowas(1)
+    % save fig2
+    saveasmultiple(fig2, [svname,'_StemPlot']);
+end
+if toshowas(2)
+    % save fig3
+    saveasmultiple(fig3, [svname,'_GridPlot']);
+end
+
 %% helpers 
 
 function Tbl = mySelect(Tbl, times, selbetween)
@@ -718,4 +749,9 @@ txt = text(X,Y, names, ...
     'VerticalAlignment','middle', ...
     'FontWeight', 'bold', ...
     'Color',[.8 0 0]);
+end
+
+function saveasmultiple(fig, filename)
+saveas(fig, filename, 'fig'); % original matlab figure
+saveas(fig, filename, 'png'); % preview
 end
