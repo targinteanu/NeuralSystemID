@@ -27,14 +27,7 @@ for c = 1:N
         v = vars(c);
     end
     if isnumeric(v)
-        if ~isempty(IsOutlier)
-            io = IsOutlier(:,v);
-        end
-        if isempty(tbl.Properties.VariableUnits)
-            u = '';
-        else
-            u = tbl.Properties.VariableUnits{v};
-        end
+        iv = v;
         v = tbl.Properties.VariableNames{v};
     else
         if ~sum(strcmp(tbl.Properties.VariableNames, v))
@@ -51,6 +44,7 @@ for c = 1:N
         end
         iv = find(strcmp(tbl.Properties.VariableNames, v));
         iv = iv(1); 
+    end
         if isempty(tbl.Properties.VariableUnits)
             u = '';
         else
@@ -71,7 +65,6 @@ for c = 1:N
         if ~isempty(IsOutlier)
             io = IsOutlier(:,iv);
         end
-    end
 
     % plot timed data
     x = tbl.Time;
