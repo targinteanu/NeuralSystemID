@@ -38,7 +38,7 @@ timeBegin = datetime([inf inf inf], 'TimeZone','UTC');
 timeEnd = datetime([-inf -inf -inf], 'TimeZone','UTC');
 
 % NS (continuous data) files 
-NStbls = {}; SampleRates = [];
+tbls = {}; SampleRates = [];
 for f = NSfiles
     try
     fNS = openNSx([f.folder,filesep,f.name], 'uV');
@@ -74,21 +74,21 @@ for f = NSfiles
     SFi = find(SampleRates == SamplingFreq);
     if isempty(SFi)
         SampleRates = [SampleRates, SamplingFreq];
-        NStbls = [NStbls, {fTbl}];
+        tbls = [tbls, {fTbl}];
     else
         try
-            NStbls{SFi} = [NStbls{SFi}; fTbl];
+            tbls{SFi} = [tbls{SFi}; fTbl];
         catch ME1
             if isequal(ME1.identifier, 'MATLAB:table:vertcat:SizeMismatch') || ...
                isequal(ME1.identifier, 'MATLAB:table:vertcat:UnequalVarNames')
                 for newvarname = string(fTbl.Properties.VariableNames)
-                    if ~sum(strcmpi(NStbls{SFi}.Properties.VariableNames, newvarname))
-                        newvarval = nan(height(NStbls{SFi}),1);
+                    if ~sum(strcmpi(tbls{SFi}.Properties.VariableNames, newvarname))
+                        newvarval = nan(height(tbls{SFi}),1);
                         eval(newvarname+" = newvarval;");
-                        eval("NStbls{SFi} = addvars(NStbls{SFi},"+newvarname+");");
+                        eval("tbls{SFi} = addvars(tbls{SFi},"+newvarname+");");
                     end
                 end
-                NStbls{SFi} = [NStbls{SFi}; fTbl];
+                tbls{SFi} = [tbls{SFi}; fTbl];
             else
                 rethrow(ME1);
             end
@@ -114,11 +114,11 @@ for f = NEVfiles
 end
 
 chnames = {};
-for SFi = 1:width(NStbls)
+for SFi = 1:width(tbls)
     % pair NS with NEV
-    NStbls{SFi}.Properties.Events = [NStbls{SFi}.Properties.Events; NEVtbl];
+    tbls{SFi}.Properties.Events = [tbls{SFi}.Properties.Events; NEVtbl];
     % get all channel names 
-    chnames = [chnames, NStbls{SFi}.Properties.VariableNames];
+    chnames = [chnames, tbls{SFi}.Properties.VariableNames];
 end
 chnames = unique(chnames); chnames = string(chnames);
 
@@ -143,15 +143,15 @@ end
 trigtbl = [];
 for chname = channelNameTrig
     lbl = "Trigger "+chname;
-    for SFi = 1:width(NStbls)
-        NStbl = NStbls{SFi};
+    for SFi = 1:width(tbls)
+        NStbl = tbls{SFi};
         if sum(strcmp(NStbl.Properties.VariableNames, chname))
             t = NStbl.Time; trig = NStbl.(chname);
             trig = [false; diff(trig) > 1e3]; % rising edge
             t = t(trig);
             trigtbl = [trigtbl; eventtable(t, "EventLabels",lbl, "EventEnds",t)];
             NStbl = removevars(NStbl, chname);
-            NStbls{SFi} = NStbl;
+            tbls{SFi} = NStbl;
         end
     end
 end
@@ -178,8 +178,8 @@ for itrig = 1:height(trigwinds)
     trignames(itrig) = trigname(3:end);
 end
 
-for SFi = 1:width(NStbls)
-    NStbls{SFi}.Properties.Events = [NStbls{SFi}.Properties.Events; trigtbl];
+for SFi = 1:width(tbls)
+    tbls{SFi}.Properties.Events = [tbls{SFi}.Properties.Events; trigtbl];
 end
 
 clear NStbl t trig lbl trigname trigtbl_ trignames_ trigname_
@@ -193,12 +193,12 @@ SamplingFreq = inputdlg('Select main frequency to resample:', ...
     'main table sampling selection', 1, {num2str(SamplingFreq)});
 SamplingFreq = eval(SamplingFreq{1});
 [~,SFi] = min(abs(SampleRates-SamplingFreq));
-MainTable = NStbls{SFi};
+MainTable = tbls{SFi};
 MainTable = myRetime(MainTable, SampleRates(SFi), nan);
 MainTable = retime(MainTable, 'regular', 'nearest', 'SampleRate',SamplingFreq);
 SFj = true(size(SampleRates)); SFj(SFi) = false; SFj = find(SFj);
 for SFi = SFj
-    tbl = myRetime(NStbls{SFi}, SampleRates(SFi), nan);
+    tbl = myRetime(tbls{SFi}, SampleRates(SFi), nan);
     SampleRatio = ceil(SampleRates(SFi)/SamplingFreq);
     if SampleRatio > 1
         tbl.Variables = movmean(tbl.Variables, SampleRatio, 'omitnan');
@@ -213,8 +213,8 @@ end
 
 % assess file start/end, packet loss, etc
 discont = [];
-for SFi = 1:width(NStbls)
-    evtbl = NStbls{SFi}.Properties.Events;
+for SFi = 1:width(tbls)
+    evtbl = tbls{SFi}.Properties.Events;
     for disctype = ["Start of file", "End of file", "SerialDigitalIO"]
         discevt = contains(evtbl.EventLabels, disctype);
         discont = [discont; evtbl.Time(discevt)];
@@ -222,8 +222,8 @@ for SFi = 1:width(NStbls)
     disctype = "Data Loss";
         discevt = contains(evtbl.EventLabels, disctype);
         discont = [discont; evtbl.EventEnds(discevt)];
-    inan = isnan(NStbls{SFi}.Variables); inan = sum(inan,2);
-    discont = [discont; NStbls{SFi}.Time(find(inan))];
+    inan = isnan(tbls{SFi}.Variables); inan = sum(inan,2);
+    discont = [discont; tbls{SFi}.Time(find(inan))];
 end
 
 clear disctype discevt inan evtbl
@@ -251,11 +251,11 @@ candwinds = candwinds(candwindslong,:);
 clear trigstart_ trigend_ t1 t2 disci d
 
 % outlier detection 
-OLtbls = cell(size(NStbls)); 
-for SFi = 1:width(NStbls)
-    io = isoutlier(NStbls{SFi}, 'mean');
+OLtbls = cell(size(tbls)); 
+for SFi = 1:width(tbls)
+    io = isoutlier(tbls{SFi}, 'mean');
     numOL = sum(io,2);
-    OLtbls{SFi} = timetable(NStbls{SFi}.Time, numOL);
+    OLtbls{SFi} = timetable(tbls{SFi}.Time, numOL);
 end
 
 % outliers during candidate windows 
@@ -263,7 +263,7 @@ OLwinds = zeros(height(candwinds),1);
 for iwind = 1:height(OLwinds)
     trng = timerange(candwinds(iwind,1), candwinds(iwind,2));
     t1 = timeEnd; t2 = timeBegin;
-    for SFi = 1:width(NStbls)
+    for SFi = 1:width(tbls)
         io = OLtbls{SFi}(trng,:);
         t1 = min(t1, min(io.Time)); t2 = max(t2, max(io.Time));
         OLwinds(iwind) = OLwinds(iwind) + sum(io.Variables.^2);
@@ -282,7 +282,7 @@ trngBaseline = inputdlg({'Start', 'End'}, 'BASELINE Segment', ...
 trngBaseline = datetime(trngBaseline, 'TimeZone',candwinds.TimeZone);
 tblBaselineMain = mySelect(MainTable, trngBaseline, true);
 tblsBaseline = cellfun(@(T) mySelect(T, trngBaseline, true), ...
-    NStbls, 'UniformOutput',false);
+    tbls, 'UniformOutput',false);
 tblsBaseline = [{tblBaselineMain}, tblsBaseline];
 
 % nan check
@@ -395,8 +395,8 @@ channelIndexReject = listdlg("PromptString","REJECT Channel(s)", ...
 channelNameReject = chnames(channelIndexReject);
 MainTable = removevars(MainTable, channelNameReject);
 tblBaselineMain = removevars(tblBaselineMain, channelNameReject);
-NStbls = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
-    NStbls, 'UniformOutput',false);
+tbls = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
+    tbls, 'UniformOutput',false);
 tblsBaseline = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
     tblsBaseline, 'UniformOutput',false);
 
@@ -405,13 +405,13 @@ figure(fig1);
 [trngTrig, comTrig] = VariableCountIntervalSelector(trigwinds, trignames);
 trngTrig = trngTrig'; 
 [comTrig,~,uInd] = unique(comTrig);
-tblTrigMain = cell(length(comTrig),1); tblsTrig = cell(length(comTrig),length(NStbls));
+tblTrigMain = cell(length(comTrig),1); tblsTrig = cell(length(comTrig),length(tbls));
 for itrig = 1:width(trngTrig)
     trngTrig_ = trngTrig(:,itrig);
     plottrng(trngTrig_, [1,0,0], hAXs); % indicate on plot
     tblTrigMain{uInd(itrig)} = [tblTrigMain{uInd(itrig)}; mySelect(MainTable, trngTrig_, true)];
     for SFi = 1:width(tblsTrig)
-        tblsTrig{uInd(itrig),SFi} = [tblsTrig{uInd(itrig),SFi}; mySelect(NStbls{SFi}, trngTrig_, true)];
+        tblsTrig{uInd(itrig),SFi} = [tblsTrig{uInd(itrig),SFi}; mySelect(tbls{SFi}, trngTrig_, true)];
     end
 end
 for ic = 1:height(tblTrigMain)
@@ -447,8 +447,8 @@ end
 stimevt = eventtable(stimtime, "EventEnds",stimtime, ...
     "EventLabels","Presumed Stim");
 MainTable.Properties.Events = [MainTable.Properties.Events; stimevt];
-for SFi = 1:width(NStbls)
-    NStbls{SFi}.Properties.Events = [NStbls{SFi}.Properties.Events; stimevt];
+for SFi = 1:width(tbls)
+    tbls{SFi}.Properties.Events = [tbls{SFi}.Properties.Events; stimevt];
 end
 
 % group stim by time 
@@ -467,7 +467,7 @@ figure(fig1);
 trngStim = trngStim';
 [comStim,~,uInd] = unique(comStim);
 tblStimNoTrigMain = cell(length(comStim),1); 
-tblsStimNoTrig = cell(length(comStim),length(NStbls));
+tblsStimNoTrig = cell(length(comStim),length(tbls));
 for istim = 1:width(trngStim)
     trngStim_ = trngStim(:,istim);
     plottrng(trngStim_, [1,0,1], hAXs); % indicate on plot
@@ -476,7 +476,7 @@ for istim = 1:width(trngStim)
     for SFi = 1:width(tblsStimNoTrig)
         tblsStimNoTrig{uInd(istim),SFi} = ...
             [tblsStimNoTrig{uInd(istim),SFi}; ...
-            mySelect(NStbls{SFi}, trngStim_, true)];
+            mySelect(tbls{SFi}, trngStim_, true)];
     end
 end
 for ic = 1:height(tblStimNoTrigMain)
@@ -574,7 +574,7 @@ figure(fig1);
 trngSrl = trngSrl';
 [comSrl,~,uInd] = unique(comSrl);
 tblSrlMain = cell(length(comSrl),1); 
-tblsSrl = cell(length(comSrl),length(NStbls));
+tblsSrl = cell(length(comSrl),length(tbls));
 for isrl = 1:width(trngSrl)
     trngSrl_ = trngSrl(:,isrl);
     plottrng(trngSrl_, [0,1,0], hAXs); % indicate on plot
@@ -583,7 +583,7 @@ for isrl = 1:width(trngSrl)
     for SFi = 1:width(tblsSrl)
         tblsSrl{uInd(isrl),SFi} = ...
             [tblsSrl{uInd(isrl),SFi}; ...
-            mySelect(NStbls{SFi}, trngSrl_, true)];
+            mySelect(tbls{SFi}, trngSrl_, true)];
     end
 end
 for ic = 1:height(tblSrlMain)
@@ -611,7 +611,7 @@ figure(fig1);
 trngMisc = trngMisc';
 [comMisc,~,uInd] = unique(comMisc);
 tblMiscMain = cell(length(comMisc),1); 
-tblsMisc = cell(length(comMisc),length(NStbls));
+tblsMisc = cell(length(comMisc),length(tbls));
 for imisc = 1:width(trngMisc)
     trngMisc_ = trngMisc(:,imisc);
     plottrng(trngMisc_, [1,1,0], hAXs); % indicate on plot
@@ -620,7 +620,7 @@ for imisc = 1:width(trngMisc)
     for SFi = 1:width(tblsMisc)
         tblsMisc{uInd(imisc),SFi} = ...
             [tblsMisc{uInd(imisc),SFi}; ...
-            mySelect(NStbls{SFi}, trngMisc_, true)];
+            mySelect(tbls{SFi}, trngMisc_, true)];
     end
 end
 for ic = 1:height(tblMiscMain)
