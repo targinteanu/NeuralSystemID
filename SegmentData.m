@@ -14,7 +14,7 @@ if isempty(ElecXL)
 end
 
 electbl = [];
-for f = ElecXL
+for f = ElecXL'
     fTbl = readtable([f.folder,filesep,f.name]);
 
     % interpret coordinates
@@ -46,7 +46,7 @@ timeEnd = datetime([-inf -inf -inf], 'TimeZone','UTC');
 % NS (continuous data) files 
 disp('  - continuous data...')
 tbls = {}; SampleRates = [];
-for f = NSfiles
+for f = NSfiles'
     try
     fNS = openNSx([f.folder,filesep,f.name], 'uV');
     fTbl = ns2timetable(fNS);
@@ -109,7 +109,7 @@ end
 % NEV (event data) files
 disp('  - event data...')
 NEVtbl = [];
-for f = NEVfiles
+for f = NEVfiles'
     try
     fEV = openNEV([f.folder,filesep,f.name], 'nosave');
     EVtbl = nev2table(fEV);
