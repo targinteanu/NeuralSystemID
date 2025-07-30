@@ -67,8 +67,7 @@ for c = 1:N
         end
 
     % plot timed data
-    x = tbl.Time; 
-    x.TimeZone = 'America/New_York'; % assume all recordings are in Baltimore
+    x = tbl.Time;
     y = tbl.(v);
     hAx(c,1) = subplot(N,1,c); 
     hPlt(c,1) = plot(x, y);
@@ -95,7 +94,6 @@ for c = 1:N
         hold on;
         yl = ylim();
         xx = evt.Time; 
-        xx.TimeZone = 'America/New_York'; % assume all recordings are in Baltimore
         yy1 = yl(2)*ones(size(xx));
         yy2 = yl(1)*ones(size(xx));
         hPlt(c,2) = stem(xx, yy1, 'Marker','none', 'Color',[.5,.5,.5], 'LineWidth',.1);
