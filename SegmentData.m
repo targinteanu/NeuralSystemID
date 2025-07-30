@@ -149,6 +149,20 @@ end
 %% detect triggers 
 disp('Detecting triggers...')
 
+% ensure trigger signal is not duplicated 
+for chname = channelNameTrig
+    namefound = false;
+    for SFi = 1:width(tbls)
+        namefound_ = sum(strcmp(chname, tbls{SFi}.Properties.VariableNames));
+        if namefound && namefound_
+            error(['Trigger signal ',char(chname),...
+                ' is duplicated in multiple recording files!']);
+        else
+            namefound = namefound || namefound_;
+        end
+    end
+end
+
 % remove trigger pulse trains and convert to event table 
 trigtbl = [];
 for chname = channelNameTrig
@@ -161,14 +175,20 @@ for chname = channelNameTrig
             t = t(trig);
             trigtbl = [trigtbl; eventtable(t, "EventLabels",lbl, "EventEnds",t)];
             NStbl = removevars(NStbl, chname);
-            tbls{SFi} = NStbl;
+            if isempty NStbl
+                SampleRates(SFi) = nan;
+            else
+                tbls{SFi} = NStbl;
+            end
         end
     end
 end
+tbls = tbls(~isnan(SampleRates)); SampleRates = SampleRates(~isnan(SampleRates));
 
 % group triggers by time 
 trigboundtime = 10; % sec (defines a burst of triggers)
 trigtime = trigtbl.Time; % all trigger types!
+trigtime = sort(trigtime);
 if isempty(trigtime)
     trigwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
 else
@@ -197,7 +217,8 @@ for SFi = 1:width(tbls)
     tbls{SFi}.Properties.Events = [tbls{SFi}.Properties.Events; trigtbl];
 end
 
-clear NStbl t trig lbl trigname trigtbl_ trignames_ trigname_
+clear NStbl t trig lbl trigname trigtbl_ trignames_ trigname_ 
+clear namefound namefound_
 
 %% construct main table 
 % everything resampled to the same time rows
@@ -410,8 +431,10 @@ disp('Please inspect and specify noisy channels to reject...')
 channelIndexInspect2 = listdlg("PromptString","Inspect Channel(s)", ...
     "ListString",chnames, "SelectionMode","multiple"); 
 channelNameInspect2 = chnames(channelIndexInspect2);
-fig4 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
-myStackedPlot(MainTable, channelNameInspect2);
+if sum(channelIndexInspect2)
+    fig4 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+    myStackedPlot(MainTable, channelNameInspect2);
+end
 
 % rejection 
 channelIndexReject = listdlg("PromptString","REJECT Channel(s)", ...
@@ -419,9 +442,9 @@ channelIndexReject = listdlg("PromptString","REJECT Channel(s)", ...
 channelNameReject = chnames(channelIndexReject);
 MainTable = removevars(MainTable, channelNameReject);
 tblBaselineMain = removevars(tblBaselineMain, channelNameReject);
-tbls = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
+tbls = cellfun(@(tbl) myRemoveVars(tbl, channelNameReject), ...
     tbls, 'UniformOutput',false);
-tblsBaseline = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
+tblsBaseline = cellfun(@(tbl) myRemoveVars(tbl, channelNameReject), ...
     tblsBaseline, 'UniformOutput',false);
 
 %% user confirms marked stimulation 
@@ -479,6 +502,7 @@ end
 
 % group stim by time 
 stimboundtime = 1; % sec (defines a burst of triggers)
+stimtime = sort(stimtime);
 if isempty(stimtime)
     stimwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
 else
@@ -553,6 +577,7 @@ end
 
 % group by time 
 srlboundtime = 15; % s (defines a session of serial comms) 
+srltime = sort(srltime);
 % no stim
 if isempty(srltime)
     srlwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
@@ -714,8 +739,10 @@ save(svname, ...
 % save fig1 and fig4 
 disp('  - figure 1:')
 saveasmultiple(fig1, [svname,'_TimePlot1']);
-disp('  - figure 4:')
-saveasmultiple(fig4, [svname,'_TimePlot2']);
+if sum(channelIndexInspect2)
+    disp('  - figure 4:')
+    saveasmultiple(fig4, [svname,'_TimePlot2']);
+end
 if toshowas(1)
     % save fig2
     disp('  - figure 2:')
