@@ -452,7 +452,7 @@ for SFi = 1:width(NStbls)
 end
 
 % group stim by time 
-stimboundtime = 30; % sec (defines a burst of triggers)
+stimboundtime = 1; % sec (defines a burst of triggers)
 stimbound = seconds(diff(stimtime)) > stimboundtime;
 stimend = stimtime([stimbound; false]); 
 stimstart = stimtime([false; stimbound]);
@@ -494,9 +494,151 @@ end
 
 pause(.01); drawnow; pause(.01);
 
-%% segment serial comm periods 
+%% segment serial comm sessions 
+
+% search for serial comm 
+evtbl = MainTable.Properties.Events;
+srlevt = contains(evtbl.EventLabels, "SerialDigitalIO");
+srltime = evtbl.Time(srlevt);
+
+% separate out marked stimulation 
+srltimeMarkedStim = []; 
+for itrig = 1:width(trngTrig)
+    stimtime = ...
+        (srltime > min(trngTrig(:,itrig))) | ...
+        (srltime < max(trngTrig(:,itrig)));
+    srltimeMarkedStim = [srltimeMarkedStim; srltime(stimtime)];
+    srltime = srltime(~stimtime);
+end
+% separate out unmarked stimulation 
+srltimeUnmarkedStim = []; 
+for istim = 1:width(trngStim)
+    stimtime = ...
+        (srltime > min(trngStim(:,istim))) | ...
+        (srltime < max(trngStim(:,istim)));
+    srltimeUnmarkedStim = [srltimeUnmarkedStim; srltime(stimtime)];
+    srltime = srltime(~stimtime);
+end
+
+% group by time 
+srlboundtime = 15; % s (defines a session of serial comms) 
+% no stim
+srlbound = seconds(diff(srltime)) > srlboundtime;
+srlend = srltime([srlbound; false]); 
+srlstart = srltime([false; srlbound]);
+srlstart = [srltime(1); srlstart];
+srlend = [srlend; srltime(end)];
+srlwinds = [srlstart, srlend];
+% marked stim 
+srlbound = seconds(diff(srltimeMarkedStim)) > srlboundtime;
+srlend = srltimeMarkedStim([srlbound; false]); 
+srlstart = srltimeMarkedStim([false; srlbound]);
+srlstart = [srltimeMarkedStim(1); srlstart];
+srlend = [srlend; srltimeMarkedStim(end)];
+srlwindsMarkedStim = [srlstart, srlend];
+% unmarked stim 
+srlbound = seconds(diff(srltimeUnmarkedStim)) > srlboundtime;
+srlend = srltimeUnmarkedStim([srlbound; false]); 
+srlstart = srltimeUnmarkedStim([false; srlbound]);
+srlstart = [srltimeUnmarkedStim(1); srlstart];
+srlend = [srlend; srltimeUnmarkedStim(end)];
+srlwindsUnmarkedStim = [srlstart, srlend];
+% recombine 
+% alternatively, should these all be processed and saved separately?
+srlwinds = [srlwinds; srlwindsMarkedStim; srlwindsUnmarkedStim];
+
+% describe srl 
+srlnames = repmat("", height(srlwinds),1);
+for isrl = 1:height(srlwinds)
+    srlname = srlnames(isrl);
+    srltbl_ = evtbl(timerange(srlwinds(isrl,1),srlwinds(isrl,2)),:);
+    srlnames_ = unique(srltbl_.EventLabels);
+    for srlname_ = srlnames_'
+        srlname = srlname+"; "+srlname_;
+    end
+    srlnames(isrl) = srlname(3:end);
+end
+for isrl = 1:height(srlnames)
+    if isrl > height(srlnames) - height(srlwindsUnmarkedStim)
+        srlnames(isrl) = "Presumed Stim; "+srlnames(isrl);
+    elseif isrl > height(srlnames) - height(srlwindsUnmarkedStim) - height(srlwindsMarkedStim)
+        srlnames(isrl) = "Triggered Stim; "+srlnames(isrl);
+    else
+        srlnames(isrl) = "No Stim; "+srlnames(isrl);
+    end
+end
+
+% user confirms 
+figure(fig1);
+[trngSrl, comSrl] = VariableCountIntervalSelector(srlwinds, srlnames);
+trngSrl = trngSrl';
+[comSrl,~,uInd] = unique(comSrl);
+tblSrlMain = cell(length(comSrl),1); 
+tblsSrl = cell(length(comSrl),length(NStbls));
+for isrl = 1:width(trngSrl)
+    trngSrl_ = trngSrl(:,isrl);
+    plottrng(trngSrl_, [0,1,0], hAXs); % indicate on plot
+    tblSrlMain{uInd(isrl)} = ...
+        [tblSrlMain{uInd(isrl)}; mySelect(MainTable, trngSrl_, true)];
+    for SFi = 1:width(tblsSrl)
+        tblsSrl{uInd(isrl),SFi} = ...
+            [tblsSrl{uInd(isrl),SFi}; ...
+            mySelect(NStbls{SFi}, trngSrl_, true)];
+    end
+end
+for ic = 1:height(tblSrlMain)
+    tblSrlMain{ic,1} = myRetime(tblSrlMain{ic,1}, SamplingFreq, nan);
+    tblSrlMain{ic,1} = retime(tblSrlMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+    tblSrlMain{ic,1}.Properties.Description = comSrl(ic);
+    for SFi = 1:width(tblsSrl)
+        tblsSrl{ic,SFi}.Properties.Description = comSrl(ic);
+    end
+end
+tblsSrl = [tblSrlMain, tblsSrl];
+if isequal(size(tblSrlMain), [1,1])
+    tblSrlMain = tblSrlMain{1};
+end
+
+pause(.01); drawnow; pause(.01);
+
+clear srlname srltbl_ srlnames_ srlname_ trngSrl_
 
 %% segment misc 
+% user confirms 
+figure(fig1);
+[trngMisc, comMisc] = VariableCountIntervalSelector([NaT, NaT], ...
+    "Segment any miscellaneous time periods, or close this window to cancel.");
+trngMisc = trngMisc';
+[comMisc,~,uInd] = unique(comMisc);
+tblMiscMain = cell(length(comMisc),1); 
+tblsMisc = cell(length(comMisc),length(NStbls));
+for imisc = 1:width(trngMisc)
+    trngMisc_ = trngMisc(:,imisc);
+    plottrng(trngMisc_, [1,1,0], hAXs); % indicate on plot
+    tblMiscMain{uInd(imisc)} = ...
+        [tblMiscMain{uInd(imisc)}; mySelect(MainTable, trngMisc_, true)];
+    for SFi = 1:width(tblsMisc)
+        tblsMisc{uInd(imisc),SFi} = ...
+            [tblsMisc{uInd(imisc),SFi}; ...
+            mySelect(NStbls{SFi}, trngMisc_, true)];
+    end
+end
+for ic = 1:height(tblMiscMain)
+    tblMiscMain{ic,1} = myRetime(tblMiscMain{ic,1}, SamplingFreq, nan);
+    tblMiscMain{ic,1} = retime(tblMiscMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+    tblMiscMain{ic,1}.Properties.Description = comMisc(ic);
+    for SFi = 1:width(tblsMisc)
+        tblsMisc{ic,SFi}.Properties.Description = comMisc(ic);
+    end
+end
+tblsMisc = [tblMiscMain, tblsMisc];
+if isequal(size(tblMiscMain), [1,1])
+    tblMiscMain = tblMiscMain{1};
+end
+
+pause(.01); drawnow; pause(.01);
+
+clear trngMisc_
 
 %% save all
 
