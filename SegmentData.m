@@ -1,4 +1,5 @@
 %% user selects folder; necessary files are pulled 
+disp('Please select subject folder...')
 folder = uigetdir; 
 [~,pName] = fileparts(folder)
 NSfiles = dir([folder,filesep,'*.ns*']);
@@ -7,6 +8,10 @@ ElecXL = [dir([folder,filesep,'electrode_data.xls*']); ...
           dir([folder,filesep,pName,filesep,'electrode_data.xls*'])];
 
 %% get electrode data 
+disp('Reading electrode localization data...')
+if isempty(ElecXL)
+    warning('No electrode localization data found!')
+end
 
 electbl = [];
 for f = ElecXL
@@ -33,11 +38,13 @@ end
 clear x y z XYZ xyz fTbl
 
 %% get blackrock data into a time/event table 
+disp('Accessing blackrock data...')
 
 timeBegin = datetime([inf inf inf], 'TimeZone','UTC'); 
 timeEnd = datetime([-inf -inf -inf], 'TimeZone','UTC');
 
 % NS (continuous data) files 
+disp('  - continuous data...')
 tbls = {}; SampleRates = [];
 for f = NSfiles
     try
@@ -100,10 +107,11 @@ for f = NSfiles
 end
 
 % NEV (event data) files
+disp('  - event data...')
 NEVtbl = [];
 for f = NEVfiles
     try
-    fEV = openNEV([f.folder,filesep,f.name]);
+    fEV = openNEV([f.folder,filesep,f.name], 'nosave');
     EVtbl = nev2table(fEV);
     timeBegin = min(timeBegin, min(EVtbl.Time));
     timeEnd = max(timeEnd, max(EVtbl.Time));
@@ -125,6 +133,7 @@ chnames = unique(chnames); chnames = string(chnames);
 clear fNS fEV fTbl EVtbl c r cname
 
 %% user selects channels 
+disp('Please specify channels...')
 channelIndexRec = listdlg("PromptString","Recording Channel(s)", ...
     "ListString",chnames, "SelectionMode","multiple"); 
 channelIndexStim = listdlg("PromptString","Stimulus Channel(s)", ...
@@ -138,6 +147,7 @@ for chindlist = ["Rec", "Stim", "Trig", "Inspect"]
 end
 
 %% detect triggers 
+disp('Detecting triggers...')
 
 % remove trigger pulse trains and convert to event table 
 trigtbl = [];
@@ -191,6 +201,7 @@ clear NStbl t trig lbl trigname trigtbl_ trignames_ trigname_
 
 %% construct main table 
 % everything resampled to the same time rows
+disp('Resampling...')
 %if length(SampleRates) > 1
 [~,SFi] = min(abs(SampleRates-1000));
 SamplingFreq = SampleRates(SFi);
@@ -215,6 +226,7 @@ end
 
 %% determine the baseline 
 % can any of this be changed to use MainTable? 
+disp('Detecting baseline...')
 
 % assess file start/end, packet loss, etc
 discont = [];
@@ -279,8 +291,10 @@ end
 clear t1 t2 numOL io trng
 
 %% user confirms baseline 
+disp('Please confirm baseline condition...')
 [~,iwind] = min(OLwinds);
-fig1 = figure; [~,hAXs] = myStackedPlot(MainTable, ...
+fig1 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+[~,hAXs] = myStackedPlot(MainTable, ...
     [channelNameRec, channelNameStim, channelNameInspect]);
 trngBaseline = inputdlg({'Start', 'End'}, 'BASELINE Segment', ...
     1, string(candwinds(iwind,:)));
@@ -301,6 +315,7 @@ pause(.01); drawnow; pause(.01);
 
 %% show channel stats
 % altered version of tblChannelSummary.m
+disp('Calculating baseline characteristics...')
 BaselineData = tblBaselineMain.Variables;
 varnames = tblBaselineMain.Properties.VariableNames; 
 vardescs = tblBaselineMain.Properties.VariableDescriptions;
@@ -312,12 +327,14 @@ BaselineData_inan = sum(isnan(BaselineData),2);
 BaselineData = BaselineData(~BaselineData_inan, :);
 
 % band(s) power and range 
+disp('  - band power:')
 BaselineSD = std(BaselineData);
 BaselineBetaPower = bandpower(BaselineData, SamplingFreq, [13,30]);
 BaselineThetaPower = bandpower(BaselineData, SamplingFreq, [4,9]);
 BaselineGammaPower = bandpower(BaselineData, SamplingFreq, [30,80]);
 
 % # of outliers 
+disp('  - outlier detection:')
 io = isoutlier(BaselineData, 'mean');
 BaselineNumOL = sum(io,1);
 
@@ -337,7 +354,7 @@ end
 
 % stem display
 if toshowas(1)
-    fig2 = figure;
+    fig2 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
     subplot(6,1,1);
     plotstem(BaselineThetaPower, varnames); 
     ylabel('\theta Power'); grid on; axis tight;
@@ -363,7 +380,7 @@ end
 
 % grid display 
 if toshowas(2)
-    fig3 = figure;
+    fig3 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
     subplot(1,5,1); 
     plotgrid(BaselineThetaPower, varnames, 21, 3); 
     title('\theta Power'); axis tight;
@@ -387,12 +404,14 @@ pause(.01); drawnow; pause(.01);
 clear showas
 
 %% inspect and reject noisy channels 
+disp('Please inspect and specify noisy channels to reject...')
 
 % final inspection 
 channelIndexInspect2 = listdlg("PromptString","Inspect Channel(s)", ...
     "ListString",chnames, "SelectionMode","multiple"); 
 channelNameInspect2 = chnames(channelIndexInspect2);
-fig4 = figure; myStackedPlot(MainTable, channelNameInspect2);
+fig4 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+myStackedPlot(MainTable, channelNameInspect2);
 
 % rejection 
 channelIndexReject = listdlg("PromptString","REJECT Channel(s)", ...
@@ -406,6 +425,7 @@ tblsBaseline = cellfun(@(tbl) removevars(tbl, channelNameReject), ...
     tblsBaseline, 'UniformOutput',false);
 
 %% user confirms marked stimulation 
+disp('Please confirm stimulation triggers...')
 figure(fig1);
 [trngTrig, comTrig] = VariableCountIntervalSelector(trigwinds, trignames);
 trngTrig = trngTrig'; 
@@ -435,6 +455,7 @@ end
 pause(.01); drawnow; pause(.01);
 
 %% determine unmarked stimulation 
+disp('Please confirm stimulation without triggers...')
 
 % initial screen for outliers 
 stimpoints = detectStimPoints(MainTable.Variables', tblBaselineMain.Variables', .1);
@@ -504,6 +525,7 @@ end
 pause(.01); drawnow; pause(.01);
 
 %% segment serial comm sessions 
+disp('Please confirm serial events...')
 
 % search for serial comm 
 evtbl = MainTable.Properties.Events;
@@ -626,6 +648,7 @@ pause(.01); drawnow; pause(.01);
 clear srlname srltbl_ srlnames_ srlname_ trngSrl_
 
 %% segment misc 
+disp('Please label any other data to save...')
 % user confirms 
 figure(fig1);
 [trngMisc, comMisc] = VariableCountIntervalSelector(...
@@ -664,6 +687,7 @@ pause(.01); drawnow; pause(.01);
 clear trngMisc_
 
 %% save all
+disp('Saving segmented data...')
 
 thisfilename = mfilename("fullpath");
 thisfilever = getFileVersion(thisfilename);
@@ -678,6 +702,7 @@ mkdir(folder);
 svname = fullfile(folder, svname);
 
 % save vars (table lists)
+disp('  - data file:')
 save(svname, ...
     "tbls", "tblsMisc", "tblsSrl", "tblsStimNoTrig", "tblsTrig", "tblsBaseline", ...
     "channelNameRec", "channelNameStim", "channelNameTrig", "channelNameReject", ...
@@ -685,16 +710,22 @@ save(svname, ...
     "-v7.3");
 
 % save fig1 and fig4 
+disp('  - figure 1:')
 saveasmultiple(fig1, [svname,'_TimePlot1']);
+disp('  - figure 4:')
 saveasmultiple(fig4, [svname,'_TimePlot2']);
 if toshowas(1)
     % save fig2
+    disp('  - figure 2:')
     saveasmultiple(fig2, [svname,'_StemPlot']);
 end
 if toshowas(2)
     % save fig3
+    disp('  - figure 3:')
     saveasmultiple(fig3, [svname,'_GridPlot']);
 end
+
+disp('...Done!')
 
 %% helpers 
 
