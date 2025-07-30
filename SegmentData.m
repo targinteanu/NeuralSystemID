@@ -440,8 +440,8 @@ for itrig = 1:width(trngTrig)
     end
 end
 for ic = 1:height(tblTrigMain)
-    tblTrigMain{ic,1} = myRetime(tblTrigMain{ic,1}, SamplingFreq, nan);
-    tblTrigMain{ic,1} = retime(tblTrigMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+    %tblTrigMain{ic,1} = myRetime(tblTrigMain{ic,1}, SamplingFreq, nan);
+    %tblTrigMain{ic,1} = retime(tblTrigMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
     tblTrigMain{ic,1}.Properties.Description = comTrig(ic);
     for SFi = 1:width(tblsTrig)
         tblsTrig{ic,SFi}.Properties.Description = comTrig(ic);
@@ -510,8 +510,8 @@ for istim = 1:width(trngStimNoTrig)
     end
 end
 for ic = 1:height(tblStimNoTrigMain)
-    tblStimNoTrigMain{ic,1} = myRetime(tblStimNoTrigMain{ic,1}, SamplingFreq, nan);
-    tblStimNoTrigMain{ic,1} = retime(tblStimNoTrigMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+    %tblStimNoTrigMain{ic,1} = myRetime(tblStimNoTrigMain{ic,1}, SamplingFreq, nan);
+    %tblStimNoTrigMain{ic,1} = retime(tblStimNoTrigMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
     tblStimNoTrigMain{ic,1}.Properties.Description = comStim(ic);
     for SFi = 1:width(tblsStimNoTrig)
         tblsStimNoTrig{ic,SFi}.Properties.Description = comStim(ic);
@@ -631,8 +631,8 @@ for isrl = 1:width(trngSrl)
     end
 end
 for ic = 1:height(tblSrlMain)
-    tblSrlMain{ic,1} = myRetime(tblSrlMain{ic,1}, SamplingFreq, nan);
-    tblSrlMain{ic,1} = retime(tblSrlMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+    %tblSrlMain{ic,1} = myRetime(tblSrlMain{ic,1}, SamplingFreq, nan);
+    %tblSrlMain{ic,1} = retime(tblSrlMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
     tblSrlMain{ic,1}.Properties.Description = comSrl(ic);
     for SFi = 1:width(tblsSrl)
         tblsSrl{ic,SFi}.Properties.Description = comSrl(ic);
@@ -670,8 +670,8 @@ for imisc = 1:width(trngMisc)
     end
 end
 for ic = 1:height(tblMiscMain)
-    tblMiscMain{ic,1} = myRetime(tblMiscMain{ic,1}, SamplingFreq, nan);
-    tblMiscMain{ic,1} = retime(tblMiscMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+    %tblMiscMain{ic,1} = myRetime(tblMiscMain{ic,1}, SamplingFreq, nan);
+    %tblMiscMain{ic,1} = retime(tblMiscMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
     tblMiscMain{ic,1}.Properties.Description = comMisc(ic);
     for SFi = 1:width(tblsMisc)
         tblsMisc{ic,SFi}.Properties.Description = comMisc(ic);
@@ -704,7 +704,8 @@ svname = fullfile(folder, svname);
 % save vars (table lists)
 disp('  - data file:')
 save(svname, ...
-    "tbls", "tblsMisc", "tblsSrl", "tblsStimNoTrig", "tblsTrig", "tblsBaseline", ...
+    "tbls", ...
+    "tblsMisc", "tblsSrl", "tblsStimNoTrig", "tblsTrig", "tblsBaseline", ...
     "channelNameRec", "channelNameStim", "channelNameTrig", "channelNameReject", ...
     "trngMisc", "trngSrl", "trngStimNoTrig", "trngTrig", "trngBaseline", ...
     "-v7.3");
