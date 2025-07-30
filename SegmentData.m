@@ -159,12 +159,16 @@ end
 % group triggers by time 
 trigboundtime = 10; % sec (defines a burst of triggers)
 trigtime = trigtbl.Time; % all trigger types!
+if isempty(trigtime)
+    trigwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
+else
 trigbound = seconds(diff(trigtime)) > trigboundtime;
 trigend = trigtime([trigbound; false]); 
 trigstart = trigtime([false; trigbound]);
 trigstart = [trigtime(1); trigstart];
 trigend = [trigend; trigtime(end)];
 trigwinds = [trigstart, trigend];
+end
 
 % describe triggers 
 trignames = repmat("", height(trigwinds),1);
@@ -175,7 +179,8 @@ for itrig = 1:height(trigwinds)
     for trigname_ = trignames_'
         trigname = trigname+"; "+trigname_;
     end
-    trignames(itrig) = trigname(3:end);
+    trigname = char(trigname);
+    trignames(itrig) = string(trigname(3:end));
 end
 
 for SFi = 1:width(tbls)
@@ -453,12 +458,16 @@ end
 
 % group stim by time 
 stimboundtime = 1; % sec (defines a burst of triggers)
+if isempty(stimtime)
+    stimwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
+else
 stimbound = seconds(diff(stimtime)) > stimboundtime;
 stimend = stimtime([stimbound; false]); 
 stimstart = stimtime([false; stimbound]);
 stimstart = [stimtime(1); stimstart];
 stimend = [stimend; stimtime(end)];
 stimwinds = [stimstart, stimend];
+end
 
 % user confirms 
 figure(fig1);
@@ -505,7 +514,7 @@ srltime = evtbl.Time(srlevt);
 srltimeMarkedStim = []; 
 for itrig = 1:width(trngTrig)
     stimtime = ...
-        (srltime > min(trngTrig(:,itrig))) | ...
+        (srltime > min(trngTrig(:,itrig))) & ...
         (srltime < max(trngTrig(:,itrig)));
     srltimeMarkedStim = [srltimeMarkedStim; srltime(stimtime)];
     srltime = srltime(~stimtime);
@@ -514,7 +523,7 @@ end
 srltimeUnmarkedStim = []; 
 for istim = 1:width(trngStimNoTrig)
     stimtime = ...
-        (srltime > min(trngStimNoTrig(:,istim))) | ...
+        (srltime > min(trngStimNoTrig(:,istim))) & ...
         (srltime < max(trngStimNoTrig(:,istim)));
     srltimeUnmarkedStim = [srltimeUnmarkedStim; srltime(stimtime)];
     srltime = srltime(~stimtime);
@@ -523,26 +532,38 @@ end
 % group by time 
 srlboundtime = 15; % s (defines a session of serial comms) 
 % no stim
+if isempty(srltime)
+    srlwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
+else
 srlbound = seconds(diff(srltime)) > srlboundtime;
 srlend = srltime([srlbound; false]); 
 srlstart = srltime([false; srlbound]);
 srlstart = [srltime(1); srlstart];
 srlend = [srlend; srltime(end)];
 srlwinds = [srlstart, srlend];
+end
 % marked stim 
+if isempty(srltimeMarkedStim)
+    srlwindsMarkedStim = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
+else
 srlbound = seconds(diff(srltimeMarkedStim)) > srlboundtime;
 srlend = srltimeMarkedStim([srlbound; false]); 
 srlstart = srltimeMarkedStim([false; srlbound]);
 srlstart = [srltimeMarkedStim(1); srlstart];
 srlend = [srlend; srltimeMarkedStim(end)];
 srlwindsMarkedStim = [srlstart, srlend];
+end
 % unmarked stim 
+if isempty(srltimeUnmarkedStim)
+    srlwindsUnmarkedStim = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
+else
 srlbound = seconds(diff(srltimeUnmarkedStim)) > srlboundtime;
 srlend = srltimeUnmarkedStim([srlbound; false]); 
 srlstart = srltimeUnmarkedStim([false; srlbound]);
 srlstart = [srltimeUnmarkedStim(1); srlstart];
 srlend = [srlend; srltimeUnmarkedStim(end)];
 srlwindsUnmarkedStim = [srlstart, srlend];
+end
 % recombine 
 % alternatively, should these all be processed and saved separately?
 srlwinds = [srlwinds; srlwindsMarkedStim; srlwindsUnmarkedStim];
@@ -556,7 +577,8 @@ for isrl = 1:height(srlwinds)
     for srlname_ = srlnames_'
         srlname = srlname+"; "+srlname_;
     end
-    srlnames(isrl) = srlname(3:end);
+    srlname = char(srlname);
+    srlnames(isrl) = string(srlname(3:end));
 end
 for isrl = 1:height(srlnames)
     if isrl > height(srlnames) - height(srlwindsUnmarkedStim)
@@ -606,7 +628,8 @@ clear srlname srltbl_ srlnames_ srlname_ trngSrl_
 %% segment misc 
 % user confirms 
 figure(fig1);
-[trngMisc, comMisc] = VariableCountIntervalSelector([NaT, NaT], ...
+[trngMisc, comMisc] = VariableCountIntervalSelector(...
+    repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 1,2), ...
     "Segment any miscellaneous time periods, or close this window to cancel.");
 trngMisc = trngMisc';
 [comMisc,~,uInd] = unique(comMisc);
