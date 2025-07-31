@@ -480,47 +480,8 @@ tblsBaseline = cellfun(@(tbl) myRemoveVars(tbl, channelNameReject), ...
 disp('Please confirm stimulation triggers...')
 figure(fig1);
 trngTrig = trigwinds'; comTrig = trignames;
-doAgain = true;
-
-while doAgain
-[trngTrig, comTrig] = VariableCountIntervalSelector(trngTrig', comTrig);
-trngTrig = trngTrig'; 
-[ucomTrig,~,uInd] = unique(comTrig);
-tblTrigMain = cell(length(ucomTrig),1); tblsTrig = cell(length(ucomTrig),length(tbls));
-hPat = [];
-for itrig = 1:width(trngTrig)
-    trngTrig_ = trngTrig(:,itrig);
-    hPat = [hPat; plottrng(trngTrig_, [1,0,0], hAXs)]; % indicate on plot
-    tblTrigMain{uInd(itrig)} = [tblTrigMain{uInd(itrig)}; mySelect(MainTable, trngTrig_, true)];
-    for SFi = 1:width(tblsTrig)
-        tblsTrig{uInd(itrig),SFi} = [tblsTrig{uInd(itrig),SFi}; mySelect(tbls{SFi}, trngTrig_, true)];
-    end
-end
-
-pause(.01); drawnow; pause(.01);
-doAgainQst = questdlg('Accept?', 'Accept Time Range', ...
-    'Yes', 'Try Again', 'Stop Program', 'Yes');
-if strcmp(doAgainQst, 'Yes')
-    doAgain = false;
-elseif strcmp(doAgainQst, 'Try Again')
-    delete(hPat);
-else
-    error('Terminated by user.')
-end
-end
-
-for ic = 1:height(tblTrigMain)
-    %tblTrigMain{ic,1} = myRetime(tblTrigMain{ic,1}, SamplingFreq, nan);
-    %tblTrigMain{ic,1} = retime(tblTrigMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
-    tblTrigMain{ic,1}.Properties.Description = ucomTrig(ic);
-    for SFi = 1:width(tblsTrig)
-        tblsTrig{ic,SFi}.Properties.Description = ucomTrig(ic);
-    end
-end
-tblsTrig = [tblTrigMain, tblsTrig];
-if isequal(size(tblTrigMain), [1,1])
-    tblTrigMain = tblTrigMain{1};
-end
+[trngTrig, comTrig, tblTrigMain, tblsTrig] = ...
+    usrconfirm(trngTrig, comTrig, MainTable, tbls, hAXs, [1,0,0]);
 
 %% determine unmarked stimulation 
 disp('Please confirm stimulation without triggers...')
@@ -552,50 +513,8 @@ stimwinds = groupbytime(stimtime, stimboundtime);
 % user confirms 
 figure(fig1);
 trngStimNoTrig = stimwinds'; comStim = repmat("Presumed Stim", height(stimwinds), 1);
-doAgain = true;
-while doAgain
-[trngStimNoTrig, comStim] = VariableCountIntervalSelector(trngStimNoTrig', comStim);
-trngStimNoTrig = trngStimNoTrig';
-[ucomStim,~,uInd] = unique(comStim);
-tblStimNoTrigMain = cell(length(ucomStim),1); 
-tblsStimNoTrig = cell(length(ucomStim),length(tbls));
-hPat = [];
-for istim = 1:width(trngStimNoTrig)
-    trngStim_ = trngStimNoTrig(:,istim);
-    hPat = [hPat; plottrng(trngStim_, [1,0,1], hAXs)]; % indicate on plot
-    tblStimNoTrigMain{uInd(istim)} = ...
-        [tblStimNoTrigMain{uInd(istim)}; mySelect(MainTable, trngStim_, true)];
-    for SFi = 1:width(tblsStimNoTrig)
-        tblsStimNoTrig{uInd(istim),SFi} = ...
-            [tblsStimNoTrig{uInd(istim),SFi}; ...
-            mySelect(tbls{SFi}, trngStim_, true)];
-    end
-end
-
-pause(.01); drawnow; pause(.01);
-doAgainQst = questdlg('Accept?', 'Accept Time Range', ...
-    'Yes', 'Try Again', 'Stop Program', 'Yes');
-if strcmp(doAgainQst, 'Yes')
-    doAgain = false;
-elseif strcmp(doAgainQst, 'Try Again')
-    delete(hPat);
-else
-    error('Terminated by user.')
-end
-end
-
-for ic = 1:height(tblStimNoTrigMain)
-    %tblStimNoTrigMain{ic,1} = myRetime(tblStimNoTrigMain{ic,1}, SamplingFreq, nan);
-    %tblStimNoTrigMain{ic,1} = retime(tblStimNoTrigMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
-    tblStimNoTrigMain{ic,1}.Properties.Description = ucomStim(ic);
-    for SFi = 1:width(tblsStimNoTrig)
-        tblsStimNoTrig{ic,SFi}.Properties.Description = ucomStim(ic);
-    end
-end
-tblsStimNoTrig = [tblStimNoTrigMain, tblsStimNoTrig];
-if isequal(size(tblStimNoTrigMain), [1,1])
-    tblStimNoTrigMain = tblStimNoTrigMain{1};
-end
+[trngStimNoTrig, comStim, tblStimNoTrigMain, tblsStimNoTrig] = ...
+    usrconfirm(trngStimNoTrig, comStim, MainTable, tbls, hAXs, [1,0,1]);
 
 %% segment serial comm sessions 
 disp('Please confirm serial events...')
@@ -661,52 +580,10 @@ end
 % user confirms 
 figure(fig1);
 trngSrl = srlwinds'; comSrl = srlnames;
-doAgain = true;
-while doAgain
-[trngSrl, comSrl] = VariableCountIntervalSelector(trngSrl', comSrl);
-trngSrl = trngSrl';
-[ucomSrl,~,uInd] = unique(comSrl);
-tblSrlMain = cell(length(ucomSrl),1); 
-tblsSrl = cell(length(ucomSrl),length(tbls));
-hPat = [];
-for isrl = 1:width(trngSrl)
-    trngSrl_ = trngSrl(:,isrl);
-    hPat = [hPat; plottrng(trngSrl_, [0,1,0], hAXs)]; % indicate on plot
-    tblSrlMain{uInd(isrl)} = ...
-        [tblSrlMain{uInd(isrl)}; mySelect(MainTable, trngSrl_, true)];
-    for SFi = 1:width(tblsSrl)
-        tblsSrl{uInd(isrl),SFi} = ...
-            [tblsSrl{uInd(isrl),SFi}; ...
-            mySelect(tbls{SFi}, trngSrl_, true)];
-    end
-end
+[trngSrl, comSrl, tblSrlMain, tblsSrl] = ...
+    usrconfirm(trngSrl, comSrl, MainTable, tbls, hAXs, [0,1,0]);
 
-pause(.01); drawnow; pause(.01);
-doAgainQst = questdlg('Accept?', 'Accept Time Range', ...
-    'Yes', 'Try Again', 'Stop Program', 'Yes');
-if strcmp(doAgainQst, 'Yes')
-    doAgain = false;
-elseif strcmp(doAgainQst, 'Try Again')
-    delete(hPat);
-else
-    error('Terminated by user.')
-end
-end
-
-for ic = 1:height(tblSrlMain)
-    %tblSrlMain{ic,1} = myRetime(tblSrlMain{ic,1}, SamplingFreq, nan);
-    %tblSrlMain{ic,1} = retime(tblSrlMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
-    tblSrlMain{ic,1}.Properties.Description = ucomSrl(ic);
-    for SFi = 1:width(tblsSrl)
-        tblsSrl{ic,SFi}.Properties.Description = ucomSrl(ic);
-    end
-end
-tblsSrl = [tblSrlMain, tblsSrl];
-if isequal(size(tblSrlMain), [1,1])
-    tblSrlMain = tblSrlMain{1};
-end
-
-clear srlname srltbl_ srlnames_ srlname_ trngSrl_
+clear srlname srltbl_ srlnames_ srlname_
 
 %% segment misc 
 disp('Please label any other data to save...')
@@ -714,53 +591,8 @@ disp('Please label any other data to save...')
 figure(fig1);
 trngMisc = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 1,2)';
 comMisc = "Segment any miscellaneous time periods, or close this window to cancel.";
-doAgain = true;
-
-while doAgain
-[trngMisc, comMisc] = VariableCountIntervalSelector(trngMisc', comMisc);
-trngMisc = trngMisc';
-[ucomMisc,~,uInd] = unique(comMisc);
-tblMiscMain = cell(length(ucomMisc),1); 
-tblsMisc = cell(length(ucomMisc),length(tbls));
-hPat = [];
-for imisc = 1:width(trngMisc)
-    trngMisc_ = trngMisc(:,imisc);
-    hPat = [hPat; plottrng(trngMisc_, [1,1,0], hAXs)]; % indicate on plot
-    tblMiscMain{uInd(imisc)} = ...
-        [tblMiscMain{uInd(imisc)}; mySelect(MainTable, trngMisc_, true)];
-    for SFi = 1:width(tblsMisc)
-        tblsMisc{uInd(imisc),SFi} = ...
-            [tblsMisc{uInd(imisc),SFi}; ...
-            mySelect(tbls{SFi}, trngMisc_, true)];
-    end
-end
-
-pause(.01); drawnow; pause(.01);
-doAgainQst = questdlg('Accept?', 'Accept Time Range', ...
-    'Yes', 'Try Again', 'Stop Program', 'Yes');
-if strcmp(doAgainQst, 'Yes')
-    doAgain = false;
-elseif strcmp(doAgainQst, 'Try Again')
-    delete(hPat);
-else
-    error('Terminated by user.')
-end
-end
-
-for ic = 1:height(tblMiscMain)
-    %tblMiscMain{ic,1} = myRetime(tblMiscMain{ic,1}, SamplingFreq, nan);
-    %tblMiscMain{ic,1} = retime(tblMiscMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
-    tblMiscMain{ic,1}.Properties.Description = ucomMisc(ic);
-    for SFi = 1:width(tblsMisc)
-        tblsMisc{ic,SFi}.Properties.Description = ucomMisc(ic);
-    end
-end
-tblsMisc = [tblMiscMain, tblsMisc];
-if isequal(size(tblMiscMain), [1,1])
-    tblMiscMain = tblMiscMain{1};
-end
-
-clear trngMisc_
+[trngMisc, comMisc, tblMiscMain, tblsMisc] = ...
+    usrconfirm(trngMisc, comMisc, MainTable, tbls, hAXs, [1,1,0]);
 
 %% save all
 disp('Saving segmented data...')
@@ -808,6 +640,7 @@ disp('...Done!')
 
 %% helpers 
 
+
 function Tbl = mySelect(Tbl, times, selbetween)
 if selbetween
     times = timerange(times(1), times(2));
@@ -815,6 +648,7 @@ end
 Tbl = Tbl(times,:);
 Tbl.Properties.Events = Tbl.Properties.Events(times,:);
 end
+
 
 function evwinds = groupbytime(evtime, boundtime)
 evtime = sort(evtime);
@@ -829,6 +663,7 @@ else
     evwinds = [evstart, evend];
 end
 end
+
 
 function [trng, tbls] = nancheck(trng, tbls, hAXs)
 tnan = [];
@@ -860,6 +695,54 @@ if ~isempty(tnan)
 end
 end
 
+
+function [trng, com, tblMainOut, tblsOut] = ...
+    usrconfirm(trng, com, tblMainIn, tblsIn, hAXs, colr)
+
+doAgain = true;
+while doAgain
+[trng, com] = VariableCountIntervalSelector(trng', com);
+trng = trng'; 
+[ucom,~,uInd] = unique(com);
+tblMainOut = cell(length(ucom),1); tblsOut = cell(length(ucom),length(tblsIn));
+hPat = [];
+for ti = 1:width(trng)
+    trng_ = trng(:,ti);
+    hPat = [hPat; plottrng(trng_, colr, hAXs)]; % indicate on plot
+    tblMainOut{uInd(ti)} = [tblMainOut{uInd(ti)}; mySelect(tblMainIn, trng_, true)];
+    for SFi = 1:width(tblsOut)
+        tblsOut{uInd(ti),SFi} = [tblsOut{uInd(ti),SFi}; mySelect(tblsIn{SFi}, trng_, true)];
+    end
+end
+
+pause(.01); drawnow; pause(.01);
+doAgainQst = questdlg('Accept?', 'Accept Time Range', ...
+    'Yes', 'Try Again', 'Stop Program', 'Yes');
+if strcmp(doAgainQst, 'Yes')
+    doAgain = false;
+elseif strcmp(doAgainQst, 'Try Again')
+    delete(hPat);
+else
+    error('Terminated by user.')
+end
+end
+
+for ic = 1:height(tblMainOut)
+    %tblMain{ic,1} = myRetime(tblMain{ic,1}, SamplingFreq, nan);
+    %tblMain{ic,1} = retime(tblMain{ic,1}, 'regular', 'nearest', 'SampleRate',SamplingFreq);
+    tblMainOut{ic,1}.Properties.Description = ucom(ic);
+    for SFi = 1:width(tblsOut)
+        tblsOut{ic,SFi}.Properties.Description = ucom(ic);
+    end
+end
+tblsOut = [tblMainOut, tblsOut];
+if isequal(size(tblMainOut), [1,1])
+    tblMainOut = tblMainOut{1};
+end
+
+end
+
+
 function hPat = plottrng(trng, colr, hAXs)
 hPat = [];
 xrng = trng;
@@ -873,10 +756,12 @@ for hAX = hAXs'
 end
 end
 
+
 function plt = plotstem(vals, names)
 plt = stem(vals); 
 xticks(1:length(vals)); xticklabels(names);
 end
+
 
 function [img, txt] = plotgrid(vals, names, nrow, ncol)
 for n = 1:length(names)
@@ -898,6 +783,7 @@ txt = text(X,Y, names, ...
     'FontWeight', 'bold', ...
     'Color',[.8 0 0]);
 end
+
 
 function saveasmultiple(fig, filename)
 saveas(fig, filename, 'fig'); % original matlab figure
