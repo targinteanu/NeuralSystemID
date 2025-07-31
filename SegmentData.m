@@ -36,7 +36,7 @@ for f = ElecXL'
     electbl = [electbl; fTbl];
 end
 
-clear x y z XYZ xyz fTbl
+clear x y z XYZ xyz f fTbl
 
 %% get blackrock data into a time/event table 
 disp('Accessing blackrock data...')
@@ -152,7 +152,7 @@ for SFi = 1:width(tbls)
 end
 chnames = unique(chnames); chnames = string(chnames);
 
-clear fNS fEV fTbl EVtbl c r cname proc varnames
+clear f fNS fEV fTbl EVtbl c r cname proc varnames
 
 %% user selects channels 
 disp('Please specify channels...')
@@ -167,6 +167,7 @@ channelIndexInspect = listdlg("PromptString","Inspect Channel(s)", ...
 for chindlist = ["Rec", "Stim", "Trig", "Inspect"]
     eval("channelName"+chindlist+" = chnames(channelIndex"+chindlist+");");
 end
+clear chindlist
 
 %% detect triggers 
 disp('Detecting triggers...')
@@ -230,7 +231,7 @@ for SFi = 1:width(tbls)
     tbls{SFi}.Properties.Events = [tbls{SFi}.Properties.Events; trigtbl];
 end
 
-clear NStbl t trig lbl trigname trigtbl_ trignames_ trigname_ 
+clear NStbl t trig lbl trigname trigtbl_ trignames_ trigname_ itrig
 clear namefound namefound_
 
 %% construct main table 
@@ -259,6 +260,8 @@ end
 %end
 
 chnames = unique(MainTable.Properties.VariableNames);
+
+clear chname
 
 %% determine the baseline 
 % can any of this be changed to use MainTable? 
@@ -301,7 +304,7 @@ end
 candwindslong = (candwinds(:,2) - candwinds(:,1)) >= minutes(3); % MIN DURATION
 candwinds = candwinds(candwindslong,:);
 
-clear trigstart_ trigend_ t1 t2 disci d
+clear trigstart_ trigend_ t1 t2 disci d discont
 
 % outlier detection 
 OLtbls = cell(size(tbls)); 
@@ -324,7 +327,7 @@ for iwind = 1:height(OLwinds)
     OLwinds(iwind) = OLwinds(iwind)/seconds(t2-t1);
 end
 
-clear t1 t2 numOL io trng
+clear t1 t2 numOL io trng iwind
 
 %% user confirms baseline 
 disp('Please confirm baseline condition...')
@@ -362,6 +365,8 @@ else
     error('Terminated by user.')
 end
 end
+
+clear doAgain doAgainQst hPat
 
 %% show channel stats
 % altered version of tblChannelSummary.m
@@ -451,7 +456,7 @@ end
 
 pause(.01); drawnow; pause(.01);
 
-clear showas
+clear showas xl
 
 %% inspect and reject noisy channels 
 disp('Please inspect and specify noisy channels to reject...')
@@ -515,6 +520,8 @@ figure(fig1);
 trngStimNoTrig = stimwinds'; comStim = repmat("Presumed Stim", height(stimwinds), 1);
 [trngStimNoTrig, comStim, tblStimNoTrigMain, tblsStimNoTrig] = ...
     usrconfirm(trngStimNoTrig, comStim, MainTable, tbls, hAXs, [1,0,1]);
+
+clear itrig
 
 %% segment serial comm sessions 
 disp('Please confirm serial events...')
@@ -583,7 +590,7 @@ trngSrl = srlwinds'; comSrl = srlnames;
 [trngSrl, comSrl, tblSrlMain, tblsSrl] = ...
     usrconfirm(trngSrl, comSrl, MainTable, tbls, hAXs, [0,1,0]);
 
-clear srlname srltbl_ srlnames_ srlname_
+clear srlname srltbl_ srlnames_ srlname_ isrl istim
 
 %% segment misc 
 disp('Please label any other data to save...')
@@ -764,9 +771,11 @@ end
 
 
 function [img, txt] = plotgrid(vals, names, nrow, ncol)
+%{
 for n = 1:length(names)
     names{n} = [num2str(n),': ',names{n}];
 end
+%}
 valgrid = nan(nrow, ncol);
 for idx = 1:min(nrow*ncol, length(vals))
     valgrid(idx) = vals(idx);
