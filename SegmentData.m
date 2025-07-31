@@ -196,7 +196,7 @@ for chname = channelNameTrig
             t = t(trig);
             trigtbl = [trigtbl; eventtable(t, "EventLabels",lbl, "EventEnds",t)];
             NStbl = removevars(NStbl, chname);
-            if isempty NStbl
+            if isempty(NStbl)
                 SampleRates(SFi) = nan;
             else
                 tbls{SFi} = NStbl;
