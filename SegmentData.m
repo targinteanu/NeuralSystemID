@@ -211,7 +211,7 @@ tbls = tbls(~isnan(SampleRates)); SampleRates = SampleRates(~isnan(SampleRates))
 % group triggers by time 
 trigboundtime = 10; % sec (defines a burst of triggers)
 trigtime = trigtbl.Time; % all trigger types!
-trigwinds = groupbytime(trigtime, trigboundtime);
+trigwinds = groupbytime(trigtime, trigboundtime, timeBegin);
 trigstart = trigwinds(:,1); trigend = trigwinds(:,2);
 
 % describe triggers 
@@ -513,7 +513,7 @@ end
 
 % group stim by time 
 stimboundtime = 1; % sec (defines a burst of triggers)
-stimwinds = groupbytime(stimtime, stimboundtime);
+stimwinds = groupbytime(stimtime, stimboundtime, timeBegin);
 
 % user confirms 
 figure(fig1);
@@ -553,11 +553,11 @@ end
 % group by time 
 srlboundtime = 15; % s (defines a session of serial comms) 
 % no stim
-srlwinds = groupbytime(srltime, srlboundtime);
+srlwinds = groupbytime(srltime, srlboundtime, timeBegin);
 % marked stim 
-srlwindsMarkedStim = groupbytime(srltimeMarkedStim, srlboundtime);
+srlwindsMarkedStim = groupbytime(srltimeMarkedStim, srlboundtime, timeBegin);
 % unmarked stim 
-srlwindsUnmarkedStim = groupbytime(srltimeUnmarkedStim, srlboundtime);
+srlwindsUnmarkedStim = groupbytime(srltimeUnmarkedStim, srlboundtime, timeBegin);
 % recombine 
 % alternatively, should these all be processed and saved separately?
 srlwinds = [srlwinds; srlwindsMarkedStim; srlwindsUnmarkedStim];
@@ -657,7 +657,7 @@ Tbl.Properties.Events = Tbl.Properties.Events(times,:);
 end
 
 
-function evwinds = groupbytime(evtime, boundtime)
+function evwinds = groupbytime(evtime, boundtime, timeBegin)
 evtime = sort(evtime);
 if isempty(evtime)
     evwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
