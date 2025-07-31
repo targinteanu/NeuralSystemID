@@ -6,6 +6,7 @@ NSfiles = dir([folder,filesep,'*.ns*']);
 NEVfiles = dir([folder,filesep,'*.nev']);
 ElecXL = [dir([folder,filesep,'electrode_data.xls*']); ...
           dir([folder,filesep,pName,filesep,'electrode_data.xls*'])];
+thisfilename = mfilename("fullpath");
 
 %% get electrode data 
 disp('Reading electrode localization data...')
@@ -811,7 +812,6 @@ clear trngMisc_
 %% save all
 disp('Saving segmented data...')
 
-thisfilename = mfilename("fullpath");
 thisfilever = getFileVersion(thisfilename);
 [~,thisfilename] = fileparts(thisfilename);
 svname = [pName,'_',thisfilename,'_',thisfilever];
