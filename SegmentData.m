@@ -210,17 +210,8 @@ tbls = tbls(~isnan(SampleRates)); SampleRates = SampleRates(~isnan(SampleRates))
 % group triggers by time 
 trigboundtime = 10; % sec (defines a burst of triggers)
 trigtime = trigtbl.Time; % all trigger types!
-trigtime = sort(trigtime);
-if isempty(trigtime)
-    trigwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
-else
-trigbound = seconds(diff(trigtime)) > trigboundtime;
-trigend = trigtime([trigbound; false]); 
-trigstart = trigtime([false; trigbound]);
-trigstart = [trigtime(1); trigstart];
-trigend = [trigend; trigtime(end)];
-trigwinds = [trigstart, trigend];
-end
+trigwinds = groupbytime(trigtime, trigboundtime);
+trigstart = trigwinds(:,1); trigend = trigwinds(:,2);
 
 % describe triggers 
 trignames = repmat("", height(trigwinds),1);
@@ -556,17 +547,7 @@ end
 
 % group stim by time 
 stimboundtime = 1; % sec (defines a burst of triggers)
-stimtime = sort(stimtime);
-if isempty(stimtime)
-    stimwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
-else
-stimbound = seconds(diff(stimtime)) > stimboundtime;
-stimend = stimtime([stimbound; false]); 
-stimstart = stimtime([false; stimbound]);
-stimstart = [stimtime(1); stimstart];
-stimend = [stimend; stimtime(end)];
-stimwinds = [stimstart, stimend];
-end
+stimwinds = groupbytime(stimtime, stimboundtime);
 
 % user confirms 
 figure(fig1);
@@ -645,40 +626,12 @@ end
 
 % group by time 
 srlboundtime = 15; % s (defines a session of serial comms) 
-srltime = sort(srltime);
 % no stim
-if isempty(srltime)
-    srlwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
-else
-srlbound = seconds(diff(srltime)) > srlboundtime;
-srlend = srltime([srlbound; false]); 
-srlstart = srltime([false; srlbound]);
-srlstart = [srltime(1); srlstart];
-srlend = [srlend; srltime(end)];
-srlwinds = [srlstart, srlend];
-end
+srlwinds = groupbytime(srltime, srlboundtime);
 % marked stim 
-if isempty(srltimeMarkedStim)
-    srlwindsMarkedStim = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
-else
-srlbound = seconds(diff(srltimeMarkedStim)) > srlboundtime;
-srlend = srltimeMarkedStim([srlbound; false]); 
-srlstart = srltimeMarkedStim([false; srlbound]);
-srlstart = [srltimeMarkedStim(1); srlstart];
-srlend = [srlend; srltimeMarkedStim(end)];
-srlwindsMarkedStim = [srlstart, srlend];
-end
+srlwindsMarkedStim = groupbytime(srltimeMarkedStim, srlboundtime);
 % unmarked stim 
-if isempty(srltimeUnmarkedStim)
-    srlwindsUnmarkedStim = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
-else
-srlbound = seconds(diff(srltimeUnmarkedStim)) > srlboundtime;
-srlend = srltimeUnmarkedStim([srlbound; false]); 
-srlstart = srltimeUnmarkedStim([false; srlbound]);
-srlstart = [srltimeUnmarkedStim(1); srlstart];
-srlend = [srlend; srltimeUnmarkedStim(end)];
-srlwindsUnmarkedStim = [srlstart, srlend];
-end
+srlwindsUnmarkedStim = groupbytime(srltimeUnmarkedStim, srlboundtime);
 % recombine 
 % alternatively, should these all be processed and saved separately?
 srlwinds = [srlwinds; srlwindsMarkedStim; srlwindsUnmarkedStim];
@@ -861,6 +814,20 @@ if selbetween
 end
 Tbl = Tbl(times,:);
 Tbl.Properties.Events = Tbl.Properties.Events(times,:);
+end
+
+function evwinds = groupbytime(evtime, boundtime)
+evtime = sort(evtime);
+if isempty(evtime)
+    evwinds = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
+else
+    evbound = seconds(diff(evtime)) > boundtime;
+    evend = evtime([evbound; false]);
+    evstart = evtime([false; evbound]);
+    evstart = [evtime(1); evstart];
+    evend = [evend; evtime(end)];
+    evwinds = [evstart, evend];
+end
 end
 
 function [trng, tbls] = nancheck(trng, tbls, hAXs)
