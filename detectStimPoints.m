@@ -28,5 +28,5 @@ function stim_points = detectStimPoints(patient_data, baseline_data, threshold)
     stim_proportion = mean(stim_mask, 1);         % 1 x (timepoints - 1)
 
     % === Timepoints where > threshold fraction of channels fire ===
-    stim_points = find(stim_proportion > threshold) - 1;  % shift for diff()
+    stim_points = find(stim_proportion > threshold) + 1;  % shift for diff()
 end
