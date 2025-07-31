@@ -59,19 +59,22 @@ end
 if (length(t1Rel) > 1) || (length(datadur) > 1)
     packetLoss = true;
     warning('Packet loss. Splicing packets together.') 
+    [t1Rel, t1sortind] = sort(t1Rel); 
+    datadur = datadur(t1sortind); datalen = datalen(t1sortind);
     tStartEnd = [t1Rel; t1Rel + datadur];
     packetdur = diff(tStartEnd);
     packetgap = tStartEnd(1,2:end) - tStartEnd(2,1:(end-1));
-    Dta = NS.Data;
+    Dta = NS.Data; Dta = Dta(t1sortind);
     TRel = arrayfun(@(p) linspace(tStartEnd(1,p), tStartEnd(2,p), datalen(p)), ...
         1:max(length(t1Rel), length(datadur)), 'UniformOutput',false);
-    if sum(packetgap < 0)
+
+    while sum(packetgap < 0)
         % some packets begin before the previous packet has ended. 
         % Solution: trust data from the longer packet
         for p = find(packetgap < 0)
             % packet p and p+1 overlap
             warning(['There is overlap between packets ',num2str(p),' and ',num2str(p+1)]);
-            overlapSize = packetgap(p)/SamplingFreq; % samples 
+            overlapSize = round(-packetgap(p)*SamplingFreq); % samples 
             if packetdur(p) > packetdur(p+1)
                 % shave off start of packet p+1
                 Dta{p+1} = Dta{p+1}(:,(overlapSize+1):end);
@@ -84,7 +87,15 @@ if (length(t1Rel) > 1) || (length(datadur) > 1)
                 warning([num2str(overlapSize),' samples have been removed from packet ',num2str(p)]);
             end
         end
+
+        % discard packets that are now empty
+        todiscard = cellfun(@isempty, TRel);
+        TRel = TRel(~todiscard); Dta = Dta(~todiscard);
+        tStartEnd = tStartEnd(:,~todiscard);
+        packetdur = diff(tStartEnd);
+        packetgap = tStartEnd(1,2:end) - tStartEnd(2,1:(end-1));
     end
+
     dta = cell2mat(Dta); tRel = cell2mat(TRel);
 else
     packetLoss = false;
