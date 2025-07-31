@@ -50,6 +50,16 @@ for f = NSfiles'
     try
     fNS = openNSx([f.folder,filesep,f.name], 'uV');
     fTbl = ns2timetable(fNS);
+
+    disp(['File: ',f.name,...
+          ' starts at ',char(min(fTbl.Time)),' and',...
+          ' ends at ',char(max(fTbl.Time))]);
+    varnames = fTbl.Properties.VariableNames;
+    varnames = cellfun(@(v) [v,'|'], varnames, 'UniformOutput', false);
+    disp([varnames{:}]);
+    proc = input('Include this file? (Y/N) ', "s");
+    if strcmpi(proc, 'Y')
+
     timeBegin = min(timeBegin, min(fTbl.Time));
     timeEnd = max(timeEnd, max(fTbl.Time));
 
@@ -101,6 +111,7 @@ for f = NSfiles'
             end
         end
     end
+    end
     catch ME
         warning(ME.message);
     end
@@ -113,9 +124,19 @@ for f = NEVfiles'
     try
     fEV = openNEV([f.folder,filesep,f.name], 'nosave');
     EVtbl = nev2table(fEV);
+
+    disp(['File: ',f.name,...
+          ' first event at ',char(min(EVtbl.Time)),' and',...
+          ' last event at ',char(max(EVtbl.Time))]);
+    disp(unique(EVtbl.EventLabels));
+    proc = input('Include this file? (Y/N) ', "s");
+    if strcmpi(proc, 'Y')
+
     timeBegin = min(timeBegin, min(EVtbl.Time));
     timeEnd = max(timeEnd, max(EVtbl.Time));
     NEVtbl = [NEVtbl; EVtbl];
+
+    end
     catch ME
         warning(ME.message);
     end
@@ -130,7 +151,7 @@ for SFi = 1:width(tbls)
 end
 chnames = unique(chnames); chnames = string(chnames);
 
-clear fNS fEV fTbl EVtbl c r cname
+clear fNS fEV fTbl EVtbl c r cname proc varnames
 
 %% user selects channels 
 disp('Please specify channels...')
@@ -244,6 +265,8 @@ for SFi = SFj
     MainTable = [MainTable, tbl];
 end
 %end
+
+chnames = unique(MainTable.Properties.VariableNames);
 
 %% determine the baseline 
 % can any of this be changed to use MainTable? 
