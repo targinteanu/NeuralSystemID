@@ -33,24 +33,21 @@ for f = NS2files
     NS2tbl = [NS2tbl; fTbl];
 end
 
-NEVtime = [];
+NEVtbl = [];
 for f = NEVfiles
     try
         fEV = openNEV([f.folder,filesep,f.name]);
-        ft0 = datetime(fEV.MetaTags.DateTime);
-        ftRel = fEV.Data.SerialDigitalIO.TimeStampSec;
-        fTime = ft0 + seconds(ftRel);
-        NEVtime = [NEVtime; fTime];
+        EVtbl = nev2table(fEV);
+        NEVtbl = [NEVtbl; EVtbl];
     catch ME
         warning(ME.message)
     end
 end
-if ~isempty(NEVtime)
-    NS2tbl.Properties.Events = eventtable(NEVtime, ...
-        EventLabels="Serial Digital IO");
+if ~isempty(NEVtbl)
+    NS2tbl.Properties.Events = NEVtbl;
 end
 
-clear f fNS fEV fTbl ft0 ftRel fTime NEVtime
+clear f fNS fEV fTbl NEVtbl EVtbl
 
 %% get details on stimulus and recording 
 
@@ -117,7 +114,7 @@ el.CData = BetaColor;
 el.SizeData = 50;
 el.Marker = "o";
 el.MarkerFaceColor = 'flat';
-el.MarkerEdgeColor = 'r';
+el.MarkerEdgeColor = 'k';
 % view([66.1890, 39.71]);
 material shiny;
 lighting gouraud;
