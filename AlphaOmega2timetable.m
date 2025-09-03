@@ -1,10 +1,11 @@
 %% setup
 
 % find files and determine data fields 
-fp = uigetdir;
+%fp = uigetdir;
 filelist = dir(fp);
 file1 = filelist(~[filelist.isdir]);
 file1 = file1(arrayfun(@(f) f.bytes > 0, file1));
+file1 = file1(arrayfun(@(f) f.name(1)~='.', file1));
 file1 = file1(1); load(fullfile(file1.folder, file1.name));
 channelNames = {Channel_ID_Name_Map.Name};
 Tbls0 = cell(size(channelNames));
@@ -19,17 +20,16 @@ fileDataFields = {...
     }; 
 channelDataFields = {'BitResolution', 'Gain'};
 
+% channel selection 
+% For now, only select ANALOG_IN and LFP channels; ignore spike, RAW, and
+% SEG. In the future, spike sorting should be performed later in this
+% script instead of throwing out spikes. Not sure what to do with RAW/SEG
+chincl = contains(channelNames, 'LFP') | ...
+         contains(channelNames, 'ANALOG_IN');
+channelNames = channelNames(chincl); 
+
 % group channels by sampling rate 
-Fs = nan(size(channelNames));
-for CHNAME = channelNames
-    chName = CHNAME{:};
-    try 
-        fs = eval([chName,'_KHz'])*1000; % Hz
-    catch ME
-        warning(['On ',chName,': ',ME.message])
-    end
-end
-clear CHNAME chName
+Fs = cellfun(@getsamplerate, channelNames);
 FsGrouped = unique(Fs);
 channelNamesGrouped = cell(size(FsGrouped));
 for grp = 1:length(FsGrouped)
@@ -62,6 +62,7 @@ for f = filelist'
         if strcmpi(fe, '.mat')
             load(fnfull)
 
+            %{
             % anticipate if the memory will become full; 
             % if so, save and clear 
             sz = whos('Tbls'); sz = sz.bytes;
@@ -71,9 +72,10 @@ for f = filelist'
                 clear Tbls
                 Tbls = Tbls0;
             end
+            %}
 
             % look at channels 
-            if ~strcmpwrapper(chNames, {Channel_ID_Name_Map.Name})
+            if ~strcmpwrapper(channelNames, {Channel_ID_Name_Map.Name})
                 warning(['On ',fn,': channel names do not match'])
             end
             FileData = varnames2struct(fileDataFields, '');
@@ -107,7 +109,7 @@ for f = filelist'
                 Tbls{Ti} = [Tbls{Ti}; T];
 
                 % if the memory is getting full, save and clear 
-                sz = whos('Tbls'); sz = sz.bytes 
+                sz = whos('Tbls'); sz = sz.bytes;
                 if sz > sizethresh
                     save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls","channelNames");
                     svN = svN+1;
@@ -168,11 +170,20 @@ end
 
 %% helper 
 
+function fs = getsamplerate(chName)
+fs = 0;
+    try 
+        fs = evalinwrapper([chName,'_KHz'])*1000; % Hz
+    catch ME
+        warning(['On ',chName,': ',ME.message])
+    end
+end
+
 function S = varnames2struct(varnames, header)
 if nargin < 2
     header = '';
 end
-vars = cellfun(@(vn) evalin('base',[header,vn]), varnames, 'UniformOutput', false);
+vars = cellfun(@(vn) evalinwrapper([header,vn]), varnames, 'UniformOutput', false);
 S = cell2struct(vars, varnames, 2);
 end
 
@@ -180,5 +191,17 @@ function yn = strcmpwrapper(strs1, strs2)
 yn = length(strs1) == length(strs2); 
 if yn 
     yn = prod(strcmp(strs1, strs2));
+end
+end
+
+function var = evalinwrapper(varname)
+try 
+    var = evalin('base',varname);
+catch ME 
+    if contains(ME.message, 'Unrecognized function or variable')
+        var = nan;
+    else
+        rethrow(ME)
+    end
 end
 end
