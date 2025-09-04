@@ -374,8 +374,11 @@ disp('Calculating baseline characteristics...')
 BaselineData = tblBaselineMain.Variables;
 varnames = tblBaselineMain.Properties.VariableNames; 
 vardescs = tblBaselineMain.Properties.VariableDescriptions;
-vardescs = cellfun(@(d) [d(1:3),'...',d((end-20):end)], ...
-    vardescs, 'UniformOutput',false);
+for d = 1:length(vardescs)
+    if length(vardescs{d}) > 3
+        vardescs{d} = [vardescs{d}(1:3),'...',vardescs{d}((end-20):end)];
+    end
+end
 
 % ignore nan
 BaselineData_inan = sum(isnan(BaselineData),2);
