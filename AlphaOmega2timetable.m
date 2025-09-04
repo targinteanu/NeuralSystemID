@@ -76,7 +76,11 @@ for f = filelist'
             %}
 
             % look at channels 
-            if ~strcmpwrapper(channelNames, {Channel_ID_Name_Map.Name})
+            chNames = {Channel_ID_Name_Map.Name};
+            chincl = contains(chNames, 'LFP') | ...
+                     contains(chNames, 'ANALOG_IN');
+            chNames = chNames(chincl);
+            if ~strcmpwrapper(channelNames, chNames)
                 warning(['On ',fn,': channel names do not match'])
             end
             FileData = varnames2struct(fileDataFields, '');
