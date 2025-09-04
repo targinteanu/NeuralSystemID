@@ -40,9 +40,10 @@ Tbls = Tbls0;
 
 % set file saving location
 svloc = [fp,filesep,'Saved To Table',filesep,'Table Data ',...
-    datestr(datetime, 'yyyy-mm-dd HH.MM.SS')];
+    datestr(datetime, 'yyyy-mm-dd HH.MM.SS'),' ',...
+    getFileVersion(mfilename("fullpath"))];
 svN = 1;
-sizethresh = 1e9; % size (bytes) at which to save and clear
+sizethresh = 2e10; % size (bytes) at which to save and clear
 pause(1)
 mkdir(svloc); 
 
@@ -67,7 +68,7 @@ for f = filelist'
             % if so, save and clear 
             sz = whos('Tbls'); sz = sz.bytes;
             if (sz + f.bytes > sizethresh) && (f.bytes < sizethresh)
-                save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls","channelNames");
+                save([svloc,filesep,'SavedTables',num2str(svN),'.mat'], "Tbls","channelNames");
                 svN = svN+1;
                 clear Tbls
                 Tbls = Tbls0;
@@ -79,9 +80,9 @@ for f = filelist'
                 warning(['On ',fn,': channel names do not match'])
             end
             FileData = varnames2struct(fileDataFields, '');
-            for CHNAMESGRP = 1:length(channelNamesGrouped)
+            for FSGRP = 1:length(channelNamesGrouped)
                 TT = []; T1 = inf; T2 = -inf;
-                chNamesGrp = channelNamesGrouped{CHNAMESGRP};
+                chNamesGrp = channelNamesGrouped{FSGRP};
                 for CHNAME = chNamesGrp
                 chName = CHNAME{:};
                 try
@@ -127,11 +128,11 @@ for f = filelist'
                 TT.Properties.Events = eventtable(seconds([T1;T2]), ...
                     "EventLabels", string(fn)+[" Start";" End"]);
 
-                Tbls{CHNAMESGRP} = tblvertcat(Tbls{CHNAMESGRP}, TT);
+                Tbls{FSGRP} = tblvertcat(Tbls{FSGRP}, TT);
                 % if the memory is getting full, save and clear 
                 sz = whos('Tbls'); sz = sz.bytes;
                 if sz > sizethresh
-                    save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls");
+                    save([svloc,filesep,'SavedTables',num2str(svN),'.mat'], "Tbls");
                     svN = svN+1;
                     clear Tbls
                     Tbls = Tbls0;
@@ -142,52 +143,61 @@ for f = filelist'
     end
 end
 
+% save if haven't yet
 if sum(cellfun(@numel, Tbls))
-    save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls");
+    save([svloc,filesep,'SavedTables',num2str(svN),'.mat'], "Tbls");
     svN = svN+1;
 end
 clear Tbls
 Tbls = Tbls0;
 
 %% run2 - consolidate saved files "vertically" 
-clearvars -except channelNames svloc svN sizethresh
+% if svN > 2
+% there are multiple "Horizontal" files to consolidate
+
+clearvars -except channelNames svloc svN sizethresh ...
+    FsGrouped channelNamesGrouped
 channelNames0 = channelNames; clear channelNames
 filelist = dir(svloc);
 filelist(~[filelist.isdir]);
 filelist = filelist(arrayfun(@(f) f.bytes > 0, filelist));
-filelist = filelist(contains({filelist.name}, 'SaveFileH'));
+filelist = filelist(contains({filelist.name}, 'SavedTables'));
+svN = 1;
 
-for chInd0 = 1:length(channelNames0)
-    chName = channelNames0{chInd0};
+for FSGRP = 1:length(channelNamesGrouped)
+    fs = FsGrouped(FSGRP);
     Tbl = [];
-    svN = 1;
     for f = filelist'
-        clearvars -except f filelist Tbl chName chInd0 channelNames0 ...
-            svN svloc sizethresh
         fnfull = fullfile(f.folder, f.name); 
         [fp,fn,fe] = fileparts(fnfull);
         if strcmpi(fe, '.mat')
             load(fnfull);
-            chInd_file = find(strcmp(chName, channelNames));
-            if ~isempty(chInd_file)
-                T = Tbls{chInd_file}; clear Tbls
-                Tbl = [Tbl; T];
+            T = Tbls{FSGRP}; clear Tbls;
+            if isempty(Tbl)
+                Tbl = T;
+            else
+                Tbl = tblvertcat(Tbl, T);
+            end
 
-                sz = whos('Tbl'); sz = sz.bytes; 
-                if sz > sizethresh
-                    save([svloc,filesep,chName,'__SaveFileV',num2str(svN),'.mat'], "Tbl");
-                    svN = svN+1;
-                    clear Tbl
-                    Tbl = [];
-                end
+            % if the memory is getting full, save and clear
+            sz = whos('Tbl'); sz = sz.bytes;
+            if sz > sizethresh
+                save([svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'], "Tbl");
+                svN = svN+1;
+                clear Tbl
+                Tbl = [];
             end
         end
     end
 
-    save([svloc,filesep,chName,'__SaveFileV',num2str(svN),'.mat'], "Tbl");
-    svN = svN+1;
-    clear Tbl
+    % save if haven't yet 
+    if numel(Tbl)
+        save([svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'], "Tbl");
+        svN = svN+1;
+    end
 end
+
+% end
 
 %% helper 
 
