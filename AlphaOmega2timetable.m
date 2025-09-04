@@ -1,15 +1,13 @@
 %% setup
 
 % find files and determine data fields 
-%fp = uigetdir;
+fp = uigetdir;
 filelist = dir(fp);
 file1 = filelist(~[filelist.isdir]);
 file1 = file1(arrayfun(@(f) f.bytes > 0, file1));
 file1 = file1(arrayfun(@(f) f.name(1)~='.', file1));
 file1 = file1(1); load(fullfile(file1.folder, file1.name));
 channelNames = {Channel_ID_Name_Map.Name};
-Tbls0 = cell(size(channelNames));
-Tbls = Tbls0;
 fileDataFields = {...
     'SF_DRIVE_CONF', ...
     ... 'SF_DRIVE_DOWN', ...
@@ -37,6 +35,8 @@ for grp = 1:length(FsGrouped)
     channelNamesGrouped{grp} = channelNames(grpInds);
 end
 clear grp grpInds
+Tbls0 = cell(size(FsGrouped));
+Tbls = Tbls0;
 
 % set file saving location
 svloc = [fp,filesep,'Saved To Table',filesep,'Table Data ',...
@@ -79,17 +79,29 @@ for f = filelist'
                 warning(['On ',fn,': channel names do not match'])
             end
             FileData = varnames2struct(fileDataFields, '');
-            for CHNAMESGRP = channelNamesGrouped
-                chNamesGrp = CHNAMESGRP{:};
+            for CHNAMESGRP = 1:length(channelNamesGrouped)
+                TT = []; T1 = inf; T2 = -inf;
+                chNamesGrp = channelNamesGrouped{CHNAMESGRP};
                 for CHNAME = chNamesGrp
                 chName = CHNAME{:};
                 try
                 t1 = eval([chName,'_TimeBegin']); % s
                 t2 = eval([chName,'_TimeEnd']); % s
                 fs = eval([chName,'_KHz'])*1000; % Hz
+                T1 = min(T1, t1); T2 = max(T2, t2);
                 t = t1:(1/fs):t2; 
+                if exist([chName,'_BitResolution'],'var')
+                    DataRes = eval([chName,'_BitResolution']);
+                else
+                    DataRes = 1;
+                end
+                if exist([chName,'_Gain'],'var')
+                    DataGain = eval([chName,'_Gain']);
+                else
+                    DataGain = 1;
+                end
                 Data = eval(chName); % int
-                Data = double(Data);
+                Data = double(Data)*DataRes/DataGain;
                 if length(t) ~= length(Data)
                     err = abs(length(Data) - length(t))/length(Data);
                     warning([chName,' mismatch in time and data length by ', num2str(100*err),'%'])
@@ -98,35 +110,44 @@ for f = filelist'
                 end
 
                 t = seconds(t);
-                GroupName = repmat(fn1, size(Data)); FileName = repmat(fn2, size(Data));
-                ChannelData = varnames2struct(channelDataFields, [chName,'_']);
-                Data = Data'; GroupName = GroupName'; FileName = FileName';
-                T = timetable(Data,GroupName,FileName, 'RowTimes', t');
-                T.Properties.Description = chName;
-                T.Properties.UserData.FileData = FileData; 
-                T.Properties.UserData.ChannelData = ChannelData;
-                Ti = find(strcmp(channelNames, chName));
-                Tbls{Ti} = [Tbls{Ti}; T];
-
-                % if the memory is getting full, save and clear 
-                sz = whos('Tbls'); sz = sz.bytes;
-                if sz > sizethresh
-                    save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls","channelNames");
-                    svN = svN+1;
-                    clear Tbls
-                    Tbls = Tbls0;
+                T = array2timetable(Data', 'RowTimes', t'); T.Properties.VariableNames{1} = chName;
+                if isempty(TT)
+                    TT = T;
+                else
+                    TT = synchronize(TT, T);
                 end
-
+                
                 catch ME
                     warning(['On ',fn,' - ',chName,': ',ME.message])
                 end
-                clear chName t1 t2 t Data err GroupName FileName ChannelData T Ti
+                clear chName t1 t2 t Data err FileName T
+                end
+
+                % mark table with file details 
+                TT.Properties.Events = eventtable(seconds([T1;T2]), ...
+                    "EventLabels", string(fn)+[" Start";" End"]);
+
+                Tbls{CHNAMESGRP} = tblvertcat(Tbls{CHNAMESGRP}, TT);
+                % if the memory is getting full, save and clear 
+                sz = whos('Tbls'); sz = sz.bytes;
+                if sz > sizethresh
+                    save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls");
+                    svN = svN+1;
+                    clear Tbls
+                    Tbls = Tbls0;
                 end
             end
             clear FileData
         end
     end
 end
+
+if sum(cellfun(@numel, Tbls))
+    save([svloc,filesep,'SaveFileH',num2str(svN),'.mat'], "Tbls");
+    svN = svN+1;
+end
+clear Tbls
+Tbls = Tbls0;
 
 %% run2 - consolidate saved files "vertically" 
 clearvars -except channelNames svloc svN sizethresh
@@ -200,6 +221,35 @@ try
 catch ME 
     if contains(ME.message, 'Unrecognized function or variable')
         var = nan;
+    else
+        rethrow(ME)
+    end
+end
+end
+
+function T = tblvertcat(T1, T2)
+try
+    T = [T1; T2];
+catch ME
+    if contains(ME.identifier, 'SizeMismatch')
+        T1small = width(T1) < width(T2);
+        if T1small
+            Tsmall = T1; Tlarge = T2;
+        else
+            Tsmall = T2; Tlarge = T1;
+        end
+        smallvars = Tsmall.Properties.VariableNames;
+        for VAR = Tlarge.Properties.VariableNames
+            var = VAR{:};
+            if ~sum(strcmp(var, smallvars))
+                Tsmall.(var) = nan(height(Tsmall),1);
+            end
+        end
+        if T1small
+            T = [Tsmall; Tlarge];
+        else
+            T = [Tlarge; Tsmall];
+        end
     else
         rethrow(ME)
     end
