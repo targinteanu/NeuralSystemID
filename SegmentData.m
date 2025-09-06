@@ -19,6 +19,7 @@ for f = ElecXL'
     fTbl = readtable([f.folder,filesep,f.name]);
 
     % interpret coordinates
+    if sum(strcmpi(fTbl.Properties.VariableNames, 'coordinates'))
     XYZ = zeros(height(fTbl),3);
     for r = 1:height(fTbl)
         xyz = fTbl.Coordinates{r};
@@ -28,8 +29,11 @@ for f = ElecXL'
     x = XYZ(:,1); y = XYZ(:,2); z = XYZ(:,3);
     XYZ = table(x, y, z, ...
         'RowNames',fTbl.Properties.RowNames);
+    else
+        XYZ = [];
+    end
 
-    fTbl = removevars(fTbl, ...
+    fTbl = removevarswrapper(fTbl, ...
         ["Coordinates","Discard","Epileptic","OutOfBrain","Notes","LocMeeting"]);
     fTbl = [fTbl, XYZ];
 
@@ -375,7 +379,7 @@ BaselineData = tblBaselineMain.Variables;
 varnames = tblBaselineMain.Properties.VariableNames; 
 vardescs = tblBaselineMain.Properties.VariableDescriptions;
 for d = 1:length(vardescs)
-    if length(vardescs{d}) > 3
+    if length(vardescs{d}) > 20
         vardescs{d} = [vardescs{d}(1:3),'...',vardescs{d}((end-20):end)];
     end
 end
@@ -649,6 +653,20 @@ end
 disp('...Done!')
 
 %% helpers 
+
+
+function Tbl = removevarswrapper(Tbl, varslist)
+varspresent = true(size(varslist));
+for v = 1:length(varslist)
+    var = varslist(v);
+    if ~sum(strcmp(Tbl.Properties.VariableNames, var))
+        warning("Unrecognized table variable name: "+var);
+        varspresent(v) = false;
+    end
+end
+varslist = varslist(varspresent);
+Tbl = removevars(Tbl, varslist);
+end
 
 
 function Tbl = mySelect(Tbl, times, selbetween)
