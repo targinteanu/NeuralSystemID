@@ -110,6 +110,13 @@ for f = NSfiles'
                         eval("tbls{SFi} = addvars(tbls{SFi},"+newvarname+");");
                     end
                 end
+                for newvarname = string(tbls{SFi}.Properties.VariableNames)
+                    if ~sum(strcmpi(fTbl.Properties.VariableNames, newvarname))
+                        newvarval = nan(height(fTbl),1);
+                        eval(newvarname+" = newvarval;");
+                        eval("fTbl = addvars(fTbl,"+newvarname+");");
+                    end
+                end
                 tbls{SFi} = [tbls{SFi}; fTbl];
             else
                 rethrow(ME1);
@@ -147,16 +154,27 @@ for f = NEVfiles'
     end
 end
 
+% ensure time ascending 
+if numel(NEVtbl)
+    [~,sortind] = sort(NEVtbl.Time);
+    NEVtbl = NEVtbl(sortind,:);
+end
+
 chnames = {};
 for SFi = 1:width(tbls)
+    if numel(tbls{SFi})
+    % ensure time ascending 
+    [~,sortind] = sort(tbls{SFi}.Time);
+    tbls{SFi} = tbls{SFi}(sortind,:);
     % pair NS with NEV
     tbls{SFi}.Properties.Events = [tbls{SFi}.Properties.Events; NEVtbl];
     % get all channel names 
     chnames = [chnames, tbls{SFi}.Properties.VariableNames];
+    end
 end
 chnames = unique(chnames); chnames = string(chnames);
 
-clear f fNS fEV fTbl EVtbl c r cname proc varnames
+clear f fNS fEV fTbl EVtbl c r cname proc varnames sortind
 
 %% user selects channels 
 disp('Please specify channels...')

@@ -11,6 +11,9 @@ if nargin < 4
     tol = 2;
 end
 
+[~,sortind] = sort(T1.Time);
+T1 = T1(sortind,:);
+
 T2 = [];
 dt = seconds(diff(T1.Time));
 iinsert = dt > tol/fs; iinsert = find(iinsert);
