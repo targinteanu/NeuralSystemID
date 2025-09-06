@@ -373,7 +373,14 @@ tblsBaseline = cellfun(@(T) mySelect(T, trngBaseline, true), ...
 tblsBaseline = [{tblBaselineMain}, tblsBaseline];
 
 % nan check
-[trngBaseline,tblsBaseline] = nancheck(trngBaseline,tblsBaseline,hAXs);
+[trngBaseline,tblsBaseline,channelNameReject] = ...
+    nancheck(trngBaseline,tblsBaseline,hAXs);
+if numel(channelNameReject)
+    for chname = channelNameReject
+        chnames = chnames(~strcmp(chnames, chname));
+    end
+end
+clear chname
 tblBaselineMain = tblsBaseline{1};
 
 % indicate on plot
@@ -501,7 +508,7 @@ end
 % rejection 
 channelIndexReject = listdlg("PromptString","REJECT Channel(s)", ...
     "ListString",chnames, "SelectionMode","multiple"); 
-channelNameReject = chnames(channelIndexReject);
+channelNameReject = [channelNameReject, chnames(channelIndexReject)];
 MainTable = removevars(MainTable, channelNameReject);
 tblBaselineMain = removevars(tblBaselineMain, channelNameReject);
 tbls = cellfun(@(tbl) myRemoveVars(tbl, channelNameReject), ...
@@ -714,31 +721,42 @@ end
 end
 
 
-function [trng, tbls] = nancheck(trng, tbls, hAXs)
-tnan = [];
+function [trng, tbls, chrej] = nancheck(trng, tbls, hAXs)
+chrej = [];
+tnan = []; cnan = {}; 
 for SFi = 1:width(tbls)
-    TBLi = tbls{SFi};
+    TBLi = tbls{SFi}; CHi = (TBLi.Properties.VariableNames);
     inan = sum(isnan(TBLi.Variables),2);
     tnan = [tnan; TBLi.Time(find(inan))];
+    inan = sum(isnan(TBLi.Variables),1);
+    cnan = [cnan, CHi(find(inan))];
 end
+cnan = unique(cnan);
+cnans = cellfun(@(c) [c,'|'], cnan, 'UniformOutput', false);
+cnans = [cnans{:}];
 if ~isempty(tnan)
     for hAX = hAXs'
         plot(hAX, tnan, zeros(size(tnan)), '*r');
     end
-    xlim(trng)
-    trimsel = questdlg('Selection contains missing/nan values.', ...
+    %xlim(trng)
+    trimsel = questdlg(...
+        ['Selection contains missing/nan values on channel(s) ',cnans], ...
         'Reselect due to nan values', ...
-        'Start after nan', 'End before nan', 'Proceed anyway', ...
-        'Proceed anyway');
+        'Start after nan', 'End before nan', 'Reject channels / Proceed', ...
+        'Reject channels / Proceed');
     if isempty(trimsel)
         error('Selection must be made.')
     elseif strcmp(trimsel, 'Start after nan')
-        trngBasleline(1) = max(tnan) + seconds(.001);
+        trng(1) = max(tnan) + seconds(.001);
     elseif strcmp(trimsel, 'End before nan')
-        trngBasleline(2) = min(tnan) - seconds(.001);
+        trng(2) = min(tnan) - seconds(.001);
     end
-    if ~strcmp(trimsel, 'Proceed anyway')
-        tbls = cellfun(@(T) mySelect(T, trngBasleline, true), ...
+    if strcmp(trimsel, 'Reject channels / Proceed')
+        channelIndexReject = listdlg("PromptString","REJECT Channel(s)", ...
+            "ListString",cnan, "SelectionMode","multiple"); 
+        chrej = cnan(channelIndexReject); chrej = string(chrej);
+    else
+        tbls = cellfun(@(T) mySelect(T, trng, true), ...
             tbls, 'UniformOutput',false);
     end
 end
