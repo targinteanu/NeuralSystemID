@@ -293,7 +293,7 @@ disp('Detecting baseline...')
 discont = [];
 for SFi = 1:width(tbls)
     evtbl = tbls{SFi}.Properties.Events;
-    for disctype = ["Start of file", "End of file", "SerialDigitalIO"]
+    for disctype = ["Start of File", "End of File", "SerialDigitalIO"]
         discevt = contains(evtbl.EventLabels, disctype);
         discont = [discont; evtbl.Time(discevt)];
     end
@@ -301,10 +301,13 @@ for SFi = 1:width(tbls)
         discevt = contains(evtbl.EventLabels, disctype);
         discont = [discont; evtbl.EventEnds(discevt)];
     inan = isnan(tbls{SFi}.Variables); inan = sum(inan,2);
-    discont = [discont; tbls{SFi}.Time(find(inan))];
+    inantime = tbls{SFi}.Time(find(inan));
+    timetol = 3/SampleRates(SFi); % dur to be considered same event (s)
+    inantime = inantime([true; seconds(diff(inantime)) > timetol]);
+    discont = [discont; inantime];
 end
 
-clear disctype discevt inan evtbl
+clear disctype discevt inan evtbl timetol inantime
 
 % canditate periods in between triggers, etc
 candwinds = [];
