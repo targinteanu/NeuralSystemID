@@ -13,10 +13,13 @@ Fs = NS2.MetaTags.SamplingFreq;
 
 % noisy/ref channels are 3, 54, 57, 61
 % include motor channels expected to have beta activity
+%%{
 chincl = {...
     'LS13','LS14','LS15','LS16','LS17',...
     'LS35','LS36','LS37','LS38','LS39','LS40','LS41',...
     'LS56','LS58','LS59','LS60','LS62'};
+%}
+%chincl = {'LS59'};
 dta = ns2timetable(NS2); 
 dta = dta(:,chincl); 
 dta = dta(1:ind_rec_end,:); 
@@ -30,9 +33,10 @@ hpf = designfilt('highpassiir', 'SampleRate',Fs, 'DesignMethod','butter', ...
 dta = FilterTimetable(@(d,x) filtfilt(d,x), hpf, dta);
 dtaBL = dta(ind_bl_str:ind_bl_end,:);
 
-packetSize = 20; 
+packetSize = 10; 
 phTarget = 0;
 ARwin = 1000; predWin = 500;
+ARord = 50;
 
 errResults = cell(3, width(dtaBL), 2);
 % dim 1: phase est err, freq est err, phase target err 
@@ -50,7 +54,7 @@ chtoplot = dtaBL.Properties.VariableNames{c}
 % with constant AR model: 
 [phAll, phEst, frAll, frEst, ~, phStimConst, ~, ~, durC] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
-    phTarget, [13,30], ARwin, 50, predWin, -1, packetSize, -1, [], true, true);
+    phTarget, [13,30], ARwin, ARord, predWin, -1, packetSize, -1, [], false, false);
 phErrConst = radfix(phEst-phAll); frErrConst = frEst - frAll;
 durConst = [durConst, durC];
 
@@ -61,7 +65,7 @@ pause(.001);
 % with dynamic AR model: 
 [phAll, phEst, frAll, frEst, ~, phStimDyn, ~, ~, durD] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
-    phTarget, [13,30], ARwin, 50, predWin, -1, packetSize, .1, true, true, true);
+    phTarget, [13,30], ARwin, ARord, predWin, -1, packetSize, .01, true, false, false);
 phErrDyn = radfix(phEst-phAll); frErrDyn = frEst - frAll;
 durDyn = [durDyn, durD];
 
