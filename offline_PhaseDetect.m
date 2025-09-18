@@ -20,43 +20,46 @@
 function [phAll, phEst, frAll, frEst, toStim, phStim, W, R, dur] = ...
     offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength, ...
-    stepsize, donorm, doresample, useIIR, showplots)
+    stepsize, donorm, doresample, useIIR, showplots, dodebug)
 
 if height(dataOneChannel) > 1
     error('Data should be one channel only and horizontal.')
 end
 
 % signal to use default values if any arguments are not passed in
-if nargin < 17
-    showplots = false;
-    if nargin < 16
-        useIIR = false;
-        if nargin < 15
-            doresample = false;
-            if nargin < 14
-                donorm = false;
-                if nargin < 13
-                    stepsize = [];
-                    if nargin < 12
-                        packetLength = [];
-                        if nargin < 11
-                            artDur = [];
-                            if nargin < 10
-                                predWin = [];
-                                if nargin < 9
-                                    ARlen = [];
-                                    if nargin < 8
-                                        ARwin = [];
-                                        if nargin < 7
-                                            FreqRange = [];
-                                            if nargin < 6
-                                                PhaseOfInterest = [];
-                                                if nargin < 5
-                                                    channelName = '';
-                                                    if nargin < 4
-                                                        t = [];
-                                                        if nargin < 3
-                                                            StimTrainRec = [];
+if nargin < 18
+    dodebug = false;
+    if nargin < 17
+        showplots = false;
+        if nargin < 16
+            useIIR = false;
+            if nargin < 15
+                doresample = false;
+                if nargin < 14
+                    donorm = false;
+                    if nargin < 13
+                        stepsize = [];
+                        if nargin < 12
+                            packetLength = [];
+                            if nargin < 11
+                                artDur = [];
+                                if nargin < 10
+                                    predWin = [];
+                                    if nargin < 9
+                                        ARlen = [];
+                                        if nargin < 8
+                                            ARwin = [];
+                                            if nargin < 7
+                                                FreqRange = [];
+                                                if nargin < 6
+                                                    PhaseOfInterest = [];
+                                                    if nargin < 5
+                                                        channelName = '';
+                                                        if nargin < 4
+                                                            t = [];
+                                                            if nargin < 3
+                                                                StimTrainRec = [];
+                                                            end
                                                         end
                                                     end
                                                 end
@@ -289,6 +292,20 @@ dataOneChannelFilt2 = filtfilt(filtwts,1,dataOneChannel);
 [phAll, frAll] = instPhaseFreq(dataOneChannelFilt2, SamplingFreq);
 frAll = min(frAll, hico); frAll = max(frAll, loco);
 
+% step-by-step plot for debugging 
+if dodebug
+    fig1 = figure;
+    plot(t, dataOneChannel, ':k'); hold on; grid on; plot(t, dataOneChannelFilt2, 'k');
+    tPast = t-seconds(filtdelay/SamplingFreq);
+    hFlt = plot(tPast, dataOneChannelFilt, 'b');
+    hStimPlan = plot(t, nan(size(t)), 'or'); 
+    hStimDone = plot(t, nan(size(t)), '*r');
+    hFore = [];
+    hWin = patch([t(1),t(1),t(1),t(1)], ...
+        [max(dataOneChannelFilt2), max(dataOneChannelFilt2), min(dataOneChannelFilt2), min(dataOneChannelFilt2)], ...
+        'k', 'FaceAlpha',0, 'EdgeColor','k');
+end
+
 progTick = .05; prog = 0; % track progress
 
 for tind = packetLength:packetLength:length(dataOneChannel)
@@ -407,13 +424,31 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             filtdelay/SamplingFreq, ... FIR filter imposes this delay (s)
             loco, hico);
         i2nextStim = i2nextStim - filtdelay; % in terms of current time
+        if dodebug
+            figure(fig1);
+            hWin.XData = [t(tind), t(tinds(end)), t(tinds(end)), t(tind)];
+            hFlt.YData = dataOneChannelFilt;
+            delete(hFore);
+            hFore = plot(tPast(tind + (1:length(dataFuture))), dataFuture, '--b');
+            hStimPlan.YData(tind+i2nextStim) = dataFuture(i2nextStim+filtdelay);
+        end
 
         % Step 6: Send a stimulus pulse when appropriate 
         i2nextStim_prev = i2nextStim_prev - packetLength; % one packet passed
         if i2nextStim_prev < 0
             toStim(tind+i2nextStim_prev) = true;
+            i2nextStim_prev = i2nextStim;
+            if dodebug
+                hStimPlan.YData = nan(size(hStimPlan.YData));
+                hStimDone.YData(toStim) = dataOneChannelFilt2(toStim);
+            end
+        %elseif i2nextStim_prev > 5
         end
-        i2nextStim_prev = i2nextStim;
+            i2nextStim_prev = i2nextStim;
+        %end
+        if dodebug
+            keyboard
+        end
 
         %{
         % debugging erroneous predictions 
@@ -453,6 +488,8 @@ R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 
 % limit signals to central 80% to avoid hilbert edge effects 
 t1 = floor(.1*length(t)); t2 = ceil(.9*length(t));
+% ensure testing evaluation does not include training data 
+t1 = max(t1, length(dataBaseline1)+1); 
 for var = [...
         "t", "dataOneChannel", "dataOneChannelFilt2", "phAll", "frAll", ...
         "dataOneChannelWithArtifact", "isArt", "StimTrainRec", ...
