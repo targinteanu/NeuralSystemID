@@ -442,10 +442,11 @@ for tind = packetLength:packetLength:length(dataOneChannel)
                 hStimPlan.YData = nan(size(hStimPlan.YData));
                 hStimDone.YData(toStim) = dataOneChannelFilt2(toStim);
             end
-        %elseif i2nextStim_prev > 5
-        end
-            i2nextStim_prev = i2nextStim;
+        elseif i2nextStim_prev > 1
+            % lock-in
         %end
+            i2nextStim_prev = i2nextStim;
+        end
         if dodebug
             keyboard
         end
