@@ -213,6 +213,12 @@ filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
 %filtdelay = filtord;
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 
+% power measurements 
+pwr = abs(hilbert(dataBaseline1));
+pwr = movmean(pwr, ARwin);
+pwrthresh = median(pwr);
+pwrthresh = 1.3*pwrthresh; % make adjustable?
+
 % downsample, if applicable
 downsampledFreq = SamplingFreq; 
 if doresample
@@ -419,7 +425,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % Using the Hilbert transform, estimate the current instantaneous
         % phase and frequency, and use this to calculate when the next
         % PhaseOfInterest will likely occur. 
-        [t2nextStim,i2nextStim, phEst(tind),frEst(tind)] = blockPDS(...
+        [t2nextStim,i2nextStim, phEst(tind),frEst(tind), pwr] = blockPDS(...
             dataPast, dataFuture, SamplingFreq, PhaseOfInterest, ...
             filtdelay/SamplingFreq, ... FIR filter imposes this delay (s)
             loco, hico);
@@ -436,11 +442,13 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         % Step 6: Send a stimulus pulse when appropriate 
         i2nextStim_prev = i2nextStim_prev - packetLength; % one packet passed
         if i2nextStim_prev < 0
-            toStim(tind+i2nextStim_prev) = true;
-            i2nextStim_prev = i2nextStim;
-            if dodebug
-                hStimPlan.YData = nan(size(hStimPlan.YData));
-                hStimDone.YData(toStim) = dataOneChannelFilt2(toStim);
+            if pwr > pwrthresh
+                toStim(tind+i2nextStim_prev) = true;
+                i2nextStim_prev = i2nextStim;
+                if dodebug
+                    hStimPlan.YData = nan(size(hStimPlan.YData));
+                    hStimDone.YData(toStim) = dataOneChannelFilt2(toStim);
+                end
             end
         elseif i2nextStim_prev > 1
             % lock-in
