@@ -42,7 +42,7 @@ errResults = cell(length(phTargets), width(dtaBL), 2);
 
 durConst = []; durDyn = [];
 
-for c = 1:3:width(dtaBL)
+for c = 1:1:width(dtaBL)
 
 chtoplot = dtaBL.Properties.VariableNames{c}
 
@@ -72,7 +72,7 @@ pause(.001);
 [phAll, phEst, frAll, frEst, ~, phStimDyn, ~, ~, durD] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
     phTarget, freqrng, ARwin, ARord, predWin, -1, packetSize, ...
-    learnrate, true, false, false, false, false);
+    learnrate, false, false, false, false, false);
 phErrDyn = radfix(phEst-phAll); frErrDyn = frEst - frAll;
 durDyn = [durDyn, durD];
 
@@ -127,5 +127,5 @@ thisfilever = getFileVersion(thisfilename);
 svname = [fp,fn,'_',thisfilename,'_',thisfilever];
 
 save(svname, 'errResults', 'durConst', 'durDyn', ...
-    'phTarets', 'chselName', 'packetSize', 'ARwin', 'ARord', 'learnrate', 'freqrng');
+    'phTargets', 'chselName', 'packetSize', 'ARwin', 'ARord', 'learnrate', 'freqrng');
 saveas(fig1, svname, 'png');
