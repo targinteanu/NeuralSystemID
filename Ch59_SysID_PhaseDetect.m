@@ -111,6 +111,14 @@ fspf = @(t) sprintf(fspc, mean(t), min(t), max(t));
 disp(['Constant ',fspf(durConst)]);
 disp(['Dynamic ',fspf(durDyn)]);
 
+for h = 1:size(errResults,3)
+    for c = 1:size(errResults,2)
+        for r = [1,3]
+            errResults{r,c,h} = radfix(errResults{r,c,h});
+        end
+    end
+end
+
 errResultsAll = cell(size(errResults,1), size(errResults,3));
 for r = 1:size(errResults,1)
     for h = 1:size(errResults,3)
@@ -125,8 +133,8 @@ subplot(1,3,1);
 polarhistogram(errResultsAll{1,1}, 18); hold on; polarhistogram(errResultsAll{1,2}, 18);
 title('Phase error (causal - offline)'); 
 legend( ...
-    ['Constant - RMSE ',num2str(rms(radfix(errResultsAll{1,1})))], ... 
-    ['Dynamic - RMSE ',num2str(rms(radfix(errResultsAll{1,2})))], ...
+    ['Constant - RMSE ',num2str(rms((errResultsAll{1,1})))], ... 
+    ['Dynamic - RMSE ',num2str(rms((errResultsAll{1,2})))], ...
     'Location','northoutside');
 [~,p] = ttest2(errResultsAll{1,1}.^2, errResultsAll{1,2}.^2, 'tail', 'right');
 subtitle(['p = ',num2str(p)])
@@ -144,8 +152,8 @@ subplot(1,3,3);
 polarhistogram(errResultsAll{3,1}, 18); hold on; polarhistogram(errResultsAll{3,2}, 18);
 title('Stim error (causal - offline)'); 
 legend( ...
-    ['Constant - RMSE ',num2str(rms(radfix(errResultsAll{3,1})))], ... 
-    ['Dynamic - RMSE ',num2str(rms(radfix(errResultsAll{3,2})))], ...
+    ['Constant - RMSE ',num2str(rms((errResultsAll{3,1})))], ... 
+    ['Dynamic - RMSE ',num2str(rms((errResultsAll{3,2})))], ...
     'Location','northoutside');
 [~,p] = ttest2(errResultsAll{3,1}.^2, errResultsAll{3,2}.^2, 'tail', 'right');
 subtitle(['p = ',num2str(p)])
