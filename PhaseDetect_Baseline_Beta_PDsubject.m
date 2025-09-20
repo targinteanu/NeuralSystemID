@@ -80,8 +80,8 @@ pause(.001);
 drawnow;
 pause(.001);
 
-errResults{p,c,1} = phStimConst-phTarget; 
-errResults{p,c,2} = phStimDyn-phTarget;
+errResults{p,c,1} = radfix(phStimConst-phTarget); 
+errResults{p,c,2} = radfix(phStimDyn-phTarget);
 
 end % phase targets
 end % channels
@@ -93,14 +93,6 @@ fspc = 'took avg. %f, min %f, max %f seconds';
 fspf = @(t) sprintf(fspc, mean(t), min(t), max(t));
 disp(['Constant ',fspf(durConst)]);
 disp(['Dynamic ',fspf(durDyn)]);
-
-for r = 1:size(errResults,1)
-    for h = 1:size(errResults,3)
-        for c = 1:size(errResults,2)
-            errResults{r,c,h} = radfix(errResults{r,c,h});
-        end
-    end
-end
 
 errResultsAll = cell(1, size(errResults,3));
 for r = 1:size(errResults,1)
