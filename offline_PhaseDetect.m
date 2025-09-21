@@ -17,7 +17,8 @@
 % 
 % An overview of the phase detection algorithm is as follows: ...
 
-function [phAll, phEst, frAll, frEst, toStim, phStim, W, R, dur] = ...
+function [phAll, phEst, frAll, frEst, TtoStim, phStim, W, R, dur, ...
+    numCycle, numMissing, numExtra] = ...
     offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength, ...
     stepsize, donorm, doresample, useIIR, showplots, dodebug)
@@ -218,6 +219,7 @@ pwr = abs(hilbert(dataBaseline1));
 pwr = movmean(pwr, ARwin);
 pwrthresh = median(pwr);
 pwrthresh = 1.3*pwrthresh; % make adjustable?
+%[~,pwrthresh] = midcross(pwr);
 
 % downsample, if applicable
 downsampledFreq = SamplingFreq; 
@@ -297,6 +299,8 @@ stbl = false;
 dataOneChannelFilt2 = filtfilt(filtwts,1,dataOneChannel);
 [phAll, frAll] = instPhaseFreq(dataOneChannelFilt2, SamplingFreq);
 frAll = min(frAll, hico); frAll = max(frAll, loco);
+pwrAll = abs(hilbert(dataOneChannelFilt2));
+pwrAll = movmean(pwrAll, ARwin);
 
 % step-by-step plot for debugging 
 if dodebug
@@ -500,12 +504,30 @@ t1 = floor(.1*length(t)); t2 = ceil(.9*length(t));
 % ensure testing evaluation does not include training data 
 t1 = max(t1, length(dataBaseline1)+1); 
 for var = [...
-        "t", "dataOneChannel", "dataOneChannelFilt2", "phAll", "frAll", ...
+        "t", "dataOneChannel", "dataOneChannelFilt2", "phAll", "frAll", "pwrAll", ...
         "dataOneChannelWithArtifact", "isArt", "StimTrainRec", ...
         "dataOneChannelFilt", "phEst", "frEst", "toStim"]
     eval(var+" = "+var+"(t1:t2);");
 end
 W = W(t1:t2,:); R = R(t1:t2,:);
+
+% evaluate missing/extra stim 
+phCycleStart = radfix(PhaseOfInterest+pi); % put PHoI in middle of cycle
+[~,~,iCycleStart] = zerocrossrate(phAll - phCycleStart);
+iCycleStart = find(iCycleStart);
+iCycleStart = iCycleStart(1:2:end);
+%iCycleStart = sort(iCycleStart); % necessary?
+iCycleEnd = iCycleStart(2:end); iCycleStart = iCycleStart(1:(end-1));
+numCycle = length(iCycleStart); 
+numStimByCycle = nan(1, numCycle); % actually this many stim
+numTarget = nan(1, numCycle); % should be this many stim
+for iCycle = 1:numCycle
+    numStimByCycle(iCycle) = sum(toStim(iCycleStart(iCycle):iCycleEnd(iCycle)));
+    numTarget(iCycle) = mean(pwrAll(iCycleStart(iCycle):iCycleEnd(iCycle)));
+end
+numTarget = numTarget > pwrthresh;
+numMissing = sum(numStimByCycle < numTarget); 
+numExtra = sum(numStimByCycle > numTarget);
 
 if showplots
 
@@ -590,6 +612,7 @@ end
 phStim = phAll(toStim);
 phAll = phAll(~isnan(phEst)); phEst = phEst(~isnan(phEst));
 frAll = frAll(~isnan(frEst)); frEst = frEst(~isnan(frEst));
+TtoStim = t(toStim);
 
 %% helper(s) 
 % gradient descent update of AR model weights 
