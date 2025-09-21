@@ -513,6 +513,7 @@ W = W(t1:t2,:); R = R(t1:t2,:);
 
 % evaluate missing/extra stim 
 phCycleStart = radfix(PhaseOfInterest+pi); % put PHoI in middle of cycle
+phCycleStart = min(phCycleStart, 3); phCycleStart = max(phCycleStart, -3);
 [~,~,iCycleStart] = zerocrossrate(phAll - phCycleStart);
 iCycleStart = find(iCycleStart);
 iCycleStart = iCycleStart(1:2:end);
