@@ -217,9 +217,9 @@ dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 % power measurements 
 pwr = abs(hilbert(dataBaseline1));
 pwr = movmean(pwr, ARwin);
-pwrthresh = median(pwr);
-pwrthresh = 1.3*pwrthresh; % make adjustable?
-%[~,pwrthresh] = midcross(pwr);
+%pwrthresh = median(pwr);
+%pwrthresh = 1.3*pwrthresh; % make adjustable?
+[~,pwrthresh] = midcross(pwr); % consider replacing with gaussian mix mdl
 
 % downsample, if applicable
 downsampledFreq = SamplingFreq; 
