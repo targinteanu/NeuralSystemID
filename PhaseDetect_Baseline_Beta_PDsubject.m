@@ -36,6 +36,8 @@ freqrng = [13, 30]; % Hz (beta band)
 
 %% loop 
 errResults = cell(length(phTargets), width(dtaBL), 2);
+numResults = cell(size(errResults));
+trgResults = cell(size(errResults));
 % dim 1: target phase
 % dim 2: channel 
 % dim 3: const vs dynamic AR model 
@@ -57,7 +59,8 @@ disp([' ========== PROGRESS: ',num2str(round(100*prog)),'% ========== ']);
 % run phase detection 
 
 % with constant AR model: 
-[phAll, phEst, frAll, frEst, ~, phStimConst, ~, ~, durC] = ...
+[phAll, phEst, frAll, frEst, trgTimeConst, phStimConst, ~, ~, durC, ...
+    nCycleConst, nMissConst, nXtraConst] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
     phTarget, freqrng, ARwin, ARord, predWin, -1, packetSize, ...
     -1, [], false, false, false, false);
@@ -69,7 +72,8 @@ drawnow;
 pause(.001);
 
 % with dynamic AR model: 
-[phAll, phEst, frAll, frEst, ~, phStimDyn, ~, ~, durD] = ...
+[phAll, phEst, frAll, frEst, trgTimeDyn, phStimDyn, ~, ~, durD, ...
+    nCycleDyn, nMissDyn, nXtraDyn] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
     phTarget, freqrng, ARwin, ARord, predWin, -1, packetSize, ...
     learnrate, false, false, false, false, false);
@@ -82,6 +86,9 @@ pause(.001);
 
 errResults{p,c,1} = radfix(phStimConst-phTarget); 
 errResults{p,c,2} = radfix(phStimDyn-phTarget);
+trgResults{p,c,1} = trgTimeConst; trgResults{p,c,2} = trgTimeDyn;
+numResults{p,c,1} = [nMissConst, nXtraConst, nCycleConst];
+numResults{p,c,2} = [nMissDyn, nXtraDyn, nCycleDyn];
 
 end % phase targets
 end % channels
@@ -95,12 +102,19 @@ disp(['Constant ',fspf(durConst)]);
 disp(['Dynamic ',fspf(durDyn)]);
 
 errResultsAll = cell(1, size(errResults,3));
+numResultsAll = cell(1, size(numResults,3));
 for r = 1:size(errResults,1)
     for h = 1:size(errResults,3)
         for c = 1:size(errResults,2)
             errResultsAll{1,h} = [errResultsAll{1,h}, errResults{r,c,h}];
+            numResultsAll{1,h} = [numResultsAll{1,h}; numResults{r,c,h}];
         end
     end
+end
+for h = 1:size(numResults,3)
+    numResultsAll{1,h} = sum(numResultsAll{1,h});
+    numResultsAll{1,h} = [numResultsAll{1,h}(1:2), ...
+        numResultsAll{1,h}(3)-sum(numResultsAll{1,h}(1:2))];
 end
 
 fig1 = figure; 
@@ -113,11 +127,20 @@ legend( ...
 [~,p] = ttest2(errResultsAll{1}.^2, errResultsAll{2}.^2, 'tail', 'right');
 subtitle(['p = ',num2str(p)])
 
+fig2 = figure; 
+subplot(1,2,1);
+pie(numResultsAll{1}, {'Missing', 'Extra', 'Correct'});
+title('Num. Stim. - Constant');
+subplot(1,2,2);
+pie(numResultsAll{2}, {'Missing', 'Extra', 'Correct'});
+title('Num. Stim. - Dynamic');
+
 %% save 
 thisfilever = getFileVersion(thisfilename);
 [~,thisfilename] = fileparts(thisfilename);
 svname = [fp,fn,'_',thisfilename,'_',thisfilever];
 
-save(svname, 'errResults', 'durConst', 'durDyn', ...
+save(svname, 'errResults', 'durConst', 'durDyn', 'numResults', 'trgResults', ...
     'phTargets', 'chselName', 'packetSize', 'ARwin', 'ARord', 'learnrate', 'freqrng');
-saveas(fig1, svname, 'png');
+saveas(fig1, [svname,'_error'], 'png');
+saveas(fig2, [svname,'_number'], 'png');
