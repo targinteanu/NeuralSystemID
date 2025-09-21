@@ -591,6 +591,12 @@ subplot(2,2,3); polarhistogram(phAll(StimTrainRec), 18);
 title('Actual Phase of Recorded Stim');
 subtitle(['RMSE ',num2str(rms(radfix(phAll(StimTrainRec)-PhaseOfInterest), 'omitnan'))])
 
+% show missing/extra stim 
+figure; 
+pie([numMissing, numExtra, numCycle-numMissing-numExtra], ...
+    {'Missing', 'Extra', 'Correct'});
+title('Num. Stimulations by Cycle')
+
 % show AR mdl changes
 W = W(~isnan(phEst),:);
 W = [w0; W];
