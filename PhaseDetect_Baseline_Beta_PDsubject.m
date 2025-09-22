@@ -128,12 +128,15 @@ legend( ...
 subtitle(['p = ',num2str(p)])
 
 fig2 = figure; 
-subplot(1,2,1);
-pie(numResultsAll{1}, {'Missing', 'Extra', 'Correct'});
+tiledlayout(1,2,'TileSpacing','compact');
+ax1 = nexttile;
+pie(ax1, numResultsAll{1});
 title('Num. Stim. - Constant');
-subplot(1,2,2);
-pie(numResultsAll{2}, {'Missing', 'Extra', 'Correct'});
+ax2 = nexttile;
+pie(ax2, numResultsAll{2});
 title('Num. Stim. - Dynamic');
+lgd = legend({'Missing', 'Extra', 'Correct'});
+lgd.Layout.Tile = 'east';
 
 %% save 
 thisfilever = getFileVersion(thisfilename);
