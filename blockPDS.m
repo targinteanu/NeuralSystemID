@@ -38,6 +38,10 @@ phi_future = phi_future(1:phi_fut_end);
 t2phi = zeros(size(phi)); i2phi = t2phi;
 for p = 1:length(phi)
     phi_ = phi(p);
+    if isnan(phi_)
+        t2phi(p) = inf;
+        i2phi(p) = inf;
+    else
 
     % accurate & full-cycle AR model assumption 
     [~,i] = min(abs(radfix(phi_future-phi_)));
@@ -56,5 +60,5 @@ for p = 1:length(phi)
     t2phi(p) = t;
     i2phi(p) = floor(fs*t2phi(p));
     %}
-
+    end
 end
