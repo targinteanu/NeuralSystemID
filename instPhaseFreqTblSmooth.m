@@ -1,6 +1,6 @@
-function [phiTbl, fTbl] = instPhaseFreqTblSmooth(tbl, freqRng)
+function [phiTbl, fTbl, ATbl] = instPhaseFreqTblSmooth(tbl, freqRng)
 % 
-% get instantaneous phase and frequency at each timepoint in a timetable 
+% get instantaneous phase, frequency, & amp at each timepoint in a timetable 
 % 
 
 loco = freqRng(1); hico = freqRng(2);
@@ -11,7 +11,7 @@ if isnan(fs)
 end
 [phi_block, f_block] = instPhaseFreq(tbl.Variables, fs);
 
-% clop freq to range 
+% clip freq to range 
 f_block(:) = min(hico, f_block(:));
 f_block(:) = max(loco, f_block(:));
 
@@ -33,6 +33,17 @@ for c = 1:width(fTbl)
     fTbl.Properties.VariableUnits{c} = 'Hz';
     fTbl.Properties.VariableNames{c} = ...
         [tbl.Properties.VariableNames{c},' frequency'];
+end
+fTbl.Properties.Description = [tbl.Properties.Description,' frequency'];
+
+ATbl = tbl; ATbl.Variables = A_block; 
+varunits = tbl.Properties.VariableUnits;
+for c = 1:width(ATbl)
+    if length(varunits) >= c
+        ATbl.Properties.VariableUnits{c} = varunits{c};
+    end
+    ATbl.Properties.VariableNames{c} = ...
+        [tbl.Properties.VariableNames{c},' amplitude'];
 end
 fTbl.Properties.Description = [tbl.Properties.Description,' frequency'];
 
