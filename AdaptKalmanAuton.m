@@ -164,6 +164,7 @@ for t = 2:width(Y)
     Ad2 = expm(Ac*Th);
 
     % observer noise 
+    %{
     RR = var(ObsNoise,[],3, 'omitnan'); % variance, tap x channel
     RRnow = Gidx*RR; % variance by channel
     if ~sum(isnan(RRnow(:)))
@@ -172,6 +173,8 @@ for t = 2:width(Y)
         % As R vanishes, K becomes I, and xpos becomes y (only observation
         % is used, not state transition estimate). 
     end
+    %}
+    R = diag(noiseLMS.^2);
 
     % Kalman predict 
     %Ppri = Ad*P*Ad' + Bd*(y*y')*Bd' + Q;
