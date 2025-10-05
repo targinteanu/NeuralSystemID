@@ -145,7 +145,7 @@ rmse(Rvar(:), Rstd(:).^2)
 % run filter on data 
 g = [0, diff(double(Tr))]'; g = g.*(g > 1e4);
 g = [g((nDelay+1):end); false(nDelay,1)]; % start nDelay samples earlier
-dtaKal = AdaptKalmanAuton(g,dta,Am,KA,A,1,Qcov,Rcov,[],true);
+dtaKal = AdaptKalmanAuton(g(1e6:end),dta(1e6:end,:),Am,KA,A,1,Qcov,N,[],true,false,true);
 
 %% plot chan 59
 figure; plot(dta, chtoplot, 'LineWidth',1.5, 'Color','k'); ybnd = ylim;
