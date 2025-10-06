@@ -121,6 +121,7 @@ for t = 2:width(Y)
     else
         n = n+1;
     end
+    y = Y(:,t);
 
     % LMS est observer noise 
     Gidx = noiseRef((1:N)+t-1);
@@ -184,7 +185,6 @@ for t = 2:width(Y)
 
     % Kalman update     
     K = Ppri * (Ppri + R)^-1;
-    y = Y(:,t);
     xpos = xpri + K*(y-xpri);
     Ppos = (eye(size(K)) - K)*Ppri;
 
