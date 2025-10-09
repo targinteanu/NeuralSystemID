@@ -189,8 +189,8 @@ legend(lgd)
 
 %% analyze measurements during encode/decode periods 
 
-encodeData = getEncodeData(tSel, dataOneChannelSel, encodeStart, encodeEnd);
-decodeData = getDecodeData(tSel, dataOneChannelSel, decodeStart, decodeEnd);
+encodeData = getStateData(tSel, dataOneChannelSel, encodeStart, encodeEnd);
+decodeData = getStateData(tSel, dataOneChannelSel, decodeStart, decodeEnd);
 
 % Compute Theta Power for Encoding and Decoding
 [avgThetaPowerEncoding, stdThetaPowerEncoding] = computeThetaPower(encodeData, SamplingFreq);
@@ -310,24 +310,13 @@ hold off;
 %% helper functions 
 
 
-function encodeData = getEncodeData(tSel, dataOneChannelSel, encodeStart, encodeEnd)
-    encodeData = cell(1, length(encodeStart)); % Store each segment separately
-    for i = 1:length(encodeStart)
-        idx = (tSel >= encodeStart(i)) & (tSel <= encodeEnd(i)); 
+function dataCell = getStateData(tSel, dataOneChannelSel, stateStart, stateEnd)
+    dataCell = cell(1, length(stateStart)); % Store each segment separately
+    for i = 1:length(stateStart)
+        idx = (tSel >= stateStart(i)) & (tSel <= stateEnd(i)); 
         segment = dataOneChannelSel(idx);
         if ~isempty(segment)
-            encodeData{i} = segment(:); % Store each segment as a separate cell
-        end
-    end
-end
-
-function decodeData = getDecodeData(tSel, dataOneChannelSel, decodeStart, decodeEnd)
-    decodeData = cell(1, length(decodeStart));
-    for i = 1:length(decodeStart)
-        idx = (tSel >= decodeStart(i)) & (tSel <= decodeEnd(i)); 
-        segment = dataOneChannelSel(idx);
-        if ~isempty(segment)
-            decodeData{i} = segment(:);
+            dataCell{i} = segment(:); % Store each segment as a separate cell
         end
     end
 end
