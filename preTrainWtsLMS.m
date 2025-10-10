@@ -20,6 +20,8 @@ if nargin < 5
     dLMS = false;
 end
 
+% TO DO: account for time discontinuity 
+
 dlen = height(d); numchan = width(d);
 chname = d.Properties.VariableNames;
 t = d.Time;

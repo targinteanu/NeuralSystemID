@@ -4,6 +4,8 @@ function dtaPred = AdaptKalmanAuton(noiseRef, dtaTbl, Am, KA, A0, stepsize, Q, N
 % TO DO: replace RR with N and have QQ calculated using the output of a LMS
 % filter 
 
+% is Am actually being used??
+
 %% arg handling 
 
 % handle incomplete args 
@@ -100,7 +102,7 @@ if showfit
     end
     cmin = cmin - .05*cdiff; cmax = cmax + .05*cdiff;
     imgL.Parent.CLim = [cmin, cmax];
-    Ac = zeros(size(Ac)); % reset 
+    %Ac = zeros(size(Ac)); % reset 
     subplot(2,2,2); 
     img = imagesc(Ac, [cmin,cmax]); colorbar;
     ttxt = title('Cont A Adapt: 0%');

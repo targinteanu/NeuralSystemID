@@ -1,6 +1,7 @@
 function [trainPred, testPred, trainEval, testEval, A] = ...
     fitLTIauton(trainData, testData, PredStateVisible)
 
+% handle input args 
 if nargin < 2
     testData = [];
 end
@@ -8,10 +9,14 @@ if nargin < 3
     PredStateVisible = true;
 end
 
+% NEED TO ACCOUNT FOR DISCONTINUOUS DATA!
+
+% Train A matrix
 Xtrain = table2array(trainData)'; 
 X1 = Xtrain(:,1:(end-1)); X2 = Xtrain(:,2:end); 
 A = X2*X1' * (X1*X1')^-1;
 
+% setup prediction outputs 
 trainPredX = Xtrain; 
 for t = 2:width(trainPredX)
     if PredStateVisible
@@ -23,6 +28,7 @@ for t = 2:width(trainPredX)
     trainPredX(:,t) = x;
 end
 
+% compare prediction to testing data 
 if ~isempty(testData) % consider consolidating by replacing this with projLTIauton
 Xtest = table2array(testData)';
 testPredX = Xtest;
@@ -45,9 +51,11 @@ testPred{:,:} = testPredX';
 %testPred.Time = t;
 end
 
+% format outputs 
 trainPred = trainData; 
 trainPred{:,:} = trainPredX';
 
+% output evaluation stats - training accuracy 
 trainEval.RMSE = rmse(Xtrain(:), trainPredX(:)); 
 trainEval.pRMSE = rmse(Xtrain(:), trainPredX(:))/rms(Xtrain(:));
 %{
@@ -57,6 +65,7 @@ trainEval.CorrMean = mean(r); trainEval.CorrStd = std(r);
 trainEval.CorrP = 1-prod(1-p);
 %}
 
+% output evaluation stats - testing accuracy
 if ~isempty(testData)
 testEval.RMSE = rmse(Xtest(:), testPredX(:)); 
 testEval.pRMSE = rmse(Xtest(:), testPredX(:))/rms(Xtest(:));
