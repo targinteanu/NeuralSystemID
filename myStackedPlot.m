@@ -65,11 +65,25 @@ for c = 1:N
         if ~isempty(IsOutlier)
             io = IsOutlier(:,iv);
         end
-
-    % plot timed data
+    hAx(c,1) = subplot(N,1,c); 
     x = tbl.Time;
     y = tbl.(v);
-    hAx(c,1) = subplot(N,1,c); 
+    yl = [min(y(:)), max(y(:))];
+
+    % plot events
+    if ~isempty(evt)
+        hold on;
+        %yl = ylim();
+        xx = evt.Time; 
+        yy1 = yl(2)*ones(size(xx));
+        yy2 = yl(1)*ones(size(xx));
+        hPlt(c,2) = stem(xx, yy1, 'Marker','none', 'Color',[.5,.5,.5], 'LineWidth',.1);
+        hPlt(c,3) = stem(xx, yy2, 'Marker','none', 'Color',[.5,.5,.5], 'LineWidth',.1);
+        %ylim(yl);
+    end
+
+    % plot timed data
+    hold on;
     hPlt(c,1) = plot(x, y);
 
     % plot outliers 
@@ -89,17 +103,6 @@ for c = 1:N
     end
     ylabel({v,['(',u,')'],d});
 
-    % plot events
-    if ~isempty(evt)
-        hold on;
-        yl = ylim();
-        xx = evt.Time; 
-        yy1 = yl(2)*ones(size(xx));
-        yy2 = yl(1)*ones(size(xx));
-        hPlt(c,2) = stem(xx, yy1, 'Marker','none', 'Color',[.5,.5,.5], 'LineWidth',.1);
-        hPlt(c,3) = stem(xx, yy2, 'Marker','none', 'Color',[.5,.5,.5], 'LineWidth',.1);
-        ylim(yl);
-    end
 end
 
 linkaxes(hAx, 'x');
