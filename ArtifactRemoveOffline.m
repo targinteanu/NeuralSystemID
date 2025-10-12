@@ -171,7 +171,15 @@ for chnmst = channelNameStim
         end
     end
 end
-figure; myStackedPlot(dta,chandisp); myStackedPlot(dtaKal,chandisp);
+figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+for ch = 1:length(chandisp)
+    ax(ch) = subplot(H+1,1,ch);
+    plot(dta, chandisp(ch)); grid on; hold on; 
+    plot(dtaKal, chandisp(ch));
+end
+ax(ch+1) = subplot(H+1,1,ch+1);
+plot(t, g); grid on;
+linkaxes(ax, 'x');
 
 pause(.001); drawnow; pause(.001);
 
