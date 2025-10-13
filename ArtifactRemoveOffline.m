@@ -153,6 +153,15 @@ for ind = 1:size(noises, 3)
     noises(1:height(dta_inds),:,ind,2) = dtaKal_inds;
 end
 clear noise_ind ind ind_curr noise_ind_new dta_inds
+artavg = mean(noises,3,'omitnan'); % avg waveform accross stims 
+artstd = std(noises,[],3,'omitnan'); % var in waveform across trials
+artdif = noises - artavg; artdifrsq = sqrt(sum(artdif.^2,1,'omitnan'));
+bestartdif = diff(artdifrsq,[],4); bestartdif = sum(bestartdif.^2,3,'omitnan');
+bestartdif = squeeze(bestartdif); [~,bestartdif] = sort(bestartdif);
+artdifmin = min(artdif,[],1); % most neg val each trial 
+artdifmax = max(artdif,[],1); % most pos val each trial
+artdifavg = mean(artdif,1,'omitnan'); 
+artimbal = (artdifrsq - artdifavg)./(artdifrsq+eps); % polarity imbalance each trial
 
 % assess noise level by channel 
 SNRupper = mag2db(rms(dta.Variables)./(rms(dta.Variables)-rms(dtaBL.Variables)));
@@ -165,10 +174,11 @@ end
 
 % display some example channels 
 chandisp = [...
-    chanbestprms(1); chanbestprms(end); ...
-    bestSNRupper(1); bestSNRupper(end); ...
-    bestSNRlower(1); bestSNRlower(end)]; 
-chandisp = unique(chandisp); H = height(chandisp);
+    chanbestprms(1), chanbestprms(end), ...
+    bestSNRupper(1), bestSNRupper(end), ...
+    bestSNRlower(1), bestSNRlower(end), ...
+    bestartdif(1), bestartdif(end)]; 
+chandisp = unique(chandisp); H = length(chandisp);
 chandispname = chanlistsel(chandisp);
 if ~sum(strcmp(channelNameRec, chandispname))
     if sum(strcmp(channelNameRec, chanlistsel))
@@ -211,6 +221,40 @@ ylabel(chandispname(ch)); xlabel('time from stim (s)');
 title('artifacts')
 end
 linkaxes(ax2, 'x');
+
+pause(.001); drawnow; pause(.001);
+
+%% show characteristic artifact waveform and removal
+NumTraceToShow = 16; % max
+tracetypes = cat(5, artdifrsq, artdifmin, artdifmax, artimbal);
+NumTraceToShow = floor(NumTraceToShow/(2*size(tracetypes,5)));
+tracetypes = tracetypes(:,chandisp,:,1,:); % selected channels, with artifact
+tracetypes = sum(tracetypes.^2,2,'omitnan'); % sum all selected channels
+tracetypes = squeeze(tracetypes); % trial x type 
+tracebest = zeros(size(tracetypes));
+for itype = 1:size(tracetypes,2)
+    [~,tracebest(:,itype)] = sort(tracetypes(:,itype));
+end
+showtraceinds = [tracebest(1:NumTraceToShow,:); tracebest((end-NumTraceToShow+1):end,:)];
+showtraceinds = showtraceinds(:); showtraceinds = unique(showtraceinds);
+figure; 
+for ch = 1:H
+ax3(ch) = subplot(H,1,ch);
+yavg = artavg(:,chandisp(ch),1,1); xavg = artavg(:,chandisp(ch),1,2);
+ystd = artstd(:,chandisp(ch),1,1); xstd = artstd(:,chandisp(ch),1,2);
+patch([ti,fliplr(ti)], [yavg+ystd;flipud(yavg-ystd)], [0,0,.7], 'FaceAlpha',.5, 'EdgeColor','none');
+hold on; grid on;
+patch([ti,fliplr(ti)], [xavg+xstd;flipud(xavg-xstd)], [.7,0,0], 'FaceAlpha',.5, 'EdgeColor','none');
+for ind = 1:length(showtraceinds)
+    yi = noises(:,chandisp(ch),showtraceinds(ind),1);
+    xi = noises(:,chandisp(ch),showtraceinds(ind),2);
+    plot(ti,yi, "Color",[0,0,.7 - .15 + .3*ind/length(showtraceinds)], "LineWidth",.5);
+    plot(ti,xi, "Color",[.7 - .15 + .3*ind/length(showtraceinds),0,0], "LineWidth",.5);
+end
+plot(ti,yavg, "Color",[0,0,.7], "LineWidth",2);
+plot(ti,xavg, "Color",[.7,0,0], "LineWidth",1.8);
+end
+linkaxes(ax3, 'x');
 
 pause(.001); drawnow; pause(.001);
 
