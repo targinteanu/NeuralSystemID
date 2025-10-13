@@ -125,7 +125,7 @@ for Li = 1:height(tblsList)
         clear gi gti gtidiff selmade selidx selrow
 
 % LMS setup and pretraining 
-N = 32; % filter # taps
+N = 50; % filter # taps
 stepsize = 1; % learn rate for gradient descent 
 W0 = preTrainWtsLMS(g,dta,N,4,false); % "optimal" LMS weights 
 
@@ -188,7 +188,7 @@ pause(.001); drawnow; pause(.001);
 % show overlapping artifact
 figure; 
 for ch = 1:H
-ax(ch) = subplot(H,1,ch);
+ax2(ch) = subplot(H,1,ch);
 hold on; grid on;
 for TBLi = 1:length(noise_tbls)
     tbl = noise_tbls{TBLi};
@@ -197,11 +197,11 @@ for TBLi = 1:length(noise_tbls)
         'Color',colorwheel(TBLi/length(noise_tbls)), ...
         'LineWidth',1.5-TBLi/length(noise_tbls));
 end
-xlabel(chandisp(ch)); ylabel('time (s)');
+ylabel(chandisp(ch)); xlabel('time (s)');
 title('artifacts')
 end
-xlim([0 4*N/SampleRate])
-linkaxes(ax, 'x');
+linkaxes(ax2, 'x');
+xlim([0 2*N/SampleRate])
 
 pause(.001); drawnow; pause(.001);
 
