@@ -77,6 +77,10 @@ if chanselmade
     dtaBL = dtaBL(:, chanlistsel);
 end
 
+% remove DC offset 
+DCOSBL = mean(dtaBL);
+dtaBL = dtaBL - DCOSBL;
+
 [predBL, ~, ~, tstEval, A] = fitLTIauton(dtaBL);
 tstEval
 
@@ -88,15 +92,13 @@ chanrms = rms(res.Variables); chanprms = chanrms./rms(dtaBL.Variables);
 
 %% loop through table list 
 
-% TO DO: nested loop that defines g and dta
-
 for Li = 1:height(tblsList)
     tbls = tblsList{Li};
     for Ti = 1:height(tbls)
         dta = tbls{Ti,1}; % only process the "main table"
-        SampleRate = SampleRates(1); % Hz
         dta = dta(:, chanlistsel);
         dta = sortrows(dta, 'Time'); % order time ascending, if not already done
+        dta = dta - DCOSBL; % correct DC offset 
         t = dta.Time; ts = seconds(dta.Properties.TimeStep);
         if isnan(ts)
             ts = mode(seconds(diff(ts)));
@@ -201,7 +203,7 @@ ylabel(chandisp(ch)); xlabel('time (s)');
 title('artifacts')
 end
 linkaxes(ax2, 'x');
-xlim([0 2*N/SampleRate])
+xlim([0 2*N*ts])
 
 pause(.001); drawnow; pause(.001);
 
