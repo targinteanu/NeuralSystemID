@@ -126,11 +126,11 @@ for Li = 1:height(tblsList)
 
 % LMS setup and pretraining 
 N = 50; % filter # taps
-stepsize = 1; % learn rate for gradient descent 
-W0 = preTrainWtsLMS(g,dta,N,4,false); % "optimal" LMS weights 
+stepsize = .5; % learn rate for gradient descent 
+W0 = preTrainWtsLMS(g,dta,N,4,true); % "optimal" LMS weights 
 
 % Kalman filter with no adaptive state estimate 
-dtaKal = AdaptKalmanAuton(g,dta,[],0,A,stepsize,Qcov,N,W0,true,false,true);
+dtaKal = AdaptKalmanAuton(g,dta,[],0,A,stepsize,Qcov,N,W0,true,true,true);
 
 % characterize artifact waveform 
 noise_ind = find(g); 
