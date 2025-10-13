@@ -21,7 +21,8 @@ disp("Trigger on channel(s): "); disp(channelNameTrig);
 %% user selects which data to artifact-remove
 
 % select table lists of interest 
-tblsDesc = {'tblsTrig'; 'tblsStimNoTrig'; 'tblsSrl'; 'tblsMisc'};
+tblsName = {'tblsTrig'; 'tblsStimNoTrig'; 'tblsSrl'; 'tblsMisc'};
+tblsDesc = tblsName;
 tblsList = cellfun(@eval, tblsDesc, 'UniformOutput', false);
 for Li = 1:height(tblsDesc)
     TC = tblsList{Li}; TCdescs = '';
@@ -41,7 +42,7 @@ end
 if ~selmade
     error('Selection must be made.')
 end
-tblsDesc = tblsDesc(selidx); tblsList = tblsList(selidx);
+tblsDesc = tblsDesc(selidx); tblsList = tblsList(selidx); tblsName = tblsName(selidx);
 clear Li Ti T TC TCdescs Tdesc selidx selmade
 
 % subselect tables of interest 
@@ -92,8 +93,11 @@ chanrms = rms(res.Variables); chanprms = chanrms./rms(dtaBL.Variables);
 
 %% loop through table list 
 
+tblsListOut = cell(size(tblsList));
+
 for Li = 1:height(tblsList)
     tbls = tblsList{Li};
+    tblsOut = cell(height(tbls),1);
     for Ti = 1:height(tbls)
         dta = tbls{Ti,1}; % only process the "main table"
         dta = dta(:, chanlistsel);
@@ -260,5 +264,25 @@ linkaxes(ax3, 'x');
 
 pause(.001); drawnow; pause(.001);
 
+dtaKal = dtaKal + DCOSBL; % replace DC offset 
+tblsOut{Ti,1} = dtaKal;
+
     end
+    tblsListOut{Li} = tblsOut;
 end
+
+%% saving 
+
+% assign new variables
+for Li = 1:height(tblsListOut)
+    tblsName{Li} = [tblsName{Li},'_ArtifactRemoved'];
+    eval([tblsName{Li},' = tblsListOut{Li};']);
+end
+
+% stamp saved output with version
+thisfilever = getFileVersion(thisfilename);
+[~,thisfilename] = fileparts(thisfilename);
+svname = [fn,'_',thisfilename,'_',thisfilever];
+
+% save vars (table lists)
+save(fullfile(fp,svname), tblsName, 'chanlistsel', "-v7.3");
