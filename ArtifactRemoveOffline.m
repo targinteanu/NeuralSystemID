@@ -144,8 +144,15 @@ for ind = 2:length(noise_ind_new)
     ind_curr = noise_ind_new(ind-1) : (noise_ind_new(ind)-1);
     noise_inds = [noise_inds, (ind_curr)];
 end
-clear noise_ind ind ind_curr noise_ind_new
-noise_tbls = cellfun(@(inds) dta(inds,:), noise_inds, 'UniformOutput',false);
+noises = nan(2*N, width(dta), length(noise_inds), 2);
+for ind = 1:size(noises, 3)
+    dta_inds = dta{noise_inds{ind},:}; dtaKal_inds = dtaKal{noise_inds{ind},:};
+    dta_inds = dta_inds(1:min(height(dta_inds), height(noises)), :);
+    dtaKal_inds = dtaKal_inds(1:height(dta_inds),:);
+    noises(1:height(dta_inds),:,ind,1) = dta_inds;
+    noises(1:height(dta_inds),:,ind,2) = dtaKal_inds;
+end
+clear noise_ind ind ind_curr noise_ind_new dta_inds
 
 % assess noise level by channel 
 SNRupper = mag2db(rms(dta.Variables)./(rms(dta.Variables)-rms(dtaBL.Variables)));
@@ -162,24 +169,24 @@ chandisp = [...
     bestSNRupper(1); bestSNRupper(end); ...
     bestSNRlower(1); bestSNRlower(end)]; 
 chandisp = unique(chandisp); H = height(chandisp);
-chandisp = chanlistsel(chandisp);
-if ~sum(strcmp(channelNameRec, chandisp))
+chandispname = chanlistsel(chandisp);
+if ~sum(strcmp(channelNameRec, chandispname))
     if sum(strcmp(channelNameRec, chanlistsel))
-        chandisp = [chandisp, channelNameRec];
+        chandispname = [chandispname, channelNameRec];
     end
 end
 for chnmst = channelNameStim
-    if ~sum(strcmp(chnmst, chandisp))
+    if ~sum(strcmp(chnmst, chandispname))
         if sum(strcmp(chnmst, chanlistsel))
-            chandisp = [chandisp, chnmst];
+            chandispname = [chandispname, chnmst];
         end
     end
 end
 figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
-for ch = 1:length(chandisp)
+for ch = 1:length(chandispname)
     ax(ch) = subplot(H+1,1,ch);
-    plot(dta, chandisp(ch)); grid on; hold on; 
-    plot(dtaKal, chandisp(ch));
+    plot(dta, chandispname(ch)); grid on; hold on; 
+    plot(dtaKal, chandispname(ch));
 end
 ax(ch+1) = subplot(H+1,1,ch+1);
 plot(t, g); grid on;
@@ -192,18 +199,18 @@ figure;
 for ch = 1:H
 ax2(ch) = subplot(H,1,ch);
 hold on; grid on;
-for TBLi = 1:length(noise_tbls)
-    tbl = noise_tbls{TBLi};
-    tbl.Time = tbl.Time - tbl.Time(1);
-    plot(seconds(tbl.Time), tbl.(chandisp(ch)), ...
-        'Color',colorwheel(TBLi/length(noise_tbls)), ...
-        'LineWidth',1.5-TBLi/length(noise_tbls));
+for ind = 1:size(noises,3)
+    yi = noises(:,chandisp(ch),ind,1); % with artifact
+    xi = noises(:,chandisp(ch),ind,1); % artifact-removed
+    ti = 1:length(yi); ti = (ti-1)*ts;
+    plot(ti, yi, ...
+        'Color',colorwheel(ind/length(noises)), ...
+        'LineWidth',1.5-ind/length(noises));
 end
-ylabel(chandisp(ch)); xlabel('time (s)');
+ylabel(chandispname(ch)); xlabel('time from stim (s)');
 title('artifacts')
 end
 linkaxes(ax2, 'x');
-xlim([0 2*N*ts])
 
 pause(.001); drawnow; pause(.001);
 
