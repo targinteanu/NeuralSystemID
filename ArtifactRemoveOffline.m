@@ -224,8 +224,8 @@ linkaxes(ax2, 'x');
 
 pause(.001); drawnow; pause(.001);
 
-%% show characteristic artifact waveform and removal
-NumTraceToShow = 16; % max
+% show characteristic artifact waveform and removal
+NumTraceToShow = 32; % max
 tracetypes = cat(5, artdifrsq, artdifmin, artdifmax, artimbal);
 NumTraceToShow = floor(NumTraceToShow/(2*size(tracetypes,5)));
 tracetypes = tracetypes(:,chandisp,:,1,:); % selected channels, with artifact
@@ -242,17 +242,19 @@ for ch = 1:H
 ax3(ch) = subplot(H,1,ch);
 yavg = artavg(:,chandisp(ch),1,1); xavg = artavg(:,chandisp(ch),1,2);
 ystd = artstd(:,chandisp(ch),1,1); xstd = artstd(:,chandisp(ch),1,2);
-patch([ti,fliplr(ti)], [yavg+ystd;flipud(yavg-ystd)], [0,0,.7], 'FaceAlpha',.5, 'EdgeColor','none');
+patch([ti,fliplr(ti)], [yavg+ystd;flipud(yavg-ystd)], 'b', 'FaceAlpha',.5, 'EdgeColor','none');
 hold on; grid on;
-patch([ti,fliplr(ti)], [xavg+xstd;flipud(xavg-xstd)], [.7,0,0], 'FaceAlpha',.5, 'EdgeColor','none');
+patch([ti,fliplr(ti)], [xavg+xstd;flipud(xavg-xstd)], 'r', 'FaceAlpha',.5, 'EdgeColor','none');
 for ind = 1:length(showtraceinds)
     yi = noises(:,chandisp(ch),showtraceinds(ind),1);
     xi = noises(:,chandisp(ch),showtraceinds(ind),2);
-    plot(ti,yi, "Color",[0,0,.7 - .15 + .3*ind/length(showtraceinds)], "LineWidth",.5);
-    plot(ti,xi, "Color",[.7 - .15 + .3*ind/length(showtraceinds),0,0], "LineWidth",.5);
+    plot(ti,yi, ':b', "LineWidth",.75);
+    plot(ti,xi, ':r', "LineWidth",.75);
 end
-plot(ti,yavg, "Color",[0,0,.7], "LineWidth",2);
-plot(ti,xavg, "Color",[.7,0,0], "LineWidth",1.8);
+plot(ti,yavg, "Color",'b', "LineWidth",2);
+plot(ti,xavg, "Color",'r', "LineWidth",1.7);
+ylabel(chandispname(ch)); xlabel('time from stim (s)');
+title('artifacts')
 end
 linkaxes(ax3, 'x');
 
