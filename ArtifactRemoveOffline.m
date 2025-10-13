@@ -94,6 +94,7 @@ for Li = 1:height(tblsList)
     tbls = tblsList{Li};
     for Ti = 1:height(tbls)
         dta = tbls{Ti,1}; % only process the "main table"
+        SampleRate = SampleRates(1); % Hz
         dta = dta(:, chanlistsel);
         dta = sortrows(dta, 'Time'); % order time ascending, if not already done
         t = dta.Time; ts = seconds(dta.Properties.TimeStep);
@@ -135,10 +136,11 @@ dtaKal = AdaptKalmanAuton(g,dta,[],0,A,stepsize,Qcov,N,W0,true,false,true);
 noise_ind = find(g); 
 noise_ind_new = diff(noise_ind) > 2;
 noise_ind_new = find(noise_ind_new) + 1;
+noise_ind_new = noise_ind(noise_ind_new);
 noise_inds = {};
 for ind = 2:length(noise_ind_new)
     ind_curr = noise_ind_new(ind-1) : (noise_ind_new(ind)-1);
-    noise_inds = [noise_inds, noise_ind(ind_curr)];
+    noise_inds = [noise_inds, (ind_curr)];
 end
 clear noise_ind ind ind_curr noise_ind_new
 noise_tbls = cellfun(@(inds) dta(inds,:), noise_inds, 'UniformOutput',false);
@@ -186,15 +188,20 @@ pause(.001); drawnow; pause(.001);
 % show overlapping artifact
 figure; 
 for ch = 1:H
-subplot(H,1,ch);
+ax(ch) = subplot(H,1,ch);
 hold on; grid on;
-for TBL = noise_tbls
-    tbl = TBL{:};
+for TBLi = 1:length(noise_tbls)
+    tbl = noise_tbls{TBLi};
     tbl.Time = tbl.Time - tbl.Time(1);
-    plot(tbl,chandisp(ch), 'Color',colorwheel(ch/H));
+    plot(seconds(tbl.Time), tbl.(chandisp(ch)), ...
+        'Color',colorwheel(TBLi/length(noise_tbls)), ...
+        'LineWidth',1.5-TBLi/length(noise_tbls));
 end
+xlabel(chandisp(ch)); ylabel('time (s)');
 title('artifacts')
 end
+xlim([0 4*N/SampleRate])
+linkaxes(ax, 'x');
 
 pause(.001); drawnow; pause(.001);
 
