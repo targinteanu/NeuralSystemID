@@ -105,7 +105,7 @@ for Li = 1:height(tblsList)
         dta = dta - DCOSBL; % correct DC offset 
         t = dta.Time; ts = seconds(dta.Properties.TimeStep);
         if isnan(ts)
-            ts = mode(seconds(diff(ts)));
+            ts = mode(seconds(diff(t)));
         end
 
         % determine trigger (noise ref) signal, g
