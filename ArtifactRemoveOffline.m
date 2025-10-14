@@ -91,6 +91,15 @@ Qcov = cov(res.Variables);
 chanrms = rms(res.Variables); chanprms = chanrms./rms(dtaBL.Variables);
 [~,chanbestprms] = sort(chanprms);
 
+%{
+% AR model 
+dtaBL_ = dtaBL(1:min(height(dtaBL),100000),:); % truncate for speed 
+ARmdl = [];
+for ch = 1:width(dtaBL_)
+    ARmdl = [ARmdl; ar(dtaBL_(:,ch),50,'yw')];
+end
+%}
+
 %% loop through table list 
 
 tblsListOut = cell(size(tblsList));
@@ -130,13 +139,25 @@ for Li = 1:height(tblsList)
         end
         clear gi gti gtidiff selmade selidx selrow
 
+methodsel = questdlg('How should artifact removal be performed on this section?', ...
+    'method selection', 'Adaptive', 'Manual', 'Adaptive');
+methodsel = strcmpi(methodsel, 'Adaptive');
+
+if methodsel % adaptive using LMS + Kalman
+
 % LMS setup and pretraining 
 N = 50; % filter # taps
 stepsize = .5; % learn rate for gradient descent 
 W0 = preTrainWtsLMS(g,dta,N,4,false); % "optimal" LMS weights 
 
 % Kalman filter with no adaptive state estimate 
-dtaKal = AdaptKalmanAuton(g,dta,[],0,A,stepsize,Qcov,N,W0,true,false,true);
+dtaArtRem = AdaptKalmanAuton(g,dta,[],0,A,stepsize,Qcov,N,W0,true,false,true);
+
+else % manually replace noise inds with model
+    dtaProj = projLTIauton(A, dta, g);
+    dtaArtRem = dta;
+    dtaArtRem{find(g),:} = dtaProj{find(g),:};
+end
 
 % characterize artifact waveform 
 noise_ind = find(g); 
@@ -150,7 +171,7 @@ for ind = 2:length(noise_ind_new)
 end
 noises = nan(2*N, width(dta), length(noise_inds), 2);
 for ind = 1:size(noises, 3)
-    dta_inds = dta{noise_inds{ind},:}; dtaKal_inds = dtaKal{noise_inds{ind},:};
+    dta_inds = dta{noise_inds{ind},:}; dtaKal_inds = dtaArtRem{noise_inds{ind},:};
     dta_inds = dta_inds(1:min(height(dta_inds), height(noises)), :);
     dtaKal_inds = dtaKal_inds(1:height(dta_inds),:);
     noises(1:height(dta_inds),:,ind,1) = dta_inds;
@@ -172,7 +193,7 @@ SNRupper = mag2db(rms(dta.Variables)./(rms(dta.Variables)-rms(dtaBL.Variables)))
 [~,bestSNRupper] = sort(SNRupper);
 SNRlower = nan(size(SNRupper));
 for ch = 1:width(dta)
-    SNRlower(ch) = snr(dta{:,ch}, dta{:,ch}-dtaKal{:,ch});
+    SNRlower(ch) = snr(dta{:,ch}, dta{:,ch}-dtaArtRem{:,ch});
 end
 [~,bestSNRlower] = sort(SNRlower);
 
@@ -200,7 +221,7 @@ figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
 for ch = 1:length(chandispname)
     ax(ch) = subplot(H+1,1,ch);
     plot(dta, chandispname(ch)); grid on; hold on; 
-    plot(dtaKal, chandispname(ch));
+    plot(dtaArtRem, chandispname(ch));
 end
 ax(ch+1) = subplot(H+1,1,ch+1);
 plot(t, g); grid on;
@@ -264,8 +285,8 @@ linkaxes(ax3, 'x');
 
 pause(.001); drawnow; pause(.001);
 
-dtaKal = dtaKal + DCOSBL; % replace DC offset 
-tblsOut{Ti,1} = dtaKal;
+dtaArtRem = dtaArtRem + DCOSBL; % replace DC offset 
+tblsOut{Ti,1} = dtaArtRem;
 
     end
     tblsListOut{Li} = tblsOut;
