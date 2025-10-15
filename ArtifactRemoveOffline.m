@@ -297,8 +297,10 @@ end
 % assign new variables
 for Li = 1:height(tblsListOut)
     tblsName{Li} = [tblsName{Li},'_ArtifactRemoved'];
-    eval([tblsName{Li},' = tblsListOut{Li};']);
+    %eval([tblsName{Li},' = tblsListOut{Li};']);
 end
+svstruct = cell2struct(tblsListOut, tblsName, 1);
+svstruct.chanlistsel = chanlistsel;
 
 % stamp saved output with version
 thisfilever = getFileVersion(thisfilename);
@@ -306,4 +308,4 @@ thisfilever = getFileVersion(thisfilename);
 svname = [fn,'_',thisfilename,'_',thisfilever];
 
 % save vars (table lists)
-save(fullfile(fp,svname), tblsName, 'chanlistsel', "-v7.3");
+save(fullfile(fp,svname), '-struct', 'svstruct', "-v7.3");
