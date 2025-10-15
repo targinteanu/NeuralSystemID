@@ -30,3 +30,61 @@ end
     "SelectionMode","multiple", "PromptString","Select channels to INCLUDE", ...
     "ListSize",[500,300], "InitialValue",chanselidx);
 chanlistsel = chanlist(chanselidx);
+
+%% define freq bands
+
+%% organize into tables 
+
+featnames = ["Raw", "Filtered", "Hilbert", "MagPhase"];
+
+alltbls = cell(4,length(featnames));
+% stim type {baseline, other non-stim, cort stim, depth stim} x feature
+% all wrapped in cells so there can be multiple 
+
+% baseline 
+if chanselmade
+    dtaBL = dtaBL(:,chanselidx);
+end
+alltbls{1,1} = {dtaBL};
+
+% collect by stim type 
+tblsToOrganize = tblsMisc(:,1);
+if exist('tblsTrig_ArtifactRemoved', 'var')
+    tblsToOrganize = [tblsToOrganize; tblsTrig_ArtifactRemoved];
+elseif exist('tblsTrig', 'var')
+    [tblsToOrganize; tblsTrig(:,1)];
+end
+if exist('tblsStimNoTrig_ArtifactRemoved', 'var')
+    tblsToOrganize = [tblsToOrganize; tblsStimNoTrig_ArtifactRemoved];
+elseif exist('tblsStimNoTrig', 'var')
+    [tblsToOrganize; tblsStimNoTrig(:,1)];
+end
+tblsToOrganizeDescs = cellfun(@(T) string(T.Properties.Description), tblsToOrganize);
+
+% other non-stim 
+[selidx,selmade] = listdlg("ListString",tblsToOrganizeDescs, ...
+    "SelectionMode","multiple", "ListSize",[500,300], ...
+    "PromptString","Select NON-stimulation");
+if selmade
+    alltbls(2,1) = tblsToOrganize(selidx);
+end
+
+% cort stim 
+[selidx,selmade] = listdlg("ListString",tblsToOrganizeDescs, ...
+    "SelectionMode","multiple", "ListSize",[500,300], ...
+    "PromptString","Select CORTICAL stimulation");
+if selmade
+    alltbls(3,1) = tblsToOrganize(selidx);
+end
+
+% depth stim 
+[selidx,selmade] = listdlg("ListString",tblsToOrganizeDescs, ...
+    "SelectionMode","multiple", "ListSize",[500,300], ...
+    "PromptString","Select DEPTH stimulation");
+if selmade
+    alltbls(4,1) = tblsToOrganize(selidx);
+end
+
+%% calc features 
+
+%% organize into regularly spaced arrays for each hzn
