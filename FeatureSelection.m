@@ -71,7 +71,7 @@ tblsToOrganizeDescs = cellfun(@(T) string(T.Properties.Description), tblsToOrgan
     "SelectionMode","multiple", "ListSize",[500,300], ...
     "PromptString","Select NON-stimulation");
 if selmade
-    alltbls(2,1) = tblsToOrganize(selidx);
+    alltbls{2,1} = tblsToOrganize(selidx);
 end
 
 % cort stim 
@@ -79,7 +79,7 @@ end
     "SelectionMode","multiple", "ListSize",[500,300], ...
     "PromptString","Select CORTICAL stimulation");
 if selmade
-    alltbls(3,1) = tblsToOrganize(selidx);
+    alltbls{3,1} = tblsToOrganize(selidx);
 end
 
 % depth stim 
@@ -87,7 +87,7 @@ end
     "SelectionMode","multiple", "ListSize",[500,300], ...
     "PromptString","Select DEPTH stimulation");
 if selmade
-    alltbls(4,1) = tblsToOrganize(selidx);
+    alltbls{4,1} = tblsToOrganize(selidx);
 end
 
 %% processing steps for all conditions 
@@ -95,7 +95,12 @@ end
 % notch out power line noise and harmonics
 f0 = 60; % power line fundamental 
 qFactor = 35;
-[notchB, notchA] = iircomb(ceil(SampleRate/f0), (f0/(SampleRate/2))/qFactor, 'notch');
+notchB = 1; notchA = 1;
+for h = f0:f0:(SampleRate/2)
+    % add a notch at harmonic h
+    [notchBh,notchAh] = iirnotch(h/(SampleRate/2), (h/(SampleRate/2))/qFactor);
+    notchB = conv(notchB, notchBh); notchA = conv(notchA, notchAh);
+end
 for Ti = 1:height(alltbls)
     for Tj = 1:height(alltbls{Ti,1})
         T = alltbls{Ti,1}{Tj};
@@ -107,8 +112,8 @@ for Ti = 1:height(alltbls)
 end
 
 % visualize results 
-dtaBL = alltbls{1,1}{1};
-figure; periodogram(dtaBL.Variables, [], [], SampleRate, 'power');
+sigBL = alltbls{1,1}{1};
+figure; periodogram(sigBL.Variables, [], [], SampleRate, 'power');
 
 %% calc features 
 
