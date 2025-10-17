@@ -42,12 +42,13 @@ end
 
 %% define freq bands
 SampleRate = SampleRates(1);
-[pBL, fBL] = periodogram(dtaBL.Variables, [], [], SampleRate);
+[pBL, fBL] = periodogram(dtaBL.Variables, [], [], SampleRate, 'power');
 pBL = 10*log10(pBL);
 figure; semilogx(fBL, pBL); grid on;
 xlim([0 200]);
-xlabel('Frequency (Hz)'); ylabel('Power/frequency (dB/Hz)');
-title('baseline PSD periodogram estimate');
+xlabel('Frequency (Hz)'); ylabel('Power (dB)');
+title('baseline PSD power estimate');
+xticks([0.5,4,9,13,30,70,150])
 
 %% organize into tables 
 
