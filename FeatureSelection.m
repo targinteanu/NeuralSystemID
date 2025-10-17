@@ -90,6 +90,26 @@ if selmade
     alltbls(4,1) = tblsToOrganize(selidx);
 end
 
+%% processing steps for all conditions 
+
+% notch out power line noise and harmonics
+f0 = 60; % power line fundamental 
+qFactor = 35;
+[notchB, notchA] = iircomb(ceil(SampleRate/f0), (f0/(SampleRate/2))/qFactor, 'notch');
+for Ti = 1:height(alltbls)
+    for Tj = 1:height(alltbls{Ti,1})
+        T = alltbls{Ti,1}{Tj};
+        for c = 1:width(T)
+            T{:,c} = filtfilt(notchB,notchA,T{:,c});
+        end
+        alltbls{Ti,1}{Tj} = T;
+    end
+end
+
+% visualize results 
+dtaBL = alltbls{1,1}{1};
+figure; periodogram(dtaBL.Variables, [], [], SampleRate, 'power');
+
 %% calc features 
 
 %% organize into regularly spaced arrays for each hzn
