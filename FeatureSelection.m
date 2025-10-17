@@ -6,6 +6,12 @@ hzns = [.05, .1, .5, 1]; % s
 
 %% obtain segmented, artifact-removed data 
 
+% init empty tbl lists 
+tblsTrig_ArtifactRemoved = {};
+tblsTrig = {};
+tblsStimNoTrig_ArtifactRemoved = {};
+tblsStimNoTrig = {};
+
 % file selection
 thisfilename = mfilename("fullpath");
 [fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Artifact-Free Data File');
@@ -30,8 +36,18 @@ end
     "SelectionMode","multiple", "PromptString","Select channels to INCLUDE", ...
     "ListSize",[500,300], "InitialValue",chanselidx);
 chanlistsel = chanlist(chanselidx);
+if chanselmade
+    dtaBL = dtaBL(:,chanselidx);
+end
 
 %% define freq bands
+SampleRate = SampleRates(1);
+[pBL, fBL] = periodogram(dtaBL.Variables, [], [], SampleRate);
+pBL = 10*log10(pBL);
+figure; semilogx(fBL, pBL); grid on;
+xlim([0 200]);
+xlabel('Frequency (Hz)'); ylabel('Power/frequency (dB/Hz)');
+title('baseline PSD periodogram estimate');
 
 %% organize into tables 
 
@@ -40,25 +56,13 @@ featnames = ["Raw", "Filtered", "Hilbert", "MagPhase"];
 alltbls = cell(4,length(featnames));
 % stim type {baseline, other non-stim, cort stim, depth stim} x feature
 % all wrapped in cells so there can be multiple 
-
-% baseline 
-if chanselmade
-    dtaBL = dtaBL(:,chanselidx);
-end
 alltbls{1,1} = {dtaBL};
 
 % collect by stim type 
-tblsToOrganize = tblsMisc(:,1);
-if exist('tblsTrig_ArtifactRemoved', 'var')
-    tblsToOrganize = [tblsToOrganize; tblsTrig_ArtifactRemoved];
-elseif exist('tblsTrig', 'var')
-    [tblsToOrganize; tblsTrig(:,1)];
-end
-if exist('tblsStimNoTrig_ArtifactRemoved', 'var')
-    tblsToOrganize = [tblsToOrganize; tblsStimNoTrig_ArtifactRemoved];
-elseif exist('tblsStimNoTrig', 'var')
-    [tblsToOrganize; tblsStimNoTrig(:,1)];
-end
+tblsToOrganize = [...
+    tblsMisc(:,1); ...
+    selectTbls(tblsTrig, tblsTrig_ArtifactRemoved, chanselmade, chanlistsel); ...
+    selectTbls(tblsStimNoTrig, tblsStimNoTrig_ArtifactRemoved, chanselmade, chanlistsel)];
 tblsToOrganizeDescs = cellfun(@(T) string(T.Properties.Description), tblsToOrganize);
 
 % other non-stim 
@@ -88,3 +92,40 @@ end
 %% calc features 
 
 %% organize into regularly spaced arrays for each hzn
+
+%% helpers 
+
+function tblslist = selectTbls(tblsOrig, tblsArtrem, chanselmade, chanlistsel)
+% Select between original and art removed table(s). If selected channels
+% have not been artifact removed, this will try to pull the original data,
+% in which case output table cols might not be in the same order. 
+tblsOrig = tblsOrig(:,1);
+if ~isempty(tblsArtrem)
+    tblslist = tblsArtrem;
+    if chanselmade
+        for Ti = 1:length(tblslist)
+            T = tblslist{Ti};
+            for ch = chanlistsel
+                if ~sum(strcmp(T.Properties.VariableNames, ch))
+                    % current channel ch is desired but not art removed
+                    terr = nan(size(tblsOrig));
+                    for Tj = 1:length(tblsOrig)
+                        To = tblsOrig{Tj};
+                        terr(Tj) = sum(...
+                            abs(seconds(min(T.Time)-min(To.Time)) + ...
+                            abs(seconds(max(T.Time)-max(To.Time)))));
+                    end
+                    [~,Tji] = min(terr); % find the original table with most time overlap
+                    To = tblsOrig{Tji};
+                    To_ch = array2timetable(To.(ch), ...
+                        "VariableNames",ch, "RowTimes",To.Time);
+                    T = synchronize(T,To_ch,'first','nearest');
+                end
+            end
+            tblslist{Ti} = T;
+        end
+    end
+else
+    tblslist = tblsOrig;
+end
+end
