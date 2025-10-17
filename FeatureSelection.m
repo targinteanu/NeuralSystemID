@@ -111,6 +111,19 @@ for Ti = 1:height(alltbls)
     end
 end
 
+%{
+% reref to common average 
+for Ti = 1:height(alltbls)
+    for Tj = 1:height(alltbls{Ti,1})
+        T = alltbls{Ti,1}{Tj};
+        for t = 1:height(T)
+            T{t,:} = T{t,:} - mean(T{t,:}, 'omitnan');
+        end
+        alltbls{Ti,1}{Tj} = T;
+    end
+end
+%}
+
 % visualize results 
 sigBL = alltbls{1,1}{1};
 figure; periodogram(sigBL.Variables, [], [], SampleRate, 'power');
