@@ -108,6 +108,7 @@ for h = f0:f0:(SampleRate/2)
     notchB = conv(notchB, notchBh); notchA = conv(notchA, notchAh);
 end
 for Ti = 1:height(alltbls)
+    disp(['Notch Filtering: ',num2str(Ti),' of ',num2str(height(alltbls))])
     for Tj = 1:height(alltbls{Ti,1})
         T = alltbls{Ti,1}{Tj};
         for c = 1:width(T)
@@ -120,6 +121,7 @@ end
 %%{
 % reref to common average 
 for Ti = 1:height(alltbls)
+    disp(['Rereferencing: ',num2str(Ti),' of ',num2str(height(alltbls))])
     for Tj = 1:height(alltbls{Ti,1})
         T = alltbls{Ti,1}{Tj};
         T.Variables = T.Variables - mean(T.Variables, 2, 'omitnan');
@@ -133,10 +135,10 @@ sigBL = alltbls{1,1}{1};
 figure; periodogram(sigBL.Variables, [], [], SampleRate, 'power');
 
 %% calc features 
-% TO DO: disp output progress 
 
 % filter 
 for Ti = 1:height(alltbls)
+    disp(['Band Filtering: ',num2str(Ti),' of ',num2str(height(alltbls))])
     TTraw = alltbls{Ti,1};
     TTfilt = cell(size(TTraw));
     for Tj = 1:height(TTraw)
@@ -156,6 +158,7 @@ end
 
 % hilbert, mag/phase
 for Ti = 1:height(alltbls)
+    disp(['Hilbert: ',num2str(Ti),' of ',num2str(height(alltbls))])
     TTfilt = alltbls{Ti,2};
     TThilb = cell(size(TTfilt)); TTmaph = cell(size(TTfilt));
     for Tj = 1:height(TTfilt)
@@ -178,6 +181,48 @@ end
 
 %% evaluate difference between stim and baseline 
 
+figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+pause(.001); drawnow; pause(.001);
+for feat = 1:size(alltbls,2)
+    tblsBL = alltbls{1,feat};
+    T = [];
+    for Tj = 1:height(tblsBL)
+        T = [T; tblsBL{Tj}];
+    end
+    XBL = T.Variables;
+    varnames = T.Properties.VariableNames;
+    for stim = 2:size(alltbls,1)
+        subplot(size(alltbls,1)-1, size(alltbls,2), size(alltbls,2)*(stim-2)+feat);
+        tbls = alltbls{stim,feat};
+        T = [];
+        for Tj = 1:height(tbls)
+            T = [T; tbls{Tj}];
+        end
+        X = T.Variables;
+        p = nan(1,width(X));
+        for c = 1:width(X)
+            [~,p(c)] = kstest2(XBL(:,c), X(:,c));
+        end
+        stem((p)); grid on; 
+        if length(p) > length(chanselidx)
+            xticks(1:length(chanselidx):length(p)); 
+            xticklabels(varnames(1:length(chanselidx):length(p)));
+        else
+            xticks(1:length(p)); xticklabels(varnames);
+        end
+        if stim == 2
+            title(featnames(feat));
+        end
+        if feat == 1
+            ylabel({char(T.Properties.Description), 'p vs baseline'});
+        end
+        if stim == size(alltbls,1)
+            xlabel('channel/measurement');
+        end
+        pause(.001); drawnow; pause(.001);
+    end
+end
+
 %% organize into regularly spaced arrays for each hzn
 % TO DO: disp output progress 
 
@@ -188,8 +233,11 @@ for feat = 1:size(allarr,2)
     for stim = 1:size(allarr,1)
         tbls = alltbls{stim,feat};
         for hzn = 1:size(allarr,3)
+            disp(['Dataset: ',num2str((feat-1)*size(allarr,2)+stim),' of ',num2str(numel(alltbls)),...
+                '; horizon ',num2str(hzn),' of ',num2str(size(allarr,3))])
             inp = []; oup = [];
             for Tj = 1:height(tbls)
+                % TO DO: this assumes all tbls columns are same order!
                 X = tbls{Tj}.Variables; % assume reg spaced time 
                 %for startind = 0:(hznsN(hzn)-1)
                 startind = 0;
