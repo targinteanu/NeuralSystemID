@@ -263,6 +263,7 @@ end
 
 %% evaluate "autonomous" linear relationship of "states" 
 
+Amin = inf; Amax = -inf; imgs = cell(size(allarr));
 for hzn = 1:size(allarr,3)
     spind = 1;
     figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
@@ -270,15 +271,35 @@ for hzn = 1:size(allarr,3)
     pause(.001); drawnow; pause(.001);
     for stim = 1:size(allarr,1)
         for feat = 1:size(allarr,2)
-            subplot(size(allarr,1), size(allarr,2), spind); spind = spind+1;
+            varnames = alltbls{stim,feat}{1}.Properties.VariableNames;
+            imgs{stim,feat,hzn} = subplot(size(allarr,1), size(allarr,2), spind); spind = spind+1;
             inp = allarr{stim,feat,hzn}(:,:,1);
             oup = allarr{stim,feat,hzn}(:,:,1);
             A = (inp'*inp)^-1*inp'*oup;
+            Amin = min(Amin, min(A(:))); Amax = max(Amax, max(A(:)));
             imagesc(A); colorbar;
+            if width(A) > length(chanselidx)
+                xticks(1:length(chanselidx):width(A)); 
+                xticklabels(varnames(1:length(chanselidx):width(A)));
+                yticks(1:length(chanselidx):height(A)); 
+                yticklabels(varnames(1:length(chanselidx):height(A)));
+            else
+                xticks(1:width(A)); xticklabels(varnames);
+                yticks(1:height(A)); yticklabels(varnames);
+            end
             pause(.001); drawnow; pause(.001);
         end
     end
 end
+%{
+for hzn = 1:size(allarr,3)
+    for stim = 1:size(allarr,1)
+        for feat = 1:size(allarr,2)
+            clim(imgs{stim,feat,hzn}, [Amin, Amax]);
+        end
+    end
+end
+%}
 
 %% helpers 
 
