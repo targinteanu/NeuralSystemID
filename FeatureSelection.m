@@ -64,7 +64,7 @@ alltbls{1,1} = {dtaBL};
 
 % collect by stim type 
 tblsToOrganize = [...
-    tblsMisc(:,1); ...
+    tblsMisc(:,1); ... selected channels only!!!
     selectTbls(tblsTrig, tblsTrig_ArtifactRemoved, chanselmade, chanlistsel); ...
     selectTbls(tblsStimNoTrig, tblsStimNoTrig_ArtifactRemoved, chanselmade, chanlistsel)];
 tblsToOrganizeDescs = cellfun(@(T) string(T.Properties.Description), tblsToOrganize);
@@ -176,7 +176,34 @@ for Ti = 1:height(alltbls)
     alltbls{Ti,3} = TThilb; alltbls{Ti,4} = TTmaph;
 end
 
+%% evaluate difference between stim and baseline 
+
 %% organize into regularly spaced arrays for each hzn
+% TO DO: disp output progress 
+
+hznsN = ceil(hzns*SampleRate); % samples 
+
+allarr = cell([size(alltbls), length(hzns)]);
+for feat = 1:size(allarr,2)
+    for stim = 1:size(allarr,1)
+        tbls = alltbls{stim,feat};
+        for hzn = 1:size(allarr,3)
+            inp = []; oup = [];
+            for Tj = 1:height(tbls)
+                X = tbls{Tj}.Variables; % assume reg spaced time 
+                %for startind = 0:(hznsN(hzn)-1)
+                startind = 0;
+                    inpoup = X((1:hznsN(hzn):end)+startind, :);
+                    inp = [inp; inpoup(1:(end-1),:)];
+                    oup = [oup; inpoup(2:end,:)];
+                %end
+            end
+            allarr{stim,feat,hzn} = cat(3,inp,oup);
+        end
+    end
+end
+
+%% evaluate "autonomous" linear relationship of "states" 
 
 %% helpers 
 
