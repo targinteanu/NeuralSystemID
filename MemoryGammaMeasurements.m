@@ -1,27 +1,9 @@
-%% Calculate and display Theta measurements during Memory task 
-% Code by Jack Coursen & Toren Arginteanu
+%% Calculate and display Gamma measurements 
+% Adapted from MemoryThetaMeasurements.m
 
-thetaPowerResults = struct();
+gammaPowerResults = struct();
 
 %% Loading the data 
-% 
-% At the end of this section, you should have the LFP channels in a
-% timetable NS2 sampled at 1kHz, and the corresponding struct ns2. You
-% should have the Behnke-Fried microelectrode raw rec in the table NS5
-% sampled at 30kHz and corresponding struct ns5. 
-% 
-% You should also have an event table and structure NEV/nev. This has the
-% serial events and the results of the Blackrock machine's spike sorting. I
-% am not sure how good this is; if you look at the waveforms, many of the
-% "spikes" just look like noise. So I think we will want to ignore it for
-% now and try our own spike sorting. 
-% 
-% Finally, you should have a log of the serial messages "SerialLog"
-% obtained through the OnlineDisplaySavedData file. These labels are more
-% useful than the ones from the eventdata, but the timing may be less
-% precise. Let's use this for now.
-% 
-
 filepath = '~/Documents/Anderson Lab/Saved Data 2025-05-22 11.44.08'; 
 makefullfile = @(f) fullfile(f.folder, f.name);
 OnlineFiles = dir([filepath,filesep,'OnlineDisplaySavedData*.mat']);
@@ -44,19 +26,6 @@ catch ME
 end
 
 %% Looping through the channels 
-% 
-% This code extracts only the theta power and produces a bar graph showing
-% theta power in each channel during memory encoding and decoding. Can you
-% modify the code to show gamma power in addition to theta? How about
-% theta-gamma coupling (PAC)? Please use the included function calcPAC and
-% note that theta is the "Phase" band while gamma is the "Amplitude" band.
-% 
-% The following code only uses LFP-based measurements from the NS2. 
-% In order to incorporate spike data, the NS5 data needs to be processed
-% through spike sorting; alternatively, we could try using the Blackrock
-% spike sorting in the NEV data.
-% 
-
 SamplingFreq = ns2.MetaTags.SamplingFreq;
 t = NS2.Time';
 tRel = seconds(t-t(1));
@@ -68,13 +37,12 @@ channelIndices = find(channelIndices);
 
 % Stimulation times (pulse train): 
 StimTrainRec = NS5.AINP1; % Analog Input 1
-% downsample to NS2 (by factor of 30)
 StimTrainRec = movmean(StimTrainRec, round(ns5.MetaTags.SamplingFreq/SamplingFreq));
 StimTrainRec = interp1(NS5.Time, StimTrainRec, NS2.Time, "nearest");
 StimTrainRec = [false; diff(StimTrainRec) > 2000]';
 
-% setup bandpass filter 
-bpf = buildFIRBPF(SamplingFreq, 4, 9); % Theta: 4 to 9 Hz
+% Setup gamma bandpass filter 
+gammaBPF = buildFIRBPF(SamplingFreq, 30, 100); % Gamma: 30 to 100 Hz
 
 for idx = 1:length(channelIndices)
 
@@ -85,35 +53,26 @@ dataOneChannel = NS2{:,channelIndex}';
 dataOneChannelWithArtifact = dataOneChannel; 
 t0 = t(1);
 
-%% artifact detection
+%% Artifact detection
 artExtend = 10; % extend artifact by __ samples 
-%if numel(channelIndexStim)
-    artIndAll = StimTrainRec; % cerestim trigs
-    % no other sources of artifact in the memory protocol
-%else
-%    warning('Stimulus channel ainp1 was not connected.')
-%    % assume there are cerestim trigs, but they are not recorded
-%    artIndAll = isoutlier(dataOneChannel, 'mean');
-%end 
-%artIndAll(StimInd) = true;
+artIndAll = StimTrainRec; 
 artIndAll = movsum(artIndAll, artExtend) > 0;
-artIndAll_PulseTrain = artIndAll;
 artIndAll = find(artIndAll);
 [~,baselineStartInd] = max(diff(artIndAll));
 baselineEndInd = artIndAll(baselineStartInd+1); baselineStartInd = artIndAll(baselineStartInd); 
 
-%% set baseline to fit model 
+%% Set baseline to fit model 
 if ~isempty(artIndAll)
 baselineWinLen = 1000; ARlen = 10; % samples 
 dataBaseline = dataOneChannel(baselineStartInd:baselineEndInd); 
-dataBaseline = filtfilt(bpf,1,dataBaseline);
+dataBaseline = filtfilt(gammaBPF,1,dataBaseline);
 baselineWin = (baselineEndInd-baselineStartInd) + [-1,1]*baselineWinLen; 
 baselineWin = baselineWin/2; baselineWin = round(baselineWin); 
 baselineWin(1) = max(1,baselineWin(1)); baselineWin(2) = min(length(dataBaseline),baselineWin(2));
 dataBaseline = dataBaseline(baselineWin(1):baselineWin(2));
 ARmdl = ar(iddata(dataBaseline', [], 1/SamplingFreq), ARlen, 'yw');
 
-%% remove artifact 
+%% Remove artifact 
 dataOneChannel = dataOneChannelWithArtifact;
 dataOneChannel = dataOneChannel - mean(dataOneChannel); % correct DC offset
 
@@ -125,20 +84,17 @@ for ind = artIndAll
 end
 end
 
-% filter 
-dataOneChannel = filtfilt(bpf,1,dataOneChannel);
+% Filter for gamma band
+dataOneChannel = filtfilt(gammaBPF,1,dataOneChannel);
 
-%% select time of interest (manually)
-% TO DO: make this automatic, pulled from notes.txt ?
-% selind = true(size(t)); % no selection
-% select only times before stimulation started: 
+%% Select time of interest (manually)
 iFirstStim = find(StimTrainRec); iFirstStim = iFirstStim(1);
 selind = t <= t(iFirstStim) - seconds(60);
 tSel = t(selind); tRelSel = tRel(selind);
 dataOneChannelSel = dataOneChannel(selind);
-selind = find(selind); 
+selind = find(selind);
 
-%% determine encode/decode phases of experiment 
+%% Determine encode/decode phases of experiment 
 expStates = {SerialLog.ParadigmPhase}';
 SrlTimes = [SerialLog.TimeStamp]';
 SrlTimesSel = (SrlTimes <= max(tRelSel)) & (SrlTimes >= min(tRelSel));
@@ -148,7 +104,6 @@ SrlTimesSel = SrlTimes(SrlTimesSel);
     findExpState('ENCODE', expStates, SrlTimesSel, tRelSel);
 [indDecode, decodeStart, decodeEnd] = ...
     findExpState('DECODE', expStates, SrlTimesSel, tRelSel);
-indNeither = (~indEncode)&(~indDecode);
 [indWait, waitStart, waitEnd] = ...
     findExpState('WAIT', expStates, SrlTimesSel, tRelSel);
 
@@ -159,135 +114,42 @@ for V = varnames
     eval([v,' = seconds(',v,') + t0;'])
 end
 
-%% Plot time series 
-% Individual channel plots have been commented out for now. Alternatively,
-% consider making one or two large figures with subplots/tiles for each
-% individual channel. 
-
-%{
-
-% select the data to plot 
-dataMinMax = [min(dataOneChannelSel), max(dataOneChannelSel)];
-dataMinMax = dataMinMax + [-1,1]*.01*diff(dataMinMax);
-dataMin = dataMinMax(1); dataMax = dataMinMax(2); 
-
-% plot data  
-figure; 
-plot(tSel,dataOneChannelSel);
-grid on; hold on; lgd = ["data"];
-
-% shade plot regions indicating encode and decode state of paradigm 
-if numel(encodeStart)
-patch([encodeStart, encodeEnd, encodeEnd, encodeStart]', ...
-    repmat([dataMax; dataMax; dataMin; dataMin],1,length(encodeStart)), ...
-    'c', 'FaceAlpha', .2); 
-lgd = [lgd, "Encode"];
-end
-if numel(decodeStart)
-patch([decodeStart, decodeEnd, decodeEnd, decodeStart]', ...
-    repmat([dataMax; dataMax; dataMin; dataMin],1,length(decodeStart)), ...
-    'g', 'FaceAlpha', .2); 
-lgd = [lgd, "Decode"];
-end
-
-% label the plot 
-legend(lgd)
-
-%}
-
-%% analyze measurements during encode/decode periods 
-
+%% Analyze measurements during encode/decode periods 
 encodeData = getStateData(tSel, dataOneChannelSel, encodeStart, encodeEnd);
 decodeData = getStateData(tSel, dataOneChannelSel, decodeStart, decodeEnd);
 waitData = getStateData(tSel, dataOneChannelSel, waitStart, waitEnd);
 
-% Compute Theta Power for Encoding and Decoding
-[avgThetaPowerEncoding, stdThetaPowerEncoding] = computeThetaPower(encodeData, SamplingFreq);
-[avgThetaPowerDecoding, stdThetaPowerDecoding] = computeThetaPower(decodeData, SamplingFreq);
-[avgThetaPowerWaiting, stdThetaPowerWaiting] = computeThetaPower(waitData, SamplingFreq);
+% Compute Gamma Power for Encoding and Decoding
+[avgGammaPowerEncoding, stdGammaPowerEncoding] = computeGammaPower(encodeData, SamplingFreq); % can do calc pac inside computegammapower
+[avgGammaPowerDecoding, stdGammaPowerDecoding] = computeGammaPower(decodeData, SamplingFreq);
+[avgGammaPowerWaiting, stdGammaPowerWaiting] = computeGammaPower(waitData, SamplingFreq);
 
-disp(['Avg Theta Power Encoding: ', num2str(avgThetaPowerEncoding), ' ± ', num2str(stdThetaPowerEncoding)]);
-disp(['Avg Theta Power Decoding: ', num2str(avgThetaPowerDecoding), ' ± ', num2str(stdThetaPowerDecoding)]);
-disp(['Avg Theta Power Waiting: ', num2str(avgThetaPowerWaiting), ' ± ', num2str(stdThetaPowerDecoding)]);
+disp(['Avg Gamma Power Encoding: ', num2str(avgGammaPowerEncoding), ' ± ', num2str(stdGammaPowerEncoding)]);
+disp(['Avg Gamma Power Decoding: ', num2str(avgGammaPowerDecoding), ' ± ', num2str(stdGammaPowerDecoding)]);
+disp(['Avg Gamma Power Waiting: ', num2str(avgGammaPowerWaiting), ' ± ', num2str(stdGammaPowerWaiting)]);
+
+gammaPowerResults(idx).channelName = channelNames{channelIndex}; % Store channel name
+gammaPowerResults(idx).encodingPower = avgGammaPowerEncoding;
+gammaPowerResults(idx).decodingPower = avgGammaPowerDecoding;
+gammaPowerResults(idx).encodingError = stdGammaPowerEncoding;
+gammaPowerResults(idx).decodingError = stdGammaPowerDecoding;
+gammaPowerResults(idx).filteredSignal = dataOneChannel; % Store filtered signal for PAC
+gammaPowerResults(idx).encodingSignal = encodeData;
+gammaPowerResults(idx).decodingSignal = decodeData;
+gammaPowerResults(idx).waitingPower = avgGammaPowerWaiting;
+gammaPowerResults(idx).waitingError = stdGammaPowerWaiting;
 
 
-% Concatenate all encoding segments back-to-back
-concatenatedEncodeData = [];
-for i = 1:length(encodeData)
-    concatenatedEncodeData = [concatenatedEncodeData; encodeData{i}; NaN]; % Add NaN to separate segments
-end
-
-% Concatenate all decoding segments back-to-back
-concatenatedDecodeData = [];
-for i = 1:length(decodeData)
-    concatenatedDecodeData = [concatenatedDecodeData; decodeData{i}; NaN]; % Add NaN to separate segments
-end
-
-% Concatenate all waiting segments back-to-back
-concatenatedWaitData = [];
-for i = 1:length(waitData)
-    concatenatedWaitData = [concatenatedWaitData; waitData{i}; NaN]; % Add NaN to separate segments
-end
-
-% Find the global min and max for the y-axis range
-globalMin = min([concatenatedEncodeData; concatenatedDecodeData], [], 'omitnan');
-globalMax = max([concatenatedEncodeData; concatenatedDecodeData], [], 'omitnan');
-
-%{
-
-% Create a figure for encoding and decoding data
-figure;
-tiledlayout(3,1);
-
-% Plot Encoding Data
-nexttile;
-plot(concatenatedEncodeData, 'b'); % Blue for encoding
-title('Encoding Signal');
-ylabel('Amplitude');
-xlabel('Time Points');
-ylim([globalMin globalMax]); % Set same y-axis range
-
-% Plot Decoding Data
-nexttile;
-plot(concatenatedDecodeData, 'g'); % Green for decoding
-title('Decoding Signal');
-ylabel('Amplitude');
-xlabel('Time Points');
-ylim([globalMin globalMax]); % Set same y-axis range
-
-% Plot Decoding and Encoding Data
-nexttile;
-plot(concatenatedDecodeData, 'g');
-title('Encoding and Decoding Signal (Overlay)');
-ylabel('Amplitude');
-xlabel('Time Points');
-hold on;
-plot(concatenatedEncodeData, 'b');
-
-ylim([globalMin globalMax]); % Set same y-axis range
-
-%}
-
-thetaPowerResults(idx).channelName = channelNames{channelIndex}; % Store channel name
-thetaPowerResults(idx).encodingPower = avgThetaPowerEncoding;
-thetaPowerResults(idx).decodingPower = avgThetaPowerDecoding;
-thetaPowerResults(idx).encodingError = stdThetaPowerEncoding;
-thetaPowerResults(idx).decodingError = stdThetaPowerDecoding;
-thetaPowerResults(idx).filteredSignal = dataOneChannel; % Store filtered signal for PAC
-thetaPowerResults(idx).encodingSignal = encodeData;
-thetaPowerResults(idx).decodingSignal = decodeData;
-thetaPowerResults(idx).waitingPower = avgThetaPowerWaiting;
-thetaPowerResults(idx).waitingError = stdThetaPowerWaiting;
 
 end
 
-channelNamesList = {thetaPowerResults.channelName};
-encodingPowers = [thetaPowerResults.encodingPower]; 
-decodingPowers = [thetaPowerResults.decodingPower];
-waitingPowers = [thetaPowerResults.waitingPower];
-encodingErrors = [thetaPowerResults.encodingError]; 
-decodingErrors = [thetaPowerResults.decodingError]; 
-waitingErrors = [thetaPowerResults.waitingError];
+channelNamesList = {gammaPowerResults.channelName};
+encodingPowers = [gammaPowerResults.encodingPower]; 
+decodingPowers = [gammaPowerResults.decodingPower]; 
+encodingErrors = [gammaPowerResults.encodingError]; 
+decodingErrors = [gammaPowerResults.decodingError];
+waitingPowers = [gammaPowerResults.waitingPower];
+waitingErrors = [gammaPowerResults.waitingError];
 
 % Filter out LH03 from the results
 excludeChannel = 'LH03';
@@ -326,27 +188,11 @@ errorbar(x(3,:), waitingPowers, waitingErrors, 'k', 'linestyle', 'none', 'linewi
 set(gca, 'XTick', 1:length(channelNamesList));
 set(gca, 'XTickLabel', channelNamesList);
 legend({'Encoding', 'Decoding', 'Waiting'});
-ylabel('Average Theta Power');
-title('Avg Theta Power for Encoding v. Decoding v. Waiting');
+ylabel('Average Gamma Power');
+title('Avg Gamma Power for Encoding v. Decoding v. Waiting');
 hold off;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-%% helper functions 
-
-
+%% Helper Functions (same as in MemoryThetaMeasurements.m)
 function dataCell = getStateData(tSel, dataOneChannelSel, stateStart, stateEnd)
     dataCell = cell(1, length(stateStart)); % Store each segment separately
     for i = 1:length(stateStart)
@@ -358,8 +204,7 @@ function dataCell = getStateData(tSel, dataOneChannelSel, stateStart, stateEnd)
     end
 end
 
-
-function [avgPower, powerSEM] = computeThetaPower(dataSegments, ~)
+function [avgPower, powerSEM] = computeGammaPower(dataSegments, ~)
     powerVals = []; % Store power values across all data points
     
     % Collect power values from all segments
@@ -380,8 +225,6 @@ function [avgPower, powerSEM] = computeThetaPower(dataSegments, ~)
         powerSEM = 0; % If only one data point, SEM is zero
     end
 end
-
-
 
 function [stateInd, stateStartTime, stateEndTime] = ...
     findExpState(expState, expStates, SrlTimes, tRel)
