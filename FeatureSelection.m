@@ -52,6 +52,7 @@ xlim([0 200]);
 xlabel('Frequency (Hz)'); ylabel('Power (dB)');
 title('baseline PSD power estimate');
 xticks(bandbounds)
+pause(.001); drawnow; pause(.001);
 
 %% organize into tables 
 
@@ -141,6 +142,7 @@ end
 % visualize results 
 sigBL = alltbls{1,1}{1};
 figure; periodogram(sigBL.Variables, [], [], SampleRate, 'power');
+pause(.001); drawnow; pause(.001);
 
 %% calc features 
 
@@ -260,6 +262,23 @@ for feat = 1:size(allarr,2)
 end
 
 %% evaluate "autonomous" linear relationship of "states" 
+
+for hzn = 1:size(allarr,3)
+    spind = 1;
+    figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+    sgtitle([num2str(1000*hzns(hzn)),' ms prediction']);
+    pause(.001); drawnow; pause(.001);
+    for stim = 1:size(allarr,1)
+        for feat = 1:size(allarr,2)
+            subplot(size(allarr,1), size(allarr,2), spind); spind = spind+1;
+            inp = allarr{stim,feat,hzn}(:,:,1);
+            oup = allarr{stim,feat,hzn}(:,:,1);
+            A = (inp'*inp)^-1*inp'*oup;
+            imagesc(A); colorbar;
+            pause(.001); drawnow; pause(.001);
+        end
+    end
+end
 
 %% helpers 
 
