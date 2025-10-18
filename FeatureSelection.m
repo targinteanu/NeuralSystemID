@@ -41,6 +41,9 @@ if chanselmade
 end
 
 %% define freq bands
+bandbounds = [0.5,4,9,13,30,70,150];
+bandnames = ["\delta", "\theta", "\alpha", "\beta", "lo\gamma", "hi\gamma"];
+
 SampleRate = SampleRates(1);
 [pBL, fBL] = periodogram(dtaBL.Variables, [], [], SampleRate, 'power');
 pBL = 10*log10(pBL);
@@ -48,7 +51,7 @@ figure; semilogx(fBL, pBL); grid on;
 xlim([0 200]);
 xlabel('Frequency (Hz)'); ylabel('Power (dB)');
 title('baseline PSD power estimate');
-xticks([0.5,4,9,13,30,70,150])
+xticks(bandbounds)
 
 %% organize into tables 
 
@@ -90,6 +93,9 @@ if selmade
     alltbls{4,1} = tblsToOrganize(selidx);
 end
 
+% TO DO: if any of the above tables has missing or nan for a time period
+% greater than tol, break it into cell array of tables 
+
 %% processing steps for all conditions 
 
 % notch out power line noise and harmonics
@@ -111,14 +117,12 @@ for Ti = 1:height(alltbls)
     end
 end
 
-%{
+%%{
 % reref to common average 
 for Ti = 1:height(alltbls)
     for Tj = 1:height(alltbls{Ti,1})
         T = alltbls{Ti,1}{Tj};
-        for t = 1:height(T)
-            T{t,:} = T{t,:} - mean(T{t,:}, 'omitnan');
-        end
+        T.Variables = T.Variables - mean(T.Variables, 2, 'omitnan');
         alltbls{Ti,1}{Tj} = T;
     end
 end
@@ -129,6 +133,48 @@ sigBL = alltbls{1,1}{1};
 figure; periodogram(sigBL.Variables, [], [], SampleRate, 'power');
 
 %% calc features 
+% TO DO: disp output progress 
+
+% filter 
+for Ti = 1:height(alltbls)
+    TTraw = alltbls{Ti,1};
+    TTfilt = cell(size(TTraw));
+    for Tj = 1:height(TTraw)
+        Traw = TTraw{Tj};
+        Tfilt = [];
+        for b = 1:length(bandnames)
+            bpf = buildFIRBPF(SampleRate, bandbounds(b), bandbounds(b+1));
+            varnames = string(Traw.Properties.VariableNames)+" "+bandnames(b);
+            Xfilt = filtfilt(bpf,1,Traw.Variables);
+            Tfilt = [Tfilt, array2timetable(Xfilt,...
+                "RowTimes",Traw.Time, "VariableNames",varnames)];
+        end
+        TTfilt{Tj} = Tfilt;
+    end
+    alltbls{Ti,2} = TTfilt;
+end
+
+% hilbert, mag/phase
+for Ti = 1:height(alltbls)
+    TTfilt = alltbls{Ti,2};
+    TThilb = cell(size(TTfilt)); TTmaph = cell(size(TTfilt));
+    for Tj = 1:height(TTfilt)
+        Tfilt = TTfilt{Tj};
+        varnames = string(Tfilt.Properties.VariableNames);
+        Xhilb = hilbert(Tfilt.Variables);
+        TThilb{Tj} = [...
+            array2timetable([real(Xhilb)], "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnames+" real"), ...
+            array2timetable([imag(Xhilb)], "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnames+" imag")];
+        TTmaph{Tj} = [...
+            array2timetable([abs(Xhilb)], "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnames+" mag"), ...
+            array2timetable([angle(Xhilb)], "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnames+" phase")];
+    end
+    alltbls{Ti,3} = TThilb; alltbls{Ti,4} = TTmaph;
+end
 
 %% organize into regularly spaced arrays for each hzn
 
