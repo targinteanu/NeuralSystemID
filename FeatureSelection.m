@@ -62,9 +62,17 @@ alltbls = cell(4,length(featnames));
 % all wrapped in cells so there can be multiple 
 alltbls{1,1} = {dtaBL};
 
+% add "misc" tables
+tblsToOrganize = tblsMisc(:,1); 
+if chanselmade
+    for Tj = 1:height(tblsToOrganize)
+        tblsToOrganize{Tj} = tblsToOrganize{Tj}(:,chanselidx);
+    end
+end
+
 % collect by stim type 
 tblsToOrganize = [...
-    tblsMisc(:,1); ... selected channels only!!!
+    tblsToOrganize; ... misc, selected channels only
     selectTbls(tblsTrig, tblsTrig_ArtifactRemoved, chanselmade, chanlistsel); ...
     selectTbls(tblsStimNoTrig, tblsStimNoTrig_ArtifactRemoved, chanselmade, chanlistsel)];
 tblsToOrganizeDescs = cellfun(@(T) string(T.Properties.Description), tblsToOrganize);
