@@ -30,8 +30,8 @@ if isempty(nbin)
     nbin = 18;
 end
 fig1 = [];
-L = length(hPhi);
-if L ~= length(hAmp) % changed from xAmp and xPhi
+L = length(xPhi);
+if L ~= length(xAmp)
     error('Signals need to be same length and aligned in time.')
 end
 if nbin < 1
