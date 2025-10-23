@@ -286,6 +286,8 @@ linkaxes(ax3, 'x');
 pause(.001); drawnow; pause(.001);
 
 dtaArtRem = dtaArtRem + DCOSBL; % replace DC offset 
+dtaArtRemDesc = dtaArtRem.Properties.Description;
+dtaArtRem.Properties.Description = [char(dtaArtRemDesc),', Artifact Removed'];
 tblsOut{Ti,1} = dtaArtRem;
 
     end
