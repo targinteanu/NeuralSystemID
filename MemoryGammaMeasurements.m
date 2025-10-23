@@ -41,8 +41,11 @@ StimTrainRec = movmean(StimTrainRec, round(ns5.MetaTags.SamplingFreq/SamplingFre
 StimTrainRec = interp1(NS5.Time, StimTrainRec, NS2.Time, "nearest");
 StimTrainRec = [false; diff(StimTrainRec) > 2000]';
 
-% Setup gamma bandpass filter 
-gammaBPF = buildFIRBPF(SamplingFreq, 30, 100); % Gamma: 30 to 100 Hz
+% Setup gamma bandpass filters
+% Encoding range: 30-90 Hz (lower gamma)
+% Decoding range: 60-120 Hz (higher gamma)
+gammaBPF_lower = buildFIRBPF(SamplingFreq, 30, 90); % Encoding gamma takes from here
+gammaBPF_higher = buildFIRBPF(SamplingFreq, 60, 120); % Decoding gamma takes from here
 
 for idx = 1:length(channelIndices)
 
@@ -65,13 +68,15 @@ baselineEndInd = artIndAll(baselineStartInd+1); baselineStartInd = artIndAll(bas
 if ~isempty(artIndAll)
 baselineWinLen = 1000; ARlen = 10; % samples 
 dataBaseline = dataOneChannel(baselineStartInd:baselineEndInd); 
-dataBaseline = filtfilt(gammaBPF,1,dataBaseline);
+% Use the encoding-range filter for baseline AR model fitting
+dataBaseline = dataBaseline - mean(dataBaseline);
 baselineWin = (baselineEndInd-baselineStartInd) + [-1,1]*baselineWinLen; 
 baselineWin = baselineWin/2; baselineWin = round(baselineWin); 
 baselineWin(1) = max(1,baselineWin(1)); baselineWin(2) = min(length(dataBaseline),baselineWin(2));
 dataBaseline = dataBaseline(baselineWin(1):baselineWin(2));
 ARmdl = ar(iddata(dataBaseline', [], 1/SamplingFreq), ARlen, 'yw');
 
+% part of artifact removal (try commenting out) - changed to remove DC offset
 %% Remove artifact 
 dataOneChannel = dataOneChannelWithArtifact;
 dataOneChannel = dataOneChannel - mean(dataOneChannel); % correct DC offset
@@ -84,14 +89,25 @@ for ind = artIndAll
 end
 end
 
-% Filter for gamma band
-dataOneChannel = filtfilt(gammaBPF,1,dataOneChannel);
+% Filter raw channel twice: once for lower gamma and once for higher gamma
+dataOneChannel_lower = filtfilt(gammaBPF_lower,1,dataOneChannel);
+dataOneChannel_higher = filtfilt(gammaBPF_higher,1,dataOneChannel);
+
+% analytic envelopes (instantaneous amplitude) computed over the full filtered traces
+dataOneChannelAmp_lower = abs(hilbert(dataOneChannel_lower));
+dataOneChannelAmp_higher = abs(hilbert(dataOneChannel_higher));
 
 %% Select time of interest (manually)
 iFirstStim = find(StimTrainRec); iFirstStim = iFirstStim(1);
 selind = t <= t(iFirstStim) - seconds(60);
 tSel = t(selind); tRelSel = tRel(selind);
-dataOneChannelSel = dataOneChannel(selind);
+% Create selections for each filtered trace (signal) and their amplitude envelopes
+dataOneChannelSel_lower = dataOneChannel_lower(selind);
+dataOneChannelSel_higher = dataOneChannel_higher(selind); % selind removes time with artifacts removed in the future we'll reconsider non-time selected
+
+% Also select amplitude envelopes over the same time window
+dataOneChannelSelAmp_lower = dataOneChannelAmp_lower(selind);
+dataOneChannelSelAmp_higher = dataOneChannelAmp_higher(selind);
 selind = find(selind);
 
 %% Determine encode/decode phases of experiment 
@@ -105,7 +121,7 @@ SrlTimesSel = SrlTimes(SrlTimesSel);
 [indDecode, decodeStart, decodeEnd] = ...
     findExpState('DECODE', expStates, SrlTimesSel, tRelSel);
 [indWait, waitStart, waitEnd] = ...
-    findExpState('WAIT', expStates, SrlTimesSel, tRelSel);
+    findExpState('HOLD', expStates, SrlTimesSel, tRelSel);
 
 % convert times to absolute 
 varnames = {'encodeStart', 'encodeEnd', 'decodeStart', 'decodeEnd', 'waitStart', 'waitEnd'};
@@ -115,41 +131,96 @@ for V = varnames
 end
 
 %% Analyze measurements during encode/decode periods 
-encodeData = getStateData(tSel, dataOneChannelSel, encodeStart, encodeEnd);
-decodeData = getStateData(tSel, dataOneChannelSel, decodeStart, decodeEnd);
-waitData = getStateData(tSel, dataOneChannelSel, waitStart, waitEnd);
 
-% Compute Gamma Power for Encoding and Decoding
-[avgGammaPowerEncoding, stdGammaPowerEncoding] = computeGammaPower(encodeData, SamplingFreq); % can do calc pac inside computegammapower
-[avgGammaPowerDecoding, stdGammaPowerDecoding] = computeGammaPower(decodeData, SamplingFreq);
-[avgGammaPowerWaiting, stdGammaPowerWaiting] = computeGammaPower(waitData, SamplingFreq);
+% Extract state segments for each filter range
 
-disp(['Avg Gamma Power Encoding: ', num2str(avgGammaPowerEncoding), ' ± ', num2str(stdGammaPowerEncoding)]);
-disp(['Avg Gamma Power Decoding: ', num2str(avgGammaPowerDecoding), ' ± ', num2str(stdGammaPowerDecoding)]);
-disp(['Avg Gamma Power Waiting: ', num2str(avgGammaPowerWaiting), ' ± ', num2str(stdGammaPowerWaiting)]);
+% Extract signal segments for each state (per-trial, per-channel)
+encodeData_lower = getStateData(tSel, dataOneChannelSel_lower, encodeStart, encodeEnd);
+encodeData_higher = getStateData(tSel, dataOneChannelSel_higher, encodeStart, encodeEnd);
+decodeData_lower = getStateData(tSel, dataOneChannelSel_lower, decodeStart, decodeEnd);
+decodeData_higher = getStateData(tSel, dataOneChannelSel_higher, decodeStart, decodeEnd);
+waitData_lower = getStateData(tSel, dataOneChannelSel_lower, waitStart, waitEnd);
+waitData_higher = getStateData(tSel, dataOneChannelSel_higher, waitStart, waitEnd);
+
+% Extract amplitude-envelope segments for each state (for PAC/analysis)
+encodeAmp_lower = getStateData(tSel, dataOneChannelSelAmp_lower, encodeStart, encodeEnd);
+encodeAmp_higher = getStateData(tSel, dataOneChannelSelAmp_higher, encodeStart, encodeEnd);
+decodeAmp_lower = getStateData(tSel, dataOneChannelSelAmp_lower, decodeStart, decodeEnd);
+decodeAmp_higher = getStateData(tSel, dataOneChannelSelAmp_higher, decodeStart, decodeEnd);
+waitAmp_lower = getStateData(tSel, dataOneChannelSelAmp_lower, waitStart, waitEnd);
+waitAmp_higher = getStateData(tSel, dataOneChannelSelAmp_higher, waitStart, waitEnd);
+
+% Compute Gamma Power for Encoding (30-90) and Decoding (60-120)
+[avgGammaPowerEncodingLower, stdGammaPowerEncodingLower] = computeGammaPower(encodeData_lower, SamplingFreq);
+[avgGammaPowerDecodingLower, stdGammaPowerDecodingLower] = computeGammaPower(decodeData_lower, SamplingFreq);
+[avgGammaPowerWaitingLower, stdGammaPowerWaitingLower] = computeGammaPower(waitData_lower, SamplingFreq);
+[avgGammaPowerEncodingHigher, stdGammaPowerEncodingHigher] = computeGammaPower(encodeData_higher, SamplingFreq);
+[avgGammaPowerDecodingHigher, stdGammaPowerDecodingHigher] = computeGammaPower(decodeData_higher, SamplingFreq);
+[avgGammaPowerWaitingHigher, stdGammaPowerWaitingHigher] = computeGammaPower(waitData_higher, SamplingFreq);
+
+disp(['Avg Gamma Power Encoding (Lower): ', num2str(avgGammaPowerEncodingLower), ' ± ', num2str(stdGammaPowerEncodingLower)]);
+disp(['Avg Gamma Power Decoding (Lower): ', num2str(avgGammaPowerDecodingLower), ' ± ', num2str(stdGammaPowerDecodingLower)]);
+disp(['Avg Gamma Power Waiting (Lower): ', num2str(avgGammaPowerWaitingLower), ' ± ', num2str(stdGammaPowerWaitingLower)]);
+disp(['Avg Gamma Power Encoding (Higher): ', num2str(avgGammaPowerEncodingHigher), ' ± ', num2str(stdGammaPowerEncodingHigher)]);
+disp(['Avg Gamma Power Decoding (Higher): ', num2str(avgGammaPowerDecodingHigher), ' ± ', num2str(stdGammaPowerDecodingHigher)]);
+disp(['Avg Gamma Power Waiting (Higher): ', num2str(avgGammaPowerWaitingHigher), ' ± ', num2str(stdGammaPowerWaitingHigher)]);
 
 gammaPowerResults(idx).channelName = channelNames{channelIndex}; % Store channel name
-gammaPowerResults(idx).encodingPower = avgGammaPowerEncoding;
-gammaPowerResults(idx).decodingPower = avgGammaPowerDecoding;
-gammaPowerResults(idx).encodingError = stdGammaPowerEncoding;
-gammaPowerResults(idx).decodingError = stdGammaPowerDecoding;
-gammaPowerResults(idx).filteredSignal = dataOneChannel; % Store filtered signal for PAC
-gammaPowerResults(idx).encodingSignal = encodeData;
-gammaPowerResults(idx).decodingSignal = decodeData;
-gammaPowerResults(idx).waitingPower = avgGammaPowerWaiting;
-gammaPowerResults(idx).waitingError = stdGammaPowerWaiting;
+gammaPowerResults(idx).encodingPowerLower = avgGammaPowerEncodingLower; % lower gamma encoding power
+gammaPowerResults(idx).decodingPowerLower = avgGammaPowerDecodingLower; % lower gamma decoding power
+gammaPowerResults(idx).encodingErrorLower = stdGammaPowerEncodingLower;
+gammaPowerResults(idx).decodingErrorLower = stdGammaPowerDecodingLower;
+gammaPowerResults(idx).encodingPowerHigher = avgGammaPowerEncodingHigher; % higher gamma encoding power
+gammaPowerResults(idx).decodingPowerHigher = avgGammaPowerDecodingHigher; % higher gamma decoding power
+gammaPowerResults(idx).encodingErrorHigher = stdGammaPowerEncodingHigher;
+gammaPowerResults(idx).decodingErrorHigher = stdGammaPowerDecodingHigher;
+gammaPowerResults(idx).waitingPowerLower = avgGammaPowerWaitingLower; % lower gamma waiting power
+gammaPowerResults(idx).waitingErrorLower = stdGammaPowerWaitingLower; 
+gammaPowerResults(idx).waitingPowerHigher = avgGammaPowerWaitingHigher; % higher gamma waiting power
+gammaPowerResults(idx).waitingErrorHigher = stdGammaPowerWaitingHigher;
+
+gammaPowerResults(idx).filteredSignal_lower = dataOneChannelSel_lower; % lower gamma full filtered signal
+gammaPowerResults(idx).filteredSignal_higher = dataOneChannelSel_higher; % higher gamma full filtered signal
+
+gammaPowerResults(idx).filteredAmp_lower = dataOneChannelSelAmp_lower;
+gammaPowerResults(idx).filteredAmp_higher = dataOneChannelSelAmp_higher;
+
+gammaPowerResults(idx).encodingSignalLower = encodeData_lower;
+gammaPowerResults(idx).decodingSignalLower = decodeData_lower;
+gammaPowerResults(idx).waitingSignalLower = waitData_lower;
+
+gammaPowerResults(idx).encodingSignalHigher = encodeData_higher;
+gammaPowerResults(idx).decodingSignalHigher = decodeData_higher;
+gammaPowerResults(idx).waitingSignalHigher = waitData_higher;
+
+gammaPowerResults(idx).encodingAmpSignalLower = encodeAmp_lower;
+gammaPowerResults(idx).decodingAmpSignalLower = decodeAmp_lower;
+gammaPowerResults(idx).waitingAmpSignalLower = waitAmp_lower;
+
+gammaPowerResults(idx).encodingAmpSignalHigher = encodeAmp_higher;
+gammaPowerResults(idx).decodingAmpSignalHigher = decodeAmp_higher;
+gammaPowerResults(idx).waitingAmpSignalHigher = waitAmp_higher;
+
+
 
 
 
 end
 
 channelNamesList = {gammaPowerResults.channelName};
-encodingPowers = [gammaPowerResults.encodingPower]; 
-decodingPowers = [gammaPowerResults.decodingPower]; 
-encodingErrors = [gammaPowerResults.encodingError]; 
-decodingErrors = [gammaPowerResults.decodingError];
-waitingPowers = [gammaPowerResults.waitingPower];
-waitingErrors = [gammaPowerResults.waitingError];
+encodingPowersLower = [gammaPowerResults.encodingPowerLower]; 
+decodingPowersLower = [gammaPowerResults.decodingPowerLower]; 
+encodingErrorsLower = [gammaPowerResults.encodingErrorLower]; 
+decodingErrorsLower = [gammaPowerResults.decodingErrorLower];
+waitingPowersLower = [gammaPowerResults.waitingPowerLower];
+waitingErrorsLower = [gammaPowerResults.waitingErrorLower];
+
+encodingPowersHigher = [gammaPowerResults.encodingPowerHigher]; 
+decodingPowersHigher = [gammaPowerResults.decodingPowerHigher]; 
+encodingErrorsHigher = [gammaPowerResults.encodingErrorHigher]; 
+decodingErrorsHigher = [gammaPowerResults.decodingErrorHigher];
+waitingPowersHigher = [gammaPowerResults.waitingPowerHigher];
+waitingErrorsHigher = [gammaPowerResults.waitingErrorHigher];
 
 % Filter out LH03 from the results
 excludeChannel = 'LH03';
@@ -157,15 +228,22 @@ includeIndices = ~strcmp(channelNamesList, excludeChannel);
 
 % Apply the filter
 channelNamesList = channelNamesList(includeIndices);
-encodingPowers = encodingPowers(includeIndices);
-decodingPowers = decodingPowers(includeIndices);
-encodingErrors = encodingErrors(includeIndices);
-decodingErrors = decodingErrors(includeIndices);
-waitingPowers = waitingPowers(includeIndices);
-waitingErrors = waitingErrors(includeIndices);
+encodingPowersLower = encodingPowersLower(includeIndices);
+decodingPowersLower = decodingPowersLower(includeIndices);
+encodingErrorsLower = encodingErrorsLower(includeIndices);
+decodingErrorsLower = decodingErrorsLower(includeIndices);
+waitingPowersLower = waitingPowersLower(includeIndices);
+waitingErrorsLower = waitingErrorsLower(includeIndices);
+
+encodingPowersHigher = encodingPowersHigher(includeIndices);
+decodingPowersHigher = decodingPowersHigher(includeIndices);
+encodingErrorsHigher = encodingErrorsHigher(includeIndices);
+decodingErrorsHigher = decodingErrorsHigher(includeIndices);
+waitingPowersHigher = waitingPowersHigher(includeIndices);
+waitingErrorsHigher = waitingErrorsHigher(includeIndices);
 %%
 figure;
-barVals = [encodingPowers; decodingPowers; waitingPowers]'; % Grouped bar values
+barVals = [encodingPowersLower; decodingPowersLower; waitingPowersLower]'; % Grouped bar values
 bar(barVals, 'grouped'); % Plot bar chart
 
 % Compute X positions for error bars
@@ -180,16 +258,38 @@ for i = 1:numBars
 end
 
 % Add error bars
-errorbar(x(1,:), encodingPowers, encodingErrors, 'k', 'linestyle', 'none', 'linewidth', 1);
-errorbar(x(2,:), decodingPowers, decodingErrors, 'k', 'linestyle', 'none', 'linewidth', 1);
-errorbar(x(3,:), waitingPowers, waitingErrors, 'k', 'linestyle', 'none', 'linewidth', 1);
+% Use the Lower-band arrays for errorbars here (previously used wrong vars)
+errorbar(x(1,:), encodingPowersLower, encodingErrorsLower, 'k', 'linestyle', 'none', 'linewidth', 1);
+errorbar(x(2,:), decodingPowersLower, decodingErrorsLower, 'k', 'linestyle', 'none', 'linewidth', 1);
+errorbar(x(3,:), waitingPowersLower, waitingErrorsLower, 'k', 'linestyle', 'none', 'linewidth', 1);
 
 % Customize plot
 set(gca, 'XTick', 1:length(channelNamesList));
 set(gca, 'XTickLabel', channelNamesList);
 legend({'Encoding', 'Decoding', 'Waiting'});
-ylabel('Average Gamma Power');
-title('Avg Gamma Power for Encoding v. Decoding v. Waiting');
+ylabel('Average Gamma Power (Lower Band)');
+title('Avg Gamma Power for Encoding v. Decoding v. Waiting (Lower Band)');
+hold off;
+
+figure;
+barVals = [encodingPowersHigher; decodingPowersHigher; waitingPowersHigher]'; % Grouped bar values
+bar(barVals, 'grouped'); % Plot bar chart
+hold on;
+numGroups = size(barVals, 1);
+numBars = size(barVals, 2);
+groupWidth = min(0.8, numBars / (numBars + 1.5));
+x = nan(numBars, numGroups);
+for i = 1:numBars
+    x(i,:) = (1:numGroups) - groupWidth/2 + (2*i-1) * groupWidth / (2*numBars);
+end
+errorbar(x(1,:), encodingPowersHigher, encodingErrorsHigher, 'k', 'linestyle', 'none', 'linewidth', 1);
+errorbar(x(2,:), decodingPowersHigher, decodingErrorsHigher, 'k', 'linestyle', 'none', 'linewidth', 1);
+errorbar(x(3,:), waitingPowersHigher, waitingErrorsHigher, 'k', 'linestyle', 'none', 'linewidth', 1);
+set(gca, 'XTick', 1:length(channelNamesList));
+set(gca, 'XTickLabel', channelNamesList);
+legend({'Encoding', 'Decoding', 'Waiting'});
+ylabel('Average Gamma Power (Higher Band)');
+title('Avg Gamma Power for Encoding v. Decoding v. Waiting (Higher Band)');
 hold off;
 
 %% Helper Functions (same as in MemoryThetaMeasurements.m)
