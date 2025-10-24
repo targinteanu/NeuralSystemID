@@ -42,10 +42,10 @@ StimTrainRec = interp1(NS5.Time, StimTrainRec, NS2.Time, "nearest");
 StimTrainRec = [false; diff(StimTrainRec) > 2000]';
 
 % Setup gamma bandpass filters
-% Encoding range: 30-90 Hz (lower gamma)
-% Decoding range: 60-120 Hz (higher gamma)
-gammaBPF_lower = buildFIRBPF(SamplingFreq, 30, 90); % Encoding gamma takes from here
-gammaBPF_higher = buildFIRBPF(SamplingFreq, 60, 120); % Decoding gamma takes from here
+% Encoding range: 30-50 Hz (lower gamma)
+% Decoding range: 65-100 Hz (higher gamma)
+gammaBPF_lower = buildFIRBPF(SamplingFreq, 30, 50); % Encoding gamma takes from here
+gammaBPF_higher = buildFIRBPF(SamplingFreq, 65, 100); % Decoding gamma takes from here
 
 for idx = 1:length(channelIndices)
 
