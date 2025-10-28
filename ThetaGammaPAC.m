@@ -299,14 +299,23 @@ for i = 1:nChannelsPlot
     % Encoding subplot (row i, col 1)
     subplot(nChannelsPlot, nCols, (i-1)*nCols + 1);
     polarhistogram(PrefPhase_enc_all{ch}, 18, 'Normalization', 'probability');
+    hold on;
+    polarplot([prefPhase_enc_avg(ch), prefPhase_enc_avg(ch)], [0, 0.2], 'r--', 'LineWidth', 2);
+    hold off;
     title(['Channel ', num2str(ch), ' Encoding Preferred Phase']);
     % Decoding subplot (row i, col 2)
     subplot(nChannelsPlot, nCols, (i-1)*nCols + 2);
     polarhistogram(PrefPhase_dec_all{ch}, 18, 'Normalization', 'probability');
+    hold on;
+    polarplot([prefPhase_dec_avg(ch), prefPhase_dec_avg(ch)], [0, 0.2], 'r--', 'LineWidth', 2);
+    hold off;
     title(['Channel ', num2str(ch), 'Decoding Preferred Phase']);
     % Waiting subplot (row i, col 3)
     subplot(nChannelsPlot, nCols, (i-1)*nCols + 3);
     polarhistogram(PrefPhase_wait_all{ch}, 18, 'Normalization', 'probability');
+    hold on;
+    polarplot([prefPhase_wait_avg(ch), prefPhase_wait_avg(ch)], [0, 0.2], 'r--', 'LineWidth', 2);
+    hold off;
     title(['Channel ', num2str(ch), ' Waiting Preferred Phase']);
 end
 
