@@ -263,6 +263,8 @@ end
 
 %% evaluate "autonomous" linear relationship of "states" 
 
+nbin = 100;
+
 Amin = inf; Amax = -inf; imgs = cell(size(allarr));
 for hzn = 1:size(allarr,3)
     spind = 1;
@@ -275,7 +277,21 @@ for hzn = 1:size(allarr,3)
             imgs{stim,feat,hzn} = subplot(size(allarr,1), size(allarr,2), spind); spind = spind+1;
             inp = allarr{stim,feat,hzn}(:,:,1);
             oup = allarr{stim,feat,hzn}(:,:,1);
-            A = (inp'*inp)^-1*inp'*oup;
+            %A = (inp'*inp)^-1*inp'*oup;
+            A = nan(width(inp),width(oup));
+            for chinp = 1:height(A)
+                [~,inprnk] = sort(inp(:,chinp));
+                [bind,bedge] = discretize(inprnk, nbin);
+                bcent = bedge(2:end) + bedge(1:end-1); bcent = .5*bcent;
+                for choup = 1:width(A)
+                    oupch = oup(:,choup);
+                    binoup = arrayfun(@(b) mean(oupch(bind==b), 'omitnan'), 1:nbin);
+                    P = binoup/sum(binoup, 'omitnan'); % Normalized output distribution
+                    H = -sum(P.*log(P)); % Shannon entropy 
+                    DKL = log(nbin) - H; % KL distance compared to uniform distribution
+                    A(chinp,choup) = DKL / log(nbin);
+                end
+            end
             Amin = min(Amin, min(A(:))); Amax = max(Amax, max(A(:)));
             imagesc(A); colorbar;
             if width(A) > length(chanselidx)
