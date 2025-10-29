@@ -200,6 +200,7 @@ for feat = 1:size(alltbls,2)
         T = [T; tblsBL{Tj}];
     end
     XBL = T.Variables;
+    XBL = single(XBL); % single precision to save runtime and memory
     varnames = T.Properties.VariableNames;
     for stim = 2:size(alltbls,1)
         subplot(size(alltbls,1)-1, size(alltbls,2), size(alltbls,2)*(stim-2)+feat);
@@ -209,6 +210,7 @@ for feat = 1:size(alltbls,2)
             T = [T; tbls{Tj}];
         end
         X = T.Variables;
+        X = single(X); % single precision to save runtime and memory
         p = nan(1,width(X));
         for c = 1:width(X)
             [~,~,p(c)] = kstest2(XBL(:,c), X(:,c));
@@ -246,9 +248,11 @@ for feat = 1:size(allarr,2)
             disp(['Dataset: ',num2str((feat-1)*size(allarr,2)+stim),' of ',num2str(numel(alltbls)),...
                 '; horizon ',num2str(hzn),' of ',num2str(size(allarr,3))])
             inp = []; oup = [];
+            inp = single(inp); oup = single(oup); % single precision to save runtime and memory
             for Tj = 1:height(tbls)
                 % TO DO: this assumes all tbls columns are same order!
                 X = tbls{Tj}.Variables; % assume reg spaced time 
+                X = single(X); % single precision to save runtime and memory
                 %for startind = 0:(hznsN(hzn)-1)
                 startind = 0;
                     inpoup = X((1:hznsN(hzn):end)+startind, :);
@@ -368,6 +372,13 @@ function dcor = DistanceCorrelation(x, y)
     n = numel(x);
     if numel(y) ~= n
         error('x and y must have the same length.');
+    end
+
+    % limit size for memory and runtime 
+    nmax = 2^10;
+    if n > nmax
+        smp = randperm(n, nmax);
+        x = x(smp); y = y(smp);
     end
 
     % Compute pairwise Euclidean distances
