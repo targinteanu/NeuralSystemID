@@ -284,13 +284,13 @@ for hzn = 1:size(allarr,3)
             %A = (inp'*inp)^-1*inp'*oup;
             A = nan(width(inp),width(oup));
             for chinp = 1:height(A)
-                for choup = 1:width(A)
-                    A(chinp,choup) = DistanceCorrelation(...
-                        inp(:,chinp), oup(:,choup));
+                for choup = 1:chinp
+                    a = DistanceCorrelation(inp(:,chinp), oup(:,choup));
+                    A(chinp,choup) = a; A(choup,chinp) = a;
                 end
             end
             Amin = min(Amin, min(A(:))); Amax = max(Amax, max(A(:)));
-            imagesc(A); colorbar;
+            imagesc(A, [0 1]); colorbar;
             if width(A) > length(chanselidx)
                 xticks(1:length(chanselidx):width(A)); 
                 xticklabels(varnames(1:length(chanselidx):width(A)));
