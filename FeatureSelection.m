@@ -157,9 +157,9 @@ for Ti = 1:height(alltbls)
 
         % broad band
             bpf = buildFIRBPF(SampleRate, bandbounds(1), bandbounds(end));
-            varnames = string(Traw.Properties.VariableNames);%+" all";
-            Xfilt = filtfilt(bpf,1,Traw.Variables);
-            Tfiltall = array2timetable(Xfilt,...
+            varnames = string(Traw.Properties.VariableNames)+" all";
+            Xfiltall = filtfilt(bpf,1,Traw.Variables);
+            Tfiltall = array2timetable(Xfiltall,...
                 "RowTimes",Traw.Time, "VariableNames",varnames);
 
         % specific bands 
@@ -167,11 +167,12 @@ for Ti = 1:height(alltbls)
             bpf = buildFIRBPF(SampleRate, bandbounds(b), bandbounds(b+1));
             varnames = string(Traw.Properties.VariableNames)+" "+bandnames(b);
             Xfilt = filtfilt(bpf,1,Traw.Variables);
+            Xfilt = Xfilt ./ (Xfiltall + eps);
             Tfilt = [Tfilt, array2timetable(Xfilt,...
                 "RowTimes",Traw.Time, "VariableNames",varnames)];
         end
 
-        TTfilt{Tj} = {Tfilt, Tfiltall};
+        TTfilt{Tj} = [Tfilt, Tfiltall];
     end
     alltbls{Ti,2} = TTfilt;
 end
@@ -182,50 +183,22 @@ for Ti = 1:height(alltbls)
     TTfilt = alltbls{Ti,2};
     TThilb = cell(size(TTfilt)); TTmaph = cell(size(TTfilt));
     for Tj = 1:height(TTfilt)
-
-        % broad band 
-        Tfiltall = TTfilt{Tj}{2};
-        Xallmag = envelope(Tfiltall.Variables);
-        varnamesall = string(Tfiltall.Properties.VariableNames);
-        %varnamesall = varnamesall+" mag";
-
-        % specific bands 
-        Tfilt = TTfilt{Tj}{1}; 
+        Tfilt = TTfilt{Tj};
         varnames = string(Tfilt.Properties.VariableNames);
         Xhilb = hilbert(Tfilt.Variables);
         TThilb{Tj} = [...
-            array2timetable([real(Xhilb)./Xallmag], ...
-                "RowTimes",Tfilt.Time, ...
+            array2timetable([real(Xhilb)], "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames+" real"), ...
-            array2timetable([imag(Xhilb)./Xallmag], ...
-                "RowTimes",Tfilt.Time, ...
-                "VariableNames",varnames+" imag"), ...
-            array2timetable([Xallmag], ...
-                "RowTimes",Tfilt.Time, ...
-                "VariableNames",varnamesall+" mag")];
+            array2timetable([imag(Xhilb)], "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnames+" imag")];
         TTmaph{Tj} = [...
-            array2timetable([abs(Xhilb)./Xallmag], ...
-                "RowTimes",Tfilt.Time, ...
+            array2timetable([abs(Xhilb)], "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames+" mag"), ...
-            array2timetable([angle(Xhilb)], ...
+            array2timetable([angle( Xhilb(:,1:(end-length(chanlistsel))) )], ...
                 "RowTimes",Tfilt.Time, ...
-                "VariableNames",varnames+" phase"), ...
-            array2timetable([Xallmag], ...
-                "RowTimes",Tfilt.Time, ...
-                "VariableNames",varnamesall+" mag")];
-
+                "VariableNames",varnames(1:(end-length(chanlistsel)))+" phase")];
     end
     alltbls{Ti,3} = TThilb; alltbls{Ti,4} = TTmaph;
-end
-
-% consolidate filtered tables 
-for Ti = 1:height(alltbls)
-    TTfilt = alltbls{Ti,2};
-    TTfiltcons = cell(size(TTfilt));
-    for Tj = 1:height(TTfilt)
-        TTfiltcons{Tj} = [TTfilt{Tj}{1}, TTfilt{Tj}{2}];
-    end
-    alltbls{Ti,2} = TTfiltcons;
 end
 
 %% evaluate difference between stim and baseline 
