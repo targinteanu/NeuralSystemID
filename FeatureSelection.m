@@ -192,7 +192,7 @@ end
 %% evaluate difference between stim and baseline 
 
 figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
-pause(.001); drawnow; pause(.001);
+pause(.01); drawnow; pause(.01);
 for feat = 1:size(alltbls,2)
     tblsBL = alltbls{1,feat};
     T = [];
@@ -274,7 +274,7 @@ for hzn = 1:size(allarr,3)
     spind = 1;
     figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
     sgtitle([num2str(1000*hzns(hzn)),' ms prediction']);
-    pause(.001); drawnow; pause(.001);
+    pause(.01); drawnow; pause(.01);
     for stim = 1:size(allarr,1)
         for feat = 1:size(allarr,2)
             varnames = alltbls{stim,feat}{1}.Properties.VariableNames;
