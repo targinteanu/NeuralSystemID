@@ -5,9 +5,13 @@ thetaSignals = {}; % Initialize cell array for theta signals
 
 % Extract theta signals from the results structure
 for idx = 1:length(thetaPowerResults)
-    thetaSignals{idx} = thetaPowerResults(idx).filteredSignal;
-    theta_encodingsignal{idx} = thetaPowerResults(idx).encodingSignal;
-    theta_decodingsignal{idx} = thetaPowerResults(idx).decodingSignal;
+    % full-band instantaneous phase (for whole recording)
+    thetaSignals{idx} = thetaPowerResults(idx).filteredPhase; % takes dataOneChannelSelPhase
+    % per-state per-trial phase cell arrays (encoding / decoding)
+    theta_encodingsignal{idx} = thetaPowerResults(idx).encodingPhaseSignal; % takes encodePhase
+    theta_decodingsignal{idx} = thetaPowerResults(idx).decodingPhaseSignal; % takes decodePhase
+    theta_waitingsignal{idx} = thetaPowerResults(idx).waitingPhaseSignal; % takes waitPhase
+    % expected - bar plots would have less error 
 end
 
 % Run the MemoryGammaMeasurements script to calculate gamma signals
@@ -16,9 +20,13 @@ gammaSignals = {}; % Initialize cell array for gamma signals
 
 % Extract gamma signals from the results structure
 for idx = 1:length(gammaPowerResults)
-    gammaSignals{idx} = gammaPowerResults(idx).filteredSignal; 
-    gamma_encodingsignal{idx} = gammaPowerResults(idx).encodingSignal;
-    gamma_decodingsignal{idx} = gammaPowerResults(idx).decodingSignal;
+    % compute full-trace gamma amplitude envelope from filteredSignal
+    %gammaSignals{idx} = abs(hilbert(gammaPowerResults(idx).filteredSignal)); - COMMENTED OUT FOR NOW
+    % per-state per-trial amplitude cell arrays (encoding / decoding)
+    gamma_encodingsignal{idx} = gammaPowerResults(idx).encodingAmpSignalLower; % takes encodeAmp_lower TAKES LOWER ENCODING!!!!
+    gamma_decodingsignal{idx} = gammaPowerResults(idx).decodingAmpSignalHigher; % takes decodeAmp_higher TAKES HIGHER DECODING!!!!
+    gamma_waitingsignalLower{idx} = gammaPowerResults(idx).waitingAmpSignalLower; % takes waitAmp_lower
+    gamma_waitingsignalHigher{idx} = gammaPowerResults(idx).waitingAmpSignalHigher; % takes waitAmp_higher
     % PAC_encoding = zeros(size(gamma_encodingsignal));
     % for each trial split the 20x1 cell array into 20 arrays, run CalcPac
     % for each - 20 Calcpacs/channel/enc-dec. For each channel store
@@ -40,8 +48,8 @@ for ch = 1:numChannels
     thetaSignal = thetaSignals{ch}; % Theta phase signal
     gammaSignal = gammaSignals{ch}; % Gamma amplitude signal
     
-    % Calculate PAC using calcPAC
-    [MI, P, bcent, fig1] = calcPAC(thetaSignal, gammaSignal, 18, true); % Enable plotting
+    % Calculate PAC using calcPAChelper (expects phase, amplitude)
+    [MI, P, bcent, fig1] = calcPAChelper(thetaSignal, gammaSignal, 18, true); % Enable plotting
     
     % Store the Modulation Index (MI)
     modulationIndices(ch) = MI;
@@ -71,12 +79,21 @@ numTrials = 20; % Number of trials per channel
 % Initialize storage for PAC values
 PAC_enc_all = cell(1, numChannels); % Store PAC values for all trials per channel (encoding)
 PAC_dec_all = cell(1, numChannels); % Store PAC values for all trials per channel (decoding)
+PAC_wait_all = cell(1, numTrials); % Store PAC values for all trials per channel (waiting) GOING TO USE LOWER HERE
 
 % Initialize storage for average and stdev
 modulationIndices_enc_avg = zeros(1, numChannels);
 modulationIndices_enc_std = zeros(1, numChannels);
 modulationIndices_dec_avg = zeros(1, numChannels);
 modulationIndices_dec_std = zeros(1, numChannels);
+modulationIndices_wait_avg = zeros(1, numChannels);
+modulationIndices_wait_std = zeros(1, numChannels);
+prefPhase_enc_avg = zeros(1, numChannels);
+prefPhase_dec_avg = zeros(1, numChannels);
+prefPhase_wait_avg = zeros(1, numChannels);
+prefPhase_enc_std = zeros(1, numChannels);
+prefPhase_dec_std = zeros(1, numChannels);
+prefPhase_wait_std = zeros(1, numChannels);
 
 for ch = 1:numChannels
     % Get the encoding and decoding signals for the current channel (20x1 cell arrays)
@@ -84,10 +101,16 @@ for ch = 1:numChannels
     gammaSignal_enc_trials = gamma_encodingsignal{ch}; % 20x1 cell array
     thetaSignal_dec_trials = theta_decodingsignal{ch}; % 20x1 cell array
     gammaSignal_dec_trials = gamma_decodingsignal{ch}; % 20x1 cell array
+    thetaSignal_wait_trials = theta_waitingsignal{ch}; % 20x1 cell array
+    gammaSignal_wait_trials = gamma_waitingsignalLower{ch}; % 20x1 cell array - USING LOWER BAND HERE
     
     % Initialize storage for PAC values for this channel
     PAC_enc_trials = zeros(1, numTrials);
     PAC_dec_trials = zeros(1, numTrials);
+    PAC_wait_trials = zeros(1, numTrials);
+    PrefPhase_enc_trials = zeros(1, numTrials); 
+    PrefPhase_dec_trials = zeros(1, numTrials);
+    PrefPhase_wait_trials = zeros(1, numTrials);
     
     % Loop through each trial
     for trl = 1:numTrials
@@ -96,56 +119,131 @@ for ch = 1:numChannels
         gammaSignal_enc = gammaSignal_enc_trials{trl};
         thetaSignal_dec = thetaSignal_dec_trials{trl};
         gammaSignal_dec = gammaSignal_dec_trials{trl};
+        thetaSignal_wait = thetaSignal_wait_trials{trl};
+        gammaSignal_wait = gammaSignal_wait_trials{trl};
         
         % Skip if any signal is empty
         if isempty(thetaSignal_enc) || isempty(gammaSignal_enc)
             warning(['Channel ', num2str(ch), ', Trial ', num2str(trl), ' - Encoding signals are empty. Skipping...']);
             PAC_enc_trials(trl) = NaN; % Mark as NaN
+            PrefPhase_enc_trials(trl) = NaN; % Mark as NaN
             continue;
         end
         if isempty(thetaSignal_dec) || isempty(gammaSignal_dec)
             warning(['Channel ', num2str(ch), ', Trial ', num2str(trl), ' - Decoding signals are empty. Skipping...']);
             PAC_dec_trials(trl) = NaN; % Mark as NaN
+            PrefPhase_dec_trials(trl) = NaN; % Mark as NaN
+            continue;
+        end
+        if isempty(thetaSignal_wait) || isempty(gammaSignal_wait)
+            warning(['Channel ', num2str(ch), ', Trial ', num2str(trl), ' - Waiting signals are empty. Skipping...']);
+            PAC_wait_trials(trl) = NaN; % Mark as NaN
+            PrefPhase_wait_trials(trl) = NaN; % Mark as NaN
             continue;
         end
         
-        % Calculate PAC for Encoding
-        [MI_enc, ~, ~, ~] = calcPAC(thetaSignal_enc, gammaSignal_enc, 18, false); % No plotting
+        % Calculate PAC for Encoding using theta phase & gamma amplitude
+        [MI_enc, P_enc, Bcent_enc, ~] = calcPAChelper(thetaSignal_enc, gammaSignal_enc, 18, false); % No plotting
         PAC_enc_trials(trl) = MI_enc;
+        [~, I_max] = max(P_enc);
+        PrefPhase_enc = Bcent_enc(I_max);
         disp(['Channel ', num2str(ch), ', Trial ', num2str(trl), ' - Encoding MI: ', num2str(MI_enc)]);
+        PrefPhase_enc_trials(trl) = PrefPhase_enc;
+        disp(['Preferred Phase (radians): ', num2str(PrefPhase_enc)]);
+        
         
         % Calculate PAC for Decoding
-        [MI_dec, ~, ~, ~] = calcPAC(thetaSignal_dec, gammaSignal_dec, 18, false); % No plotting
+        [MI_dec, P_dec, Bcent_dec, ~] = calcPAChelper(thetaSignal_dec, gammaSignal_dec, 18, false); % No plotting
         PAC_dec_trials(trl) = MI_dec;
+        [~, I_max] = max(P_dec);
+        PrefPhase_dec = Bcent_dec(I_max);
         disp(['Channel ', num2str(ch), ', Trial ', num2str(trl), ' - Decoding MI: ', num2str(MI_dec)]);
+        PrefPhase_dec_trials(trl) = PrefPhase_dec;
+        disp(['Preferred Phase (radians): ', num2str(PrefPhase_dec)]);
+
+        % Calculate PAC for Waiting
+        [MI_wait, P_wait, Bcent_wait, ~] = calcPAChelper(thetaSignal_wait, gammaSignal_wait, 18, false); % No plotting
+        PAC_wait_trials(trl) = MI_wait;
+        [~, I_max] = max(P_wait);
+        PrefPhase_wait = Bcent_wait(I_max);
+        disp(['Channel ', num2str(ch), ', Trial ', num2str(trl), ' - Waiting MI: ', num2str(MI_wait)]);
+        PrefPhase_wait_trials(trl) = PrefPhase_wait;
+        disp(['Preferred Phase (radians): ', num2str(PrefPhase_wait)]);
     end
     
     % Store PAC values for this channel
     PAC_enc_all{ch} = PAC_enc_trials;
     PAC_dec_all{ch} = PAC_dec_trials;
-    
+    PAC_wait_all{ch} = PAC_wait_trials;
+    PrefPhase_enc_all{ch} = PrefPhase_enc_trials;
+    PrefPhase_dec_all{ch} = PrefPhase_dec_trials;
+    PrefPhase_wait_all{ch} = PrefPhase_wait_trials;
+
     % Calculate average and standard deviation (ignoring NaN values)
     modulationIndices_enc_avg(ch) = mean(PAC_enc_trials, 'omitnan');
     modulationIndices_enc_std(ch) = std(PAC_enc_trials, 'omitnan');
     modulationIndices_dec_avg(ch) = mean(PAC_dec_trials, 'omitnan');
     modulationIndices_dec_std(ch) = std(PAC_dec_trials, 'omitnan');
-    
+    modulationIndices_wait_avg(ch) = mean(PAC_wait_trials, 'omitnan');
+    modulationIndices_wait_std(ch) = std(PAC_wait_trials, 'omitnan');
+    % Use circular-statistics toolbox for preferred-phase mean and std
+    % circ_mean takes (angles, weights, dim) in this toolbox; pass [] for
+    % weights. Ensure we operate over a vector of valid (non-NaN) samples.
+    valid = ~isnan(PrefPhase_enc_trials);
+    if any(valid)        
+        prefPhase_enc_avg(ch) = circ_mean(PrefPhase_enc_trials(valid)');
+        prefPhase_enc_std(ch) = circ_std(PrefPhase_enc_trials(valid)');
+    else
+        prefPhase_enc_avg(ch) = NaN;
+        prefPhase_enc_std(ch) = NaN;
+    end
+    valid = ~isnan(PrefPhase_dec_trials);
+    if any(valid)
+        prefPhase_dec_avg(ch) = circ_mean(PrefPhase_dec_trials(valid)');
+        prefPhase_dec_std(ch) = circ_std(PrefPhase_dec_trials(valid)');
+    else
+        prefPhase_dec_avg(ch) = NaN;
+        prefPhase_dec_std(ch) = NaN;
+    end
+    valid = ~isnan(PrefPhase_wait_trials);
+    if any(valid)
+        prefPhase_wait_avg(ch) = circ_mean(PrefPhase_wait_trials(valid)');
+        prefPhase_wait_std(ch) = circ_std(PrefPhase_wait_trials(valid)');
+    else
+        prefPhase_wait_avg(ch) = NaN;
+        prefPhase_wait_std(ch) = NaN;
+    end
+
     % Display the results for the current channel
     disp(['Channel ', num2str(ch), ' - Encoding MI (avg ± std): ', ...
           num2str(modulationIndices_enc_avg(ch)), ' ± ', num2str(modulationIndices_enc_std(ch))]);
     disp(['Channel ', num2str(ch), ' - Decoding MI (avg ± std): ', ...
           num2str(modulationIndices_dec_avg(ch)), ' ± ', num2str(modulationIndices_dec_std(ch))]);
+    disp(['Channel ', num2str(ch), ' - Waiting MI (avg ± std): ', ...
+          num2str(modulationIndices_wait_avg(ch)), ' ± ', num2str(modulationIndices_wait_std(ch))]);
+    disp(['Channel ', num2str(ch), ' - Preferred Phase (radians): ', ...
+          'Encoding Avg: ', num2str(prefPhase_enc_avg(ch)), ' ± ', num2str(prefPhase_enc_std(ch)), ...
+          ', Decoding Avg: ', num2str(prefPhase_dec_avg(ch)), ' ± ', num2str(prefPhase_dec_std(ch)), ...
+          ', Waiting Avg: ', num2str(prefPhase_wait_avg(ch)), ' ± ', num2str(prefPhase_wait_std(ch))]);
 end
 
 % Validation: Display number of valid measurements per channel
 disp('--- Validation: Number of Valid Measurements per Channel ---');
 for ch = 1:numChannels
-    numValid_enc = sum(~isnan(PAC_enc_all{ch})); % Count non-NaN encoding measurements
-    numValid_dec = sum(~isnan(PAC_dec_all{ch})); % Count non-NaN decoding measurements
-    
+    numValid_encMI = sum(~isnan(PAC_enc_all{ch})); % Count non-NaN encoding measurements
+    numValid_decMI = sum(~isnan(PAC_dec_all{ch})); % Count non-NaN decoding measurements
+    numValid_waitMI = sum(~isnan(PAC_wait_all{ch})); % Count non-NaN waiting measurements
+    numValid_encPP = sum(~isnan(PrefPhase_enc_all{ch})); % Count non-NaN encoding preferred phase measurements
+    numValid_decPP = sum(~isnan(PrefPhase_dec_all{ch})); % Count non-NaN decoding preferred phase measurements
+    numValid_waitPP = sum(~isnan(PrefPhase_wait_all{ch})); % Count non-NaN waiting preferred phase measurements
+
     disp(['Channel ', num2str(ch), ':']);
-    disp(['  - Encoding: ', num2str(numValid_enc), ' / ', num2str(numTrials), ' valid measurements']);
-    disp(['  - Decoding: ', num2str(numValid_dec), ' / ', num2str(numTrials), ' valid measurements']);
+    disp(['  - Encoding: ', num2str(numValid_encMI), ' / ', num2str(numTrials), ' valid measurements']);
+    disp(['  - Decoding: ', num2str(numValid_decMI), ' / ', num2str(numTrials), ' valid measurements']);
+    disp(['  - Waiting: ', num2str(numValid_waitMI), ' / ', num2str(numTrials), ' valid measurements']);
+    disp(['    * Encoding: ', num2str(numValid_encPP), ' / ', num2str(numTrials)]);
+    disp(['    * Decoding: ', num2str(numValid_decPP), ' / ', num2str(numTrials)]);
+    disp(['    * Waiting: ', num2str(numValid_waitPP), ' / ', num2str(numTrials)]);
 end
 disp('--- End of Validation ---');
 %% Step 5: Display and Plot Encoding and Decoding Modulation Indices
@@ -153,11 +251,19 @@ disp('Encoding Modulation Indices (avg) for all channels:');
 disp(modulationIndices_enc_avg);
 disp('Decoding Modulation Indices (avg) for all channels:');
 disp(modulationIndices_dec_avg);
+disp('Waiting Modulation Indices (avg) for all channels:');
+disp(modulationIndices_wait_avg);
+disp('Encoding Preferred Phases (radians) (avg) for all channels:');
+disp(prefPhase_enc_avg);
+disp('Decoding Preferred Phases (radians) (avg) for all channels:');
+disp(prefPhase_dec_avg);
+disp('Waiting Preferred Phases (radians) (avg) for all channels:'); 
+disp(prefPhase_wait_avg);
 
 % Plot Encoding and Decoding MIs in a grouped bar chart with error bars
 figure;
-barVals = [modulationIndices_enc_avg; modulationIndices_dec_avg]'; % Grouped bar values
-errorVals = [modulationIndices_enc_std; modulationIndices_dec_std]'; % Error bars
+barVals = [modulationIndices_enc_avg; modulationIndices_dec_avg; modulationIndices_wait_avg]'; % Grouped bar values
+errorVals = [modulationIndices_enc_std; modulationIndices_dec_std; modulationIndices_wait_std]'; % Error bars
 
 % Create grouped bar chart
 b = bar(barVals, 'grouped');
@@ -178,10 +284,42 @@ hold off;
 % Set axis properties
 set(gca, 'XTick', 1:numChannels);
 set(gca, 'XTickLabel', arrayfun(@num2str, 1:numChannels, 'UniformOutput', false));
-legend({'Encoding', 'Decoding'});
+legend({'Encoding', 'Decoding', 'Waiting'});
 xlabel('Channel');
 ylabel('Modulation Index (MI)');
-title('PAC Modulation Indices for Encoding vs. Decoding (Avg ± Std)');
+title('PAC Modulation Indices for Encoding vs. Decoding vs. Waiting (Avg ± Std)');
+
+figure;
+% Plot Encoding, Decoding and Waiting Preferred Phases in a polar histogram
+channelsToPlot = [1, 2]; % Channels to plot
+nChannelsPlot = length(channelsToPlot);
+nCols = 3; % encoding, decoding, waiting
+for i = 1:nChannelsPlot
+    ch = channelsToPlot(i);
+    % Encoding subplot (row i, col 1)
+    subplot(nChannelsPlot, nCols, (i-1)*nCols + 1);
+    polarhistogram(PrefPhase_enc_all{ch}, 18, 'Normalization', 'probability');
+    hold on;
+    polarplot([prefPhase_enc_avg(ch), prefPhase_enc_avg(ch)], [0, 0.2], 'r--', 'LineWidth', 2);
+    hold off;
+    title(['Channel ', num2str(ch), ' Encoding Preferred Phase']);
+    % Decoding subplot (row i, col 2)
+    subplot(nChannelsPlot, nCols, (i-1)*nCols + 2);
+    polarhistogram(PrefPhase_dec_all{ch}, 18, 'Normalization', 'probability');
+    hold on;
+    polarplot([prefPhase_dec_avg(ch), prefPhase_dec_avg(ch)], [0, 0.2], 'r--', 'LineWidth', 2);
+    hold off;
+    title(['Channel ', num2str(ch), 'Decoding Preferred Phase']);
+    % Waiting subplot (row i, col 3)
+    subplot(nChannelsPlot, nCols, (i-1)*nCols + 3);
+    polarhistogram(PrefPhase_wait_all{ch}, 18, 'Normalization', 'probability');
+    hold on;
+    polarplot([prefPhase_wait_avg(ch), prefPhase_wait_avg(ch)], [0, 0.2], 'r--', 'LineWidth', 2);
+    hold off;
+    title(['Channel ', num2str(ch), ' Waiting Preferred Phase']);
+end
+
+
 
 %% Step 6: Bar Plot of Channel 1 and 2 Trial Results
 channelsToPlot = [1, 2]; % Channels to plot
@@ -190,10 +328,22 @@ figure;
 for i = 1:length(channelsToPlot)
     ch = channelsToPlot(i);
     subplot(1, length(channelsToPlot), i);
-    bar([PAC_enc_all{ch}; PAC_dec_all{ch}]', 'grouped');
+    bar([PAC_enc_all{ch}; PAC_dec_all{ch}; PAC_wait_all{ch}]', 'grouped');
     set(gca, 'XTick', 1:numTrials);
     xlabel('Trial');
     ylabel('Modulation Index (MI)');
     title(['Channel ', num2str(ch), ' - Encoding vs Decoding MI']);
     legend({'Encoding', 'Decoding'});
+end
+
+figure;
+for i = 1:length(channelsToPlot)
+    ch = channelsToPlot(i);
+    subplot(1, length(channelsToPlot), i);
+    bar([PrefPhase_enc_all{ch}; PrefPhase_dec_all{ch}; PrefPhase_wait_all{ch}]', 'grouped');
+    set(gca, 'XTick', 1:numTrials);
+    xlabel('Trial');
+    ylabel('Preferred Phase (radians)');
+    title(['Channel ', num2str(ch), ' - Encoding vs Decoding Preferred Phase']);
+    legend({'Encoding', 'Decoding', 'Waiting'});
 end

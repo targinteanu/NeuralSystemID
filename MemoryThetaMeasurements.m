@@ -44,13 +44,10 @@ catch ME
 end
 
 %% Looping through the channels 
-% 
-% This code extracts only the theta power and produces a bar graph showing
-% theta power in each channel during memory encoding and decoding. Can you
-% modify the code to show gamma power in addition to theta? How about
-% theta-gamma coupling (PAC)? Please use the included function calcPAC and
-% note that theta is the "Phase" band while gamma is the "Amplitude" band.
-% 
+% The following code only uses LFP-based measurements from the NS2. 
+% In order to incorporate spike data, the NS5 data needs to be processed
+% through spike sorting; alternatively, we could try using the Blackrock
+% spike sorting in the NEV data.
 % The following code only uses LFP-based measurements from the NS2. 
 % In order to incorporate spike data, the NS5 data needs to be processed
 % through spike sorting; alternatively, we could try using the Blackrock
@@ -127,6 +124,8 @@ end
 
 % filter 
 dataOneChannel = filtfilt(bpf,1,dataOneChannel);
+dataOneChannelPhase = angle(hilbert(dataOneChannel));
+% Get gamma amplitude in its own script
 
 %% select time of interest (manually)
 % TO DO: make this automatic, pulled from notes.txt ?
@@ -137,6 +136,9 @@ selind = t <= t(iFirstStim) - seconds(60);
 tSel = t(selind); tRelSel = tRel(selind);
 dataOneChannelSel = dataOneChannel(selind);
 selind = find(selind); 
+
+% Also select theta phase over the same time window (instantaneous phase)
+dataOneChannelSelPhase = dataOneChannelPhase(tSel >= tSel(1) & tSel <= tSel(end));
 
 %% determine encode/decode phases of experiment 
 expStates = {SerialLog.ParadigmPhase}';
@@ -150,7 +152,7 @@ SrlTimesSel = SrlTimes(SrlTimesSel);
     findExpState('DECODE', expStates, SrlTimesSel, tRelSel);
 indNeither = (~indEncode)&(~indDecode);
 [indWait, waitStart, waitEnd] = ...
-    findExpState('WAIT', expStates, SrlTimesSel, tRelSel);
+    findExpState('HOLD', expStates, SrlTimesSel, tRelSel);
 
 % convert times to absolute 
 varnames = {'encodeStart', 'encodeEnd', 'decodeStart', 'decodeEnd', 'waitStart', 'waitEnd'};
@@ -200,6 +202,11 @@ legend(lgd)
 encodeData = getStateData(tSel, dataOneChannelSel, encodeStart, encodeEnd);
 decodeData = getStateData(tSel, dataOneChannelSel, decodeStart, decodeEnd);
 waitData = getStateData(tSel, dataOneChannelSel, waitStart, waitEnd);
+
+% Extract per-state phase segments (one cell per trial/segment)
+encodePhase = getStateData(tSel, dataOneChannelSelPhase, encodeStart, encodeEnd);
+decodePhase = getStateData(tSel, dataOneChannelSelPhase, decodeStart, decodeEnd);
+waitPhase = getStateData(tSel, dataOneChannelSelPhase, waitStart, waitEnd);
 
 % Compute Theta Power for Encoding and Decoding
 [avgThetaPowerEncoding, stdThetaPowerEncoding] = computeThetaPower(encodeData, SamplingFreq);
@@ -273,11 +280,16 @@ thetaPowerResults(idx).encodingPower = avgThetaPowerEncoding;
 thetaPowerResults(idx).decodingPower = avgThetaPowerDecoding;
 thetaPowerResults(idx).encodingError = stdThetaPowerEncoding;
 thetaPowerResults(idx).decodingError = stdThetaPowerDecoding;
-thetaPowerResults(idx).filteredSignal = dataOneChannel; % Store filtered signal for PAC
+thetaPowerResults(idx).filteredSignal = dataOneChannelSel; % Store filtered signal for PAC, took selection index here as well
 thetaPowerResults(idx).encodingSignal = encodeData;
 thetaPowerResults(idx).decodingSignal = decodeData;
 thetaPowerResults(idx).waitingPower = avgThetaPowerWaiting;
 thetaPowerResults(idx).waitingError = stdThetaPowerWaiting;
+% Store theta phase for PAC: full trace and per-state per-trial segments
+thetaPowerResults(idx).filteredPhase = dataOneChannelSelPhase; % took selection index here as well
+thetaPowerResults(idx).encodingPhaseSignal = encodePhase;
+thetaPowerResults(idx).decodingPhaseSignal = decodePhase;
+thetaPowerResults(idx).waitingPhaseSignal = waitPhase;
 
 end
 
