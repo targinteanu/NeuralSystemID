@@ -47,7 +47,7 @@ bandnames = ["\delta", "\theta", "\alpha", "\beta", "lo\gamma", "hi\gamma"];
 SampleRate = SampleRates(1);
 [pBL, fBL] = periodogram(dtaBL.Variables, [], [], SampleRate, 'power');
 pBL = 10*log10(pBL);
-figure; semilogx(fBL, pBL); grid on;
+pause(.5); figure; semilogx(fBL, pBL); grid on;
 xlim([0 200]);
 xlabel('Frequency (Hz)'); ylabel('Power (dB)');
 title('baseline PSD power estimate');
@@ -141,7 +141,7 @@ end
 
 % visualize results 
 sigBL = alltbls{1,1}{1};
-figure; periodogram(sigBL.Variables, [], [], SampleRate, 'power');
+pause(.5); figure; periodogram(sigBL.Variables, [], [], SampleRate, 'power');
 pause(.001); drawnow; pause(.001);
 
 %% calc features 
@@ -154,6 +154,15 @@ for Ti = 1:height(alltbls)
     for Tj = 1:height(TTraw)
         Traw = TTraw{Tj};
         Tfilt = [];
+
+        % broad band
+            bpf = buildFIRBPF(SampleRate, bandbounds(1), bandbounds(end));
+            varnames = string(Traw.Properties.VariableNames);%+" all";
+            Xfilt = filtfilt(bpf,1,Traw.Variables);
+            Tfiltall = array2timetable(Xfilt,...
+                "RowTimes",Traw.Time, "VariableNames",varnames);
+
+        % specific bands 
         for b = 1:length(bandnames)
             bpf = buildFIRBPF(SampleRate, bandbounds(b), bandbounds(b+1));
             varnames = string(Traw.Properties.VariableNames)+" "+bandnames(b);
@@ -161,7 +170,8 @@ for Ti = 1:height(alltbls)
             Tfilt = [Tfilt, array2timetable(Xfilt,...
                 "RowTimes",Traw.Time, "VariableNames",varnames)];
         end
-        TTfilt{Tj} = Tfilt;
+
+        TTfilt{Tj} = {Tfilt, Tfiltall};
     end
     alltbls{Ti,2} = TTfilt;
 end
@@ -172,26 +182,55 @@ for Ti = 1:height(alltbls)
     TTfilt = alltbls{Ti,2};
     TThilb = cell(size(TTfilt)); TTmaph = cell(size(TTfilt));
     for Tj = 1:height(TTfilt)
-        Tfilt = TTfilt{Tj};
+
+        % broad band 
+        Tfiltall = TTfilt{Tj}{2};
+        Xallmag = envelope(Tfiltall.Variables);
+        varnamesall = string(Tfiltall.Properties.VariableNames);
+        %varnamesall = varnamesall+" mag";
+
+        % specific bands 
+        Tfilt = TTfilt{Tj}{1}; 
         varnames = string(Tfilt.Properties.VariableNames);
         Xhilb = hilbert(Tfilt.Variables);
         TThilb{Tj} = [...
-            array2timetable([real(Xhilb)], "RowTimes",Tfilt.Time, ...
+            array2timetable([real(Xhilb)./Xallmag], ...
+                "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames+" real"), ...
-            array2timetable([imag(Xhilb)], "RowTimes",Tfilt.Time, ...
-                "VariableNames",varnames+" imag")];
+            array2timetable([imag(Xhilb)./Xallmag], ...
+                "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnames+" imag"), ...
+            array2timetable([Xallmag], ...
+                "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnamesall+" mag")];
         TTmaph{Tj} = [...
-            array2timetable([abs(Xhilb)], "RowTimes",Tfilt.Time, ...
+            array2timetable([abs(Xhilb)./Xallmag], ...
+                "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames+" mag"), ...
-            array2timetable([angle(Xhilb)], "RowTimes",Tfilt.Time, ...
-                "VariableNames",varnames+" phase")];
+            array2timetable([angle(Xhilb)], ...
+                "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnames+" phase"), ...
+            array2timetable([Xallmag], ...
+                "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnamesall+" mag")];
+
     end
     alltbls{Ti,3} = TThilb; alltbls{Ti,4} = TTmaph;
 end
 
+% consolidate filtered tables 
+for Ti = 1:height(alltbls)
+    TTfilt = alltbls{Ti,2};
+    TTfiltcons = cell(size(TTfilt));
+    for Tj = 1:height(TTfilt)
+        TTfiltcons{Tj} = [TTfilt{Tj}{1}, TTfilt{Tj}{2}];
+    end
+    alltbls{Ti,2} = TTfiltcons;
+end
+
 %% evaluate difference between stim and baseline 
 
-figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+pause(.5); figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
 pause(.01); drawnow; pause(.01);
 for feat = 1:size(alltbls,2)
     tblsBL = alltbls{1,feat};
@@ -272,7 +311,7 @@ nbin = 100;
 Amin = inf; Amax = -inf; imgs = cell(size(allarr));
 for hzn = 1:size(allarr,3)
     spind = 1;
-    figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+    pause(.5); figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
     sgtitle([num2str(1000*hzns(hzn)),' ms prediction']);
     pause(.01); drawnow; pause(.01);
     for stim = 1:size(allarr,1)
