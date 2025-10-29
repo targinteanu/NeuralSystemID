@@ -211,7 +211,7 @@ for feat = 1:size(alltbls,2)
         X = T.Variables;
         p = nan(1,width(X));
         for c = 1:width(X)
-            [~,p(c)] = kstest2(XBL(:,c), X(:,c));
+            [~,~,p(c)] = kstest2(XBL(:,c), X(:,c));
         end
         stem((p)); grid on; 
         if length(p) > length(chanselidx)
@@ -224,7 +224,7 @@ for feat = 1:size(alltbls,2)
             title(featnames(feat));
         end
         if feat == 1
-            ylabel({char(T.Properties.Description), 'p vs baseline'});
+            ylabel({char(T.Properties.Description), 'KS vs baseline'});
         end
         if stim == size(alltbls,1)
             xlabel('channel/measurement');
@@ -261,7 +261,7 @@ for feat = 1:size(allarr,2)
     end
 end
 
-%% evaluate "autonomous" linear relationship of "states" 
+%% evaluate "autonomous" relationship of "states" 
 
 nbin = 100;
 
@@ -280,16 +280,9 @@ for hzn = 1:size(allarr,3)
             %A = (inp'*inp)^-1*inp'*oup;
             A = nan(width(inp),width(oup));
             for chinp = 1:height(A)
-                [~,inprnk] = sort(inp(:,chinp));
-                [bind,bedge] = discretize(inprnk, nbin);
-                bcent = bedge(2:end) + bedge(1:end-1); bcent = .5*bcent;
                 for choup = 1:width(A)
-                    oupch = oup(:,choup);
-                    binoup = arrayfun(@(b) mean(oupch(bind==b), 'omitnan'), 1:nbin);
-                    P = binoup/sum(binoup, 'omitnan'); % Normalized output distribution
-                    H = -sum(P.*log(P)); % Shannon entropy 
-                    DKL = log(nbin) - H; % KL distance compared to uniform distribution
-                    A(chinp,choup) = DKL / log(nbin);
+                    A(chinp,choup) = DistanceCorrelation(...
+                        inp(:,chinp), oup(:,choup));
                 end
             end
             Amin = min(Amin, min(A(:))); Amax = max(Amax, max(A(:)));
@@ -352,4 +345,47 @@ if ~isempty(tblsArtrem)
 else
     tblslist = tblsOrig;
 end
+end
+
+function dcor = DistanceCorrelation(x, y)
+% DISTANCE_CORRELATION Compute the distance correlation between x and y.
+%
+%   dcor = distance_correlation(x, y)
+%
+%   Inputs:
+%       x, y : numeric vectors or matrices with the same number of rows (samples)
+%   Output:
+%       dcor : scalar, distance correlation coefficient in [0, 1]
+%
+%   Reference: Szekely, G.J., Rizzo, M.L. (2007).
+%   "Measuring and Testing Dependence by Correlation of Distances".
+%   Annals of Statistics 35(6):2769–2794.
+
+    % Ensure column vectors
+    x = x(:);
+    y = y(:);
+
+    n = numel(x);
+    if numel(y) ~= n
+        error('x and y must have the same length.');
+    end
+
+    % Compute pairwise Euclidean distances
+    a = abs(x-x.');
+    b = abs(y-y.');
+
+    % Double-center the distance matrices
+    A = a - mean(a,1) - mean(a,2) + mean(a(:));
+    B = b - mean(b,1) - mean(b,2) + mean(b(:));
+
+    % Compute squared distance covariance and variances
+    dcov2 = mean(A(:) .* B(:));
+    dvarx2 = mean(A(:) .* A(:));
+    dvary2 = mean(B(:) .* B(:));
+
+    % Distance correlation
+    dcor = 0;
+    if dvarx2 > 0 && dvary2 > 0
+        dcor = sqrt(dcov2 / sqrt(dvarx2 * dvary2));
+    end
 end
