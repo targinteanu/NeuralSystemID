@@ -161,6 +161,7 @@ for Ti = 1:height(alltbls)
             Xfiltall = filtfilt(bpf,1,Traw.Variables);
             Tfiltall = array2timetable(Xfiltall,...
                 "RowTimes",Traw.Time, "VariableNames",varnames);
+            Xfiltall = envelope(Xfiltall);
 
         % specific bands 
         for b = 1:length(bandnames)
