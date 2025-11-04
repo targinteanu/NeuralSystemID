@@ -204,7 +204,7 @@ end
 
 %% evaluate difference between stim and baseline 
 
-pause(.5); figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+pause(.5); figure('Units','normalized', 'Position',[.05,.05,.5,.9]); 
 pause(.01); drawnow; pause(.01);
 for feat = 1:size(alltbls,2)
     tblsBL = alltbls{1,feat};
@@ -215,26 +215,31 @@ for feat = 1:size(alltbls,2)
     XBL = T.Variables;
     XBL = single(XBL); % single precision to save runtime and memory
     varnames = T.Properties.VariableNames;
+    subplot(size(alltbls,2),1,feat);
+    stimnames = repmat("", 1, size(alltbls,1));
     for stim = 2:size(alltbls,1)
-        subplot(size(alltbls,1)-1, size(alltbls,2), size(alltbls,2)*(stim-2)+feat);
+        %subplot(size(alltbls,1)-1, size(alltbls,2), size(alltbls,2)*(stim-2)+feat);
         tbls = alltbls{stim,feat};
         T = [];
         for Tj = 1:height(tbls)
             T = [T; tbls{Tj}];
         end
+        stimnames(stim) = string(T.Properties.Description);
         X = T.Variables;
         X = single(X); % single precision to save runtime and memory
         p = nan(1,width(X));
         for c = 1:width(X)
             [~,~,p(c)] = kstest2(XBL(:,c), X(:,c));
         end
-        stem((p)); grid on; 
+        stem((p)); hold on; grid on; 
+    end
         if length(p) > length(chanselidx)
             xticks(1:length(chanselidx):length(p)); 
             xticklabels(varnames(1:length(chanselidx):length(p)));
         else
             xticks(1:length(p)); xticklabels(varnames);
         end
+        %{
         if stim == 2
             title(featnames(feat));
         end
@@ -244,8 +249,11 @@ for feat = 1:size(alltbls,2)
         if stim == size(alltbls,1)
             xlabel('channel/measurement');
         end
+        %}
+        xlabel('channel/measurement'); ylabel('KS vs baseline');
+        legend(stimnames(2:end), 'Location','best')
         pause(.001); drawnow; pause(.001);
-    end
+    %end
 end
 
 %% organize into regularly spaced arrays for each hzn
