@@ -145,7 +145,7 @@ function load_ACPC_FR_mesh(acpc_path, pial_lh_path, data)
     % === Step 7: Plot electrodes ===
     % Plot normal electrodes
     elec_plot_colors = data_clean;   % Use interpolated data (0–1)
-    ft_plot_sens(elec_acpc_fr, 'elecsize', 35, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
+    %ft_plot_sens(elec_acpc_fr, 'elecsize', 35, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
 
     % === Step 8: Overlay reference electrodes manually ===
     if any(ref_idx)
