@@ -21,6 +21,9 @@ PDdata = PDdataAll( (PDdataAll.Time >= t1) & (PDdataAll.Time <= t2), : );
 PDdata = PDdata(:,[1:63,66]);
 ref_channel = width(PDdata);
 
+% common avg reref 
+% PDdata = PDdata - mean(PDdata.Variables, 2);
+
 % signal processing 
 filtwts = fir1(1024, [13, 30]./(srate/2));
 PDdata = FilterTimetable(@(b,x) filtfilt(b,1,x), filtwts, PDdata);
