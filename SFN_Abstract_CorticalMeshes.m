@@ -49,18 +49,26 @@ fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/freesurfer/f
 
 ft_defaults
 
+elec_acpc_fr = load(fileElec).elec_acpc_fr;
+elec_acpc_fr_middle = elec_acpc_fr;
+elec_acpc_fr_middle.chanpos = elec_acpc_fr_middle.chanpos(23:41,:);
+elec_acpc_fr_middle.elecpos = elec_acpc_fr_middle.elecpos(23:41,:);
+elec_acpc_fr_middle.label = elec_acpc_fr_middle.label(23:41,:);
+elec_acpc_fr_middle.chantype = elec_acpc_fr_middle.chantype(23:41,:);
+elec_acpc_fr_middle.chanunit = elec_acpc_fr_middle.chanunit(23:41,:);
+
 figure; 
-load_ACPC_FR_mesh(fileElec, fileMesh, ...
+load_ACPC_FR_mesh(elec_acpc_fr, fileMesh, ...
     PLV_Relative_ref);
 title('Cortex-STN PLV')
 
 figure; 
-load_ACPC_FR_mesh(fileElec, fileMesh, ...
+load_ACPC_FR_mesh(elec_acpc_fr_middle, fileMesh, ...
     PLV_Average_Cortex);
 title('Cortex-Cortex Average PLV')
 
 figure; 
-load_ACPC_FR_mesh(fileElec, fileMesh, ...
+load_ACPC_FR_mesh(elec_acpc_fr, fileMesh, ...
     betaPowerCortex);
 title('Beta Power')
 
@@ -92,11 +100,11 @@ compareRosePlots(PD_Phase_Data, central_channel, comparison_channels);
 
 %% helper functions 
 
-function load_ACPC_FR_mesh(acpc_path, pial_lh_path, data)
+function load_ACPC_FR_mesh(elec_acpc_fr, pial_lh_path, data)
     sphereradius = 6;
 
     % === Step 1: Load Electrode Positions and Mesh ===
-    elec_acpc_fr = load(acpc_path).elec_acpc_fr;
+    %elec_acpc_fr = load(acpc_path).elec_acpc_fr;
     pial_lh = ft_read_headshape(pial_lh_path);
     pial_lh.coordsys = 'acpc';
 
@@ -258,7 +266,13 @@ end
 
 
 function PLV_Average = getAveragePLV(vector_matrix)
-    PLV_Average = mean(abs(vector_matrix), 2);
+    %PLV_Average = mean(abs(vector_matrix), 2);
+    PLV_Average = zeros(height(vector_matrix),1);
+    for el = 23:41
+        sq = vector_matrix(el, el+[-22:-20, -1:1, 20:22]);
+        PLV_Average(el) = mean(abs(sq));
+    end
+    PLV_Average = PLV_Average(23:41);
 end
 
 
