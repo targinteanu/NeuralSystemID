@@ -1,11 +1,21 @@
 % load data
 PDdataAll = ns2timetable('/Users/torenarginteanu/Desktop/Data_PD/PD25N006/datafile001.ns2');
 srate = PDdataAll.Properties.SampleRate;
+if isnan(srate)
+    srate = 1/median(seconds(diff(PDdataAll.Time)));
+end
 
 % baseline selection 
+%{
 PDdata1 = PDdataAll(257001:362001,:);
 PDdata2 = PDdataAll(467001:542001,:);
 PDdata = PDdata1;
+%}
+t1 = datetime(2025,4,3,15,40,0); 
+t2 = datetime(2025,4,3,15,42,0);
+t1.TimeZone = PDdataAll.Time(1).TimeZone; 
+t2.TimeZone = PDdataAll.Time(1).TimeZone; 
+PDdata = PDdataAll( (PDdataAll.Time >= t1) & (PDdataAll.Time <= t2), : );
 
 % channel selection
 PDdata = PDdata(:,[1:63,66]);
@@ -31,8 +41,10 @@ betaPowerCortex = betaPower([1:(ref_channel-1), (ref_channel+1):end]);
 
 %% mesh plots 
 
-fileElec = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/PD25N006_elec_acpc_fr.mat';
-fileMesh = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/freesurfer/surf/rh.pial.T1';
+fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/PD25N006_elec_acpc_fr.mat';
+fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/freesurfer/freesurfer/surf/rh.pial.T1';
+
+ft_defaults
 
 figure; 
 load_ACPC_FR_mesh(fileElec, fileMesh, ...
