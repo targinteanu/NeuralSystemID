@@ -44,8 +44,15 @@ betaPowerCortex = betaPower([1:(ref_channel-1), (ref_channel+1):end]);
 
 %% mesh plots 
 
-fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/PD25N006_elec_acpc_fr.mat';
-fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/freesurfer/freesurfer/surf/rh.pial.T1';
+%fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/PD25N006_elec_acpc_fr.mat';
+%fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/freesurfer/freesurfer/surf/rh.pial.T1';
+%fileElec = load(fileElec).elec_acpc_fr;
+fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/PD25N006_elec_fsavg_frs.mat';
+fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/fsaverage/rh.pial_avg';
+fileElec = load(fileElec).elec_fsavg_frs;
+[ftver, ftpath] = ft_version;
+%fileMesh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
+fileMesh = ft_read_headshape(fileMesh);
 
 ft_defaults
 
@@ -92,12 +99,12 @@ compareRosePlots(PD_Phase_Data, central_channel, comparison_channels);
 
 %% helper functions 
 
-function load_ACPC_FR_mesh(acpc_path, pial_lh_path, data)
+function load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data)
     sphereradius = 6;
 
     % === Step 1: Load Electrode Positions and Mesh ===
-    elec_acpc_fr = load(acpc_path).elec_acpc_fr;
-    pial_lh = ft_read_headshape(pial_lh_path);
+    %elec_acpc_fr = load(acpc_path).elec_acpc_fr;
+    %pial_lh = ft_read_headshape(pial_lh_path);
     pial_lh.coordsys = 'acpc';
 
     pial_lh = ft_convert_units(pial_lh, 'mm');
@@ -164,7 +171,9 @@ function load_FSAVG_FRS_mesh(fsavg_path, pial_lh_path, data)
 
     % === Step 1: Load Electrode Positions and Mesh ===
     elec_fsavg = load(fsavg_path).elec_fsavg_frs;
-    pial_lh = ft_read_headshape('lh.pial');
+    %pial_lh = ft_read_headshape(pial_lh_path);
+    [ftver, ftpath] = ft_version;
+    pial_lh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
     pial_lh.coordsys = 'fsaverage';
 
     pial_lh = ft_convert_units(pial_lh, 'mm');
