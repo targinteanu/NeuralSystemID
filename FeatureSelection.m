@@ -158,9 +158,14 @@ for Ti = 1:height(alltbls)
         % broad band
             bpf = buildFIRBPF(SampleRate, bandbounds(1), bandbounds(end));
             varnames = string(Traw.Properties.VariableNames)+" all";
+            varunits = string(Traw.Properties.VariableUnits);
+            vardescs = string(Traw.Properties.VariableDescriptions);
             Xfiltall = filtfilt(bpf,1,Traw.Variables);
             Tfiltall = array2timetable(Xfiltall,...
-                "RowTimes",Traw.Time, "VariableNames",varnames);
+                "RowTimes",Traw.Time, "VariableNames",varnames, ...
+                "VariableUnits",varunits, "VariableDescriptions",vardescs, ...
+                "Description",Traw.Properties.Description);
+            Tfiltall.Properties.Events = Traw.Properties.Events;
             Xfiltall = envelope(Xfiltall);
 
         % specific bands 
@@ -168,9 +173,11 @@ for Ti = 1:height(alltbls)
             bpf = buildFIRBPF(SampleRate, bandbounds(b), bandbounds(b+1));
             varnames = string(Traw.Properties.VariableNames)+" "+bandnames(b);
             Xfilt = filtfilt(bpf,1,Traw.Variables);
-            Xfilt = Xfilt ./ (Xfiltall + eps);
+            Xfilt = Xfilt ./ (Xfiltall + eps); % unitless
             Tfilt = [Tfilt, array2timetable(Xfilt,...
-                "RowTimes",Traw.Time, "VariableNames",varnames)];
+                "RowTimes",Traw.Time, "VariableNames",varnames, ...
+                "VariableDescriptions",vardescs, ...
+                "Description",Traw.Properties.Description)];
         end
 
         TTfilt{Tj} = [Tfilt, Tfiltall];
@@ -186,25 +193,40 @@ for Ti = 1:height(alltbls)
     for Tj = 1:height(TTfilt)
         Tfilt = TTfilt{Tj};
         varnames = string(Tfilt.Properties.VariableNames);
+        varunits = string(Tfilt.Properties.VariableUnits);
+        vardescs = string(Tfilt.Properties.VariableDescriptions);
         Xhilb = hilbert(Tfilt.Variables);
+
         TThilb{Tj} = [...
             array2timetable([real(Xhilb)], "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames+" real"), ...
             array2timetable([imag(Xhilb)], "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames+" imag")];
+        TThilb{Tj}.Properties.VariableUnits = [varunits, varunits];
+        TThilb{Tj}.Properties.VariableDescriptions = [vardescs, vardescs];
+        TThilb{Tj}.Description = Tfilt.Properties.Description;
+        TThilb{Tj}.Properties.Events = Tfilt.Properties.Events;
+
         TTmaph{Tj} = [...
             array2timetable([abs(Xhilb)], "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames+" mag"), ...
             array2timetable([angle( Xhilb(:,1:(end-length(chanlistsel))) )], ...
                 "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames(1:(end-length(chanlistsel)))+" phase")];
+        TTmaph{Tj}.Properties.VariableUnits = [varunits, ...
+            repmat("radians",1, width( Xhilb(:,1:(end-length(chanlistsel))) ))];
+        TTmaph{Tj}.Properties.VariableDescriptions = [vardescs, ...
+            vardescs(1:(end-length(chanlistsel)))];
+        TTmaph{Tj}.Description = Tfilt.Properties.Description;
+        TTmaph{Tj}.Properties.Events = Tfilt.Properties.Events;
+
     end
     alltbls{Ti,3} = TThilb; alltbls{Ti,4} = TTmaph;
 end
 
 %% evaluate difference between stim and baseline 
 
-pause(.5); figure('Units','normalized', 'Position',[.05,.05,.5,.9]); 
+pause(.5); fig_stimresponse = figure('Units','normalized', 'Position',[.05,.05,.5,.9]); 
 pause(.01); drawnow; pause(.01);
 for feat = 1:size(alltbls,2)
     tblsBL = alltbls{1,feat};
@@ -289,11 +311,12 @@ end
 %% evaluate "autonomous" relationship of "states" 
 
 nbin = 100;
+fig_auton = [];
 
 Amin = inf; Amax = -inf; imgs = cell(size(allarr));
 for hzn = 1:size(allarr,3)
     spind = 1;
-    pause(.5); figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+    pause(.5); fig_auton(hzn) = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
     sgtitle([num2str(1000*hzns(hzn)),' ms prediction']);
     pause(.01); drawnow; pause(.01);
     for stim = 1:size(allarr,1)
@@ -312,6 +335,7 @@ for hzn = 1:size(allarr,3)
             end
             Amin = min(Amin, min(A(:))); Amax = max(Amax, max(A(:)));
             imagesc(A, [0 1]); colorbar;
+
             if width(A) > length(chanselidx)
                 xticks(1:length(chanselidx):width(A)); 
                 xticklabels(varnames(1:length(chanselidx):width(A)));
@@ -321,6 +345,20 @@ for hzn = 1:size(allarr,3)
                 xticks(1:width(A)); xticklabels(varnames);
                 yticks(1:height(A)); yticklabels(varnames);
             end
+
+            if stim == 1
+                % label col with feat type
+                title(featnames(feat));
+            end
+            if feat == 1
+                % label row with stim type 
+                if stim == 1
+                    ylabel('Baseline');
+                else
+                    ylabel(alltbls{stim,feat}{1}.Properties.Description)
+                end
+            end
+
             pause(.001); drawnow; pause(.001);
         end
     end
@@ -334,6 +372,64 @@ for hzn = 1:size(allarr,3)
     end
 end
 %}
+
+%% simplify all tables for saving 
+
+selfeat = listdlg("PromptString","Select feature(s) to save", ...
+    "ListString",featnames, "SelectionMode","multiple");
+selfeatname = featnames(selfeat);
+svtbls = alltbls(:,selfeat); 
+
+t0 = svtbls{1}{1}.Time(1); 
+
+% stack each stim type into one table 
+for W = 1:width(svtbls)
+for H = 1:height(svtbls)
+    TBL = [];
+    tbls = svtbls{H,W};
+    for h = 1:height(tbls)
+        tbl = tbls{h};
+        tbl.Time = tbl.Time - t0;
+        tbl.Properties.Events.Time = tbl.Properties.Events.Time - t0;
+        tbl.Properties.EventEnds.Time = tbl.Properties.EventEnds.Time - t0;
+        TBL = [TBL; tbl];
+    end
+    svtbls{H,W} = TBL;
+end
+end
+
+%% saving 
+disp('Saving preprocessed data...')
+
+thisfilever = getFileVersion(thisfilename);
+[~,thisfilename] = fileparts(thisfilename);
+svname = [thisfilename,'_',thisfilever];
+
+% make save folder 
+fp = [fp,filesep,svname];
+mkdir(fp);
+svname = [fn,'_',svname]; % tag with names/versions of all previous steps
+svname = fullfile(fp, svname);
+
+% save each table 
+for W = 1:width(svtbls)
+for H = 1:height(svtbls)
+    TT = svtbls{H,W}; EV = TT.Properties.Events;
+    svname_ = string(svname)+" - "+selfeatname(W)+" - "+string(TT.Properties.Description);
+    disp(" - "+svname_)
+    %SvData = table2cell(TT);
+    SvData = mat2cell(single(TT.Variables), ones(1,height(TT)), ones(width(TT),1));
+    SvData = [mat2cell(seconds(TT.Time), ones(height(TT),1), 1), SvData];
+    SvData = [['Time', TT.Properties.VariableNames]; ...
+                ['s',    TT.Properties.VariableUnits]; ...
+                [{''},     TT.Properties.VariableDescriptions]; ...
+                SvData];
+    SvEv = table(seconds(EV.Time), seconds(EV.EventEnds), Ev.EventLabels, ...
+        'VariableNames',{'Start Time (s)', 'End Time (s)', 'Label'});
+    writecell(SvData, svname_+" - data.xlsx");
+    writetable(SvEv, svname_+" - events.xlsx");
+end
+end
 
 %% helpers 
 
