@@ -45,14 +45,17 @@ betaPowerCortex = betaPower([1:(ref_channel-1), (ref_channel+1):end]);
 %% mesh plots 
 
 %fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/PD25N006_elec_acpc_fr.mat';
+%fileElec = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/PD25N006_elec_acpc_fr.mat';
 %fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/freesurfer/freesurfer/surf/rh.pial.T1';
 %fileElec = load(fileElec).elec_acpc_fr;
-fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/PD25N006_elec_fsavg_frs.mat';
-fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/fsaverage/rh.pial_avg';
-fileElec = load(fileElec).elec_fsavg_frs;
+%fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/PD25N006_elec_fsavg_frs.mat';
+%fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/fsaverage/rh.pial_avg';
+%fileElec = load(fileElec).elec_fsavg_frs;
+fileElec = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/PD25N006_elec_mni_frv.mat';
+fileElec = load(fileElec).elec_mni_frv;
 [ftver, ftpath] = ft_version;
-%fileMesh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
-fileMesh = ft_read_headshape(fileMesh);
+fileMesh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
+%fileMesh = ft_read_headshape(fileMesh);
 
 ft_defaults
 
