@@ -417,9 +417,7 @@ for H = 1:height(svtbls)
     TT = svtbls{H,W}; EV = TT.Properties.Events;
     svname_ = string(svname)+" - "+selfeatname(W)+" - "+string(TT.Properties.Description);
     disp(" - "+svname_)
-    %SvData = table2cell(TT);
-    SvData = mat2cell(single(TT.Variables), ones(1,height(TT)), ones(width(TT),1));
-    SvData = [mat2cell(seconds(TT.Time), ones(height(TT),1), 1), SvData];
+    SvData = [num2cell(single(seconds(TT.Time))), num2cell(single(TT.Variables))];
     SvData = [['Time', TT.Properties.VariableNames]; ...
                 ['s',    TT.Properties.VariableUnits]; ...
                 [{''},     TT.Properties.VariableDescriptions]; ...
