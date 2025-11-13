@@ -43,14 +43,32 @@ end
 %% define freq bands
 bandbounds = [0.5,4,9,13,30,70,150];
 bandnames = ["\delta", "\theta", "\alpha", "\beta", "lo\gamma", "hi\gamma"];
+bandcent = .5 * (bandbounds(2:end) + bandbounds(1:(end-1)));
 
+% calc power spectrum 
 SampleRate = SampleRates(1);
 [pBL, fBL] = periodogram(dtaBL.Variables, [], [], SampleRate, 'power');
 pBL = 10*log10(pBL);
-pause(.5); figure; semilogx(fBL, pBL); grid on;
+
+% correct for pink noise 
+F = [log10(fBL), ones(size(fBL))];
+pinkcoef = F(2:end,:)\pBL(2:end,:); 
+    % pink noise: P = k*f^a where a < 0
+    % 1: slope of log-log, i.e. exponent a of f
+    % 2: intercept of log-log, i.e. log10(k)
+P = F*pinkcoef; % best-fit pink noise power 
+
+% plot 
+pause(.5); fig_spec1 = figure('Units','normalized', 'Position',[.05,.05,.5,.9]); 
+subplot(2,1,1); semilogx(fBL, pBL); grid on;
 xlim([0 200]);
 xlabel('Frequency (Hz)'); ylabel('Power (dB)');
 title('baseline PSD power estimate');
+xticks(bandbounds)
+subplot(2,1,2); semilogx(fBL, pBL-P); grid on;
+xlim([0 200]);
+xlabel('Frequency (Hz)'); ylabel('Power Diff (dB)');
+title('pink noise corrected');
 xticks(bandbounds)
 pause(.001); drawnow; pause(.001);
 
@@ -105,6 +123,22 @@ end
 % TO DO: if any of the above tables has missing or nan for a time period
 % greater than tol, break it into cell array of tables 
 
+% homogenize variable descriptions and units 
+for H = 1:height(alltbls)
+    tbls = alltbls{H,1};
+    for h = 1:height(tbls)
+        tbl = tbls{h};
+        if isempty(tbl.Properties.VariableUnits)
+            tbl.Properties.VariableUnits = repmat("", 1, width(tbl));
+        end
+        if isempty(tbl.Properties.VariableDescriptions)
+            tbl.Properties.VariableDescriptions = repmat("", 1, width(tbl));
+        end
+        tbls{h} = tbl;
+    end
+    alltbls{H,1} = tbls;
+end
+
 %% processing steps for all conditions 
 
 % notch out power line noise and harmonics
@@ -141,7 +175,7 @@ end
 
 % visualize results 
 sigBL = alltbls{1,1}{1};
-pause(.5); figure; periodogram(sigBL.Variables, [], [], SampleRate, 'power');
+pause(.5); fig_spec2 = figure; periodogram(sigBL.Variables, [], [], SampleRate, 'power');
 pause(.001); drawnow; pause(.001);
 
 %% calc features 
@@ -196,6 +230,10 @@ for Ti = 1:height(alltbls)
         varunits = string(Tfilt.Properties.VariableUnits);
         vardescs = string(Tfilt.Properties.VariableDescriptions);
         Xhilb = hilbert(Tfilt.Variables);
+        Xabs = abs(Xhilb);
+
+        % pink noise correction 
+        P = 10*log10(Xabs.^2); F = [log10(bandcent)', ones(size(bandcent))'];
 
         TThilb{Tj} = [...
             array2timetable([real(Xhilb)], "RowTimes",Tfilt.Time, ...
@@ -208,7 +246,7 @@ for Ti = 1:height(alltbls)
         TThilb{Tj}.Properties.Events = Tfilt.Properties.Events;
 
         TTmaph{Tj} = [...
-            array2timetable([abs(Xhilb)], "RowTimes",Tfilt.Time, ...
+            array2timetable([Xabs], "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames+" mag"), ...
             array2timetable([angle( Xhilb(:,1:(end-length(chanlistsel))) )], ...
                 "RowTimes",Tfilt.Time, ...
