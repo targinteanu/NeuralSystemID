@@ -196,9 +196,9 @@ for Ti = 1:height(alltbls)
             vardescs = string(Traw.Properties.VariableDescriptions);
             Xfiltall = filtfilt(bpf,1,Traw.Variables);
             Tfiltall = array2timetable(Xfiltall,...
-                "RowTimes",Traw.Time, "VariableNames",varnames, ...
-                "VariableUnits",varunits, "VariableDescriptions",vardescs, ...
-                "Description",Traw.Properties.Description);
+                "RowTimes",Traw.Time, "VariableNames",varnames);
+                Tfiltall.Properties.VariableUnits = varunits;
+                Tfiltall.Properties.VariableDescriptions = vardescs;
             Tfiltall.Properties.Events = Traw.Properties.Events;
             Xfiltall = envelope(Xfiltall);
 
@@ -208,13 +208,14 @@ for Ti = 1:height(alltbls)
             varnames = string(Traw.Properties.VariableNames)+" "+bandnames(b);
             Xfilt = filtfilt(bpf,1,Traw.Variables);
             Xfilt = Xfilt ./ (Xfiltall + eps); % unitless
-            Tfilt = [Tfilt, array2timetable(Xfilt,...
-                "RowTimes",Traw.Time, "VariableNames",varnames, ...
-                "VariableDescriptions",vardescs, ...
-                "Description",Traw.Properties.Description)];
+            Tfilt_ = array2timetable(Xfilt,...
+                "RowTimes",Traw.Time, "VariableNames",varnames);
+                Tfilt_.Properties.VariableDescriptions = vardescs;
+            Tfilt = [Tfilt, Tfilt_];
         end
 
         TTfilt{Tj} = [Tfilt, Tfiltall];
+        TTfilt{Tj}.Properties.Description = Traw.Properties.Description;
     end
     alltbls{Ti,2} = TTfilt;
 end
@@ -233,7 +234,22 @@ for Ti = 1:height(alltbls)
         Xabs = abs(Xhilb);
 
         % pink noise correction 
-        P = 10*log10(Xabs.^2); F = [log10(bandcent)', ones(size(bandcent))'];
+        P = log10(Xabs.^2); 
+        P = P(:,1:(end-length(chanlistsel)))';
+        F = repmat(bandcent, length(chanlistsel), 1); F = F(:);
+        F = [log10(F), ones(size(F))];
+        pinkcoef = F\P;
+            % pink noise: P = k*f^a where a < 0
+            % row 1: slope of log-log, i.e. exponent a of f
+            % row 2: intercept of log-log, i.e. log10(k)
+            % col: sample 
+        pinkP = F*pinkcoef;
+        pinkP = sqrt( 10.^pinkP' );
+        pinkP = [pinkP, ones(height(pinkP),length(chanlistsel))];
+        Xhilb = Xhilb./pinkP; Xabs = abs(Xhilb); % corrected
+        TTpink = array2timetable(pinkcoef', "RowTimes",Tfilt.Time, ...
+            "VariableNames",["Pink1", "Pink2"]); 
+        TTpink.Properties.VariableUnits = {'', 'uV^2/s'};
 
         TThilb{Tj} = [...
             array2timetable([real(Xhilb)], "RowTimes",Tfilt.Time, ...
@@ -242,7 +258,8 @@ for Ti = 1:height(alltbls)
                 "VariableNames",varnames+" imag")];
         TThilb{Tj}.Properties.VariableUnits = [varunits, varunits];
         TThilb{Tj}.Properties.VariableDescriptions = [vardescs, vardescs];
-        TThilb{Tj}.Description = Tfilt.Properties.Description;
+        TThilb{Tj} = [TThilb{Tj}, TTpink];
+        TThilb{Tj}.Properties.Description = Tfilt.Properties.Description;
         TThilb{Tj}.Properties.Events = Tfilt.Properties.Events;
 
         TTmaph{Tj} = [...
@@ -255,7 +272,8 @@ for Ti = 1:height(alltbls)
             repmat("radians",1, width( Xhilb(:,1:(end-length(chanlistsel))) ))];
         TTmaph{Tj}.Properties.VariableDescriptions = [vardescs, ...
             vardescs(1:(end-length(chanlistsel)))];
-        TTmaph{Tj}.Description = Tfilt.Properties.Description;
+        TTmaph{Tj} = [TTmaph{Tj}, TTpink];
+        TTmaph{Tj}.Properties.Description = Tfilt.Properties.Description;
         TTmaph{Tj}.Properties.Events = Tfilt.Properties.Events;
 
     end
