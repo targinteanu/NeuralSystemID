@@ -445,10 +445,20 @@ for H = 1:height(svtbls)
     tbls = svtbls{H,W};
     for h = 1:height(tbls)
         tbl = tbls{h};
-        tbl.Time = tbl.Time - t0;
-        tbl.Properties.Events.Time = tbl.Properties.Events.Time - t0;
-        tbl.Properties.EventEnds.Time = tbl.Properties.EventEnds.Time - t0;
-        TBL = [TBL; tbl];
+        if numel(tbl)
+            tbl.Time = tbl.Time - t0;
+        end
+        if numel(tbl.Properties.Events)
+            tbl.Properties.Events = eventtable(...
+                tbl.Properties.Events.Time - t0, ...
+                "EventLabels",tbl.Properties.Events.EventLabels, ...
+                "EventEnds",tbl.Properties.Events.EventEnds - t0);
+        end
+        if numel(TBL)
+            TBL = [TBL; tbl];
+        else
+            TBL = tbl;
+        end
     end
     svtbls{H,W} = TBL;
 end
@@ -473,15 +483,19 @@ for H = 1:height(svtbls)
     TT = svtbls{H,W}; EV = TT.Properties.Events;
     svname_ = string(svname)+" - "+selfeatname(W)+" - "+string(TT.Properties.Description);
     disp(" - "+svname_)
+    if numel(TT)
     SvData = [num2cell(single(seconds(TT.Time))), num2cell(single(TT.Variables))];
     SvData = [['Time', TT.Properties.VariableNames]; ...
-                ['s',    TT.Properties.VariableUnits]; ...
-                [{''},     TT.Properties.VariableDescriptions]; ...
-                SvData];
+              ['s',    TT.Properties.VariableUnits]; ...
+              [{''},     TT.Properties.VariableDescriptions]; ...
+              SvData];
+    writecell(SvData, svname_+" - data.xlsx");
+    end
+    if numel(EV)
     SvEv = table(seconds(EV.Time), seconds(EV.EventEnds), Ev.EventLabels, ...
         'VariableNames',{'Start Time (s)', 'End Time (s)', 'Label'});
-    writecell(SvData, svname_+" - data.xlsx");
     writetable(SvEv, svname_+" - events.xlsx");
+    end
 end
 end
 
