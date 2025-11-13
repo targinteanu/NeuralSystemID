@@ -25,6 +25,7 @@ end
 
 % select channels of interest 
 dtaBL = tblsBaseline{1,1};
+dtaBL.Properties.Description = 'Baseline';
 chanlist = dtaBL.Properties.VariableNames; chanlist = string(chanlist);
 chandesc = dtaBL.Properties.VariableDescriptions; chandesc = string(chandesc);
 if ArtRemoveDone
@@ -408,11 +409,11 @@ for hzn = 1:size(allarr,3)
             end
             if feat == 1
                 % label row with stim type 
-                if stim == 1
-                    ylabel('Baseline');
-                else
+                %if stim == 1
+                %    ylabel('Baseline');
+                %else
                     ylabel(alltbls{stim,feat}{1}.Properties.Description)
-                end
+                %end
             end
 
             pause(.001); drawnow; pause(.001);
