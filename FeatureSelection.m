@@ -2,7 +2,7 @@
 % Explore preprocessing steps to see which features depend on (A) previous
 % values of the same features and (B) stimulation 
 
-hzns = [.05, .1, .5, 1]; % s
+hzns = [.05, 1]; % s
 
 %% obtain segmented, artifact-removed data 
 
@@ -505,25 +505,22 @@ for H = 1:height(svtbls)
 
     % event table 
     if numel(EV)
-    SvEv = table(seconds(EV.Time), seconds(EV.EventEnds), Ev.EventLabels, ...
+    SvEv = table(seconds(EV.Time), seconds(EV.EventEnds), EV.EventLabels, ...
         'VariableNames',{'Start Time (s)', 'End Time (s)', 'Label'});
     writetable(SvEv, svname_+" - events.csv");
     end
-
-    % figures 
-    saveas(fig_stimresponse, 'Stim Response', 'fig');
-    saveas(fig_spec1, 'Spectrum', 'fig');
-    for hzn = length(hzns):-1:1
-        myfig = fig_auton(hzn);
-        if strcmp(class(myfig), 'double')
-            myfig = figure(myfig);
-        end
-        saveas(myfig, ['Interchannel ',num2str(round(1000*hzns(hzn))),'ms'], 'fig');
-        saveas(myfig, ['Interchannel ',num2str(round(1000*hzns(hzn))),'ms'], 'png');
-    end
-    saveas(fig_stimresponse, 'Stim Response', 'png');
-    saveas(fig_spec1, 'Spectrum', 'png');
 end
+end
+
+% save figures 
+saveasmultiple(fig_stimresponse, svname+" - Stim Response");
+saveasmultiple(fig_spec1, svname+" - Spectrum");
+for hzn = length(hzns):-1:1
+    myfig = fig_auton(hzn);
+    if strcmp(class(myfig), 'double')
+        myfig = figure(myfig);
+    end
+    saveasmultiple(myfig, svname+" - Interchannel "+num2str(round(1000*hzns(hzn)))+"ms");
 end
 
 %% helpers 
@@ -611,4 +608,13 @@ function dcor = DistanceCorrelation(x, y)
     if dvarx2 > 0 && dvary2 > 0
         dcor = sqrt(dcov2 / sqrt(dvarx2 * dvary2));
     end
+end
+
+function saveasmultiple(fig, filename)
+if isvalid(fig)
+saveas(fig, filename, 'fig'); % original matlab figure
+saveas(fig, filename, 'png'); % preview
+else
+    warning('figure handle not valid; may have been closed.')
+end
 end
