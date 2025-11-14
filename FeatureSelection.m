@@ -368,7 +368,7 @@ end
 %% evaluate "autonomous" relationship of "states" 
 
 nbin = 100;
-fig_auton = [];
+fig_auton = zeros(1,size(allarr,3));
 
 Amin = inf; Amax = -inf; imgs = cell(size(allarr));
 for hzn = 1:size(allarr,3)
@@ -473,7 +473,7 @@ thisfilever = getFileVersion(thisfilename);
 svname = [thisfilename,'_',thisfilever];
 
 % make save folder 
-fp = [fp,filesep,svname];
+fp = [fp,svname];
 mkdir(fp);
 svname = [fn,'_',svname]; % tag with names/versions of all previous steps
 svname = fullfile(fp, svname);
@@ -484,19 +484,45 @@ for H = 1:height(svtbls)
     TT = svtbls{H,W}; EV = TT.Properties.Events;
     svname_ = string(svname)+" - "+selfeatname(W)+" - "+string(TT.Properties.Description);
     disp(" - "+svname_)
+
+    % data table 
     if numel(TT)
-    SvData = [num2cell(single(seconds(TT.Time))), num2cell(single(TT.Variables))];
-    SvData = [['Time', TT.Properties.VariableNames]; ...
-              ['s',    TT.Properties.VariableUnits]; ...
-              [{''},     TT.Properties.VariableDescriptions]; ...
-              SvData];
-    writecell(SvData, svname_+" - data.xlsx");
+    SvData = [(single(seconds(TT.Time))), (single(TT.Variables))];
+    SvData = array2table(SvData, ...
+        "VariableNames", ['Time (s)', TT.Properties.VariableNames]);
+    writetable(SvData, svname_+" - data.csv");
+
+    % info 
+    SvIfo = ['Channel Name', TT.Properties.VariableNames; ...
+             'Unit', TT.Properties.VariableUnits; ...
+             'Description', TT.Properties.VariableDescriptions]';
+    SvIfo{1, width(SvIfo)+2} = 'Start Time'; 
+    SvIfo{1, width(SvIfo)+1} = t0;
+    SvIfo{2, width(SvIfo)-1} = 'Sample Rate (Hz)';
+    SvIfo{2, width(SvIfo)} = SampleRate;
+    writecell(SvIfo, svname_+" - info.csv");
     end
+
+    % event table 
     if numel(EV)
     SvEv = table(seconds(EV.Time), seconds(EV.EventEnds), Ev.EventLabels, ...
         'VariableNames',{'Start Time (s)', 'End Time (s)', 'Label'});
-    writetable(SvEv, svname_+" - events.xlsx");
+    writetable(SvEv, svname_+" - events.csv");
     end
+
+    % figures 
+    saveas(fig_stimresponse, 'Stim Response', 'fig');
+    saveas(fig_spec1, 'Spectrum', 'fig');
+    for hzn = length(hzns):-1:1
+        myfig = fig_auton(hzn);
+        if strcmp(class(myfig), 'double')
+            myfig = figure(myfig);
+        end
+        saveas(myfig, ['Interchannel ',num2str(round(1000*hzns(hzn))),'ms'], 'fig');
+        saveas(myfig, ['Interchannel ',num2str(round(1000*hzns(hzn))),'ms'], 'png');
+    end
+    saveas(fig_stimresponse, 'Stim Response', 'png');
+    saveas(fig_spec1, 'Spectrum', 'png');
 end
 end
 
