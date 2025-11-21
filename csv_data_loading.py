@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
 
 # ------------------------
 # Load main data
@@ -62,6 +63,30 @@ Y = torch.tensor(outputs, dtype=torch.float32)
 print("Pairs created:", len(X))
 print("Input shape :", X.shape)   # features + 1
 print("Output shape:", Y.shape)
+
+x_np = X.numpy()
+
+col_101 = x_np[:, 100]
+col_98  = x_np[:, 97]
+
+plt.figure(figsize=(12, 8))
+
+# --- Top plot: column 101 ---
+plt.subplot(2, 1, 1)
+plt.plot(col_101)
+plt.title("X[:, 101]")
+plt.xlabel("Index")
+plt.ylabel("Value")
+
+# --- Bottom plot: column 98 ---
+plt.subplot(2, 1, 2)
+plt.plot(col_98)
+plt.title("X[:, 98]")
+plt.xlabel("Index")
+plt.ylabel("Value")
+
+plt.tight_layout()
+plt.show()
 
 # ------------------------
 # Optional PyTorch Dataset
