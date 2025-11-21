@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -105,6 +106,11 @@ test_loader = DataLoader(test_dataset, batch_size)
 
 # -----------------------------------------------------------------------------------------------
 
+# data baseline characteristics as reference for loss 
+mean_y = Y_train.mean(dim=0)
+std_y = Y_train.std(dim=0)
+var_y = std_y ** 2
+
 # Step 4: Train the Model
 model.train()
 num_epochs = 25
@@ -132,6 +138,10 @@ with torch.no_grad():
 
     avg_loss = total_loss / len(test_dataset)
     print(f"Test Loss: {avg_loss:.4f}")
+
+print(f"Baseline STD: {std_y.mean().item():.4f}")
+rmse = math.sqrt(avg_loss)
+print(f"Test RMSE: {rmse:.4f} | Baseline RMSE: {math.sqrt(var_y.mean().item()):.4f}")
 
 # Step 6: Save the Trained Model
 # torch.save(model.state_dict(), "neural_network.pth")
