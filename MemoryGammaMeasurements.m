@@ -24,6 +24,8 @@ catch ME
     warning(ME.identifier, 'Error loading NEV file: %s', ME.message);
     NEV = []; % Set NEV to an empty array if loading fails
 end
+codesToKeep = [61 10 11 1:3 5 6 70 71 7 8 9]; % Default mapping codes
+NEVevents = parseNEVSerialCodes(NEV, codesToKeep); % returns table with EventTime, EventCode, EventName
 
 %% Looping through the channels 
 SamplingFreq = ns2.MetaTags.SamplingFreq;
@@ -111,26 +113,25 @@ dataOneChannelSelAmp_higher = dataOneChannelAmp_higher(selind);
 selind = find(selind);
 
 %% Determine encode/decode phases of experiment 
-expStates = {SerialLog.ParadigmPhase}';
-SrlTimes = [SerialLog.TimeStamp]';
-SrlTimesSel = (SrlTimes <= max(tRelSel)) & (SrlTimes >= min(tRelSel));
-expStates = expStates(SrlTimesSel);
-SrlTimesSel = SrlTimes(SrlTimesSel);
-[indEncode, encodeStart, encodeEnd] = ...
-    findExpState('ENCODE', expStates, SrlTimesSel, tRelSel);
-[indDecode, decodeStart, decodeEnd] = ...
-    findExpState('DECODE', expStates, SrlTimesSel, tRelSel);
-[indWait, waitStart, waitEnd] = ...
-    findExpState('HOLD', expStates, SrlTimesSel, tRelSel);
+% Use NEV serial code parser to set encode/decode/wait start/end times using default mapping
 
-% convert times to absolute 
-varnames = {'encodeStart', 'encodeEnd', 'decodeStart', 'decodeEnd', 'waitStart', 'waitEnd'};
-for V = varnames
-    v = V{:};
-    eval([v,' = seconds(',v,') + t0;'])
-end
+% Encoding: start = image_1, end = end_encoding
+encodeStartRows = strcmpi(NEVevents.EventName, 'image_1');
+encodeEndRows   = strcmpi(NEVevents.EventName, 'end_encoding');
+encodeStart = NEVevents.Time(encodeStartRows);
+encodeEnd   = NEVevents.Time(encodeEndRows);
 
-%% Analyze measurements during encode/decode periods 
+% Decoding: start = decoding_start, end = decoding_end
+decodeStartRows = strcmpi(NEVevents.EventName, 'decoding_start');
+decodeEndRows   = strcmpi(NEVevents.EventName, 'decoding_end');
+decodeStart = NEVevents.Time(decodeStartRows);
+decodeEnd   = NEVevents.Time(decodeEndRows);
+
+% Wait: start = end_encoding, end = decoding_start
+waitStart = NEVevents.Time(encodeEndRows);
+waitEnd   = NEVevents.Time(decodeStartRows);
+
+%% Analyze measurements during encode/decode periods
 
 % Extract state segments for each filter range
 

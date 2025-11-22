@@ -42,8 +42,10 @@ catch ME
     warning(ME.identifier, 'Error loading NEV file: %s', ME.message);
     NEV = []; % Set NEV to an empty array if loading fails
 end
+codesToKeep = [61 10 11 1:3 5 6 70 71 7 8 9]; % Default mapping codes
+NEVevents = parseNEVSerialCodes(NEV, codesToKeep); % returns table with EventTime, EventCode, EventName
 
-%% Looping through the channels 
+%% Looping through the channels --- for artifact removal of stimulation
 % The following code only uses LFP-based measurements from the NS2. 
 % In order to incorporate spike data, the NS5 data needs to be processed
 % through spike sorting; alternatively, we could try using the Blackrock
@@ -53,6 +55,7 @@ end
 % through spike sorting; alternatively, we could try using the Blackrock
 % spike sorting in the NEV data.
 % 
+
 
 SamplingFreq = ns2.MetaTags.SamplingFreq;
 t = NS2.Time';
@@ -70,10 +73,12 @@ StimTrainRec = movmean(StimTrainRec, round(ns5.MetaTags.SamplingFreq/SamplingFre
 StimTrainRec = interp1(NS5.Time, StimTrainRec, NS2.Time, "nearest");
 StimTrainRec = [false; diff(StimTrainRec) > 2000]';
 
+
 % setup bandpass filter 
 bpf = buildFIRBPF(SamplingFreq, 4, 9); % Theta: 4 to 9 Hz
 
 for idx = 1:length(channelIndices)
+    
 
 channelIndex = channelIndices(idx);
 channelName = NS2.Properties.VariableNames{channelIndex}
@@ -127,7 +132,7 @@ dataOneChannel = filtfilt(bpf,1,dataOneChannel);
 dataOneChannelPhase = angle(hilbert(dataOneChannel));
 % Get gamma amplitude in its own script
 
-%% select time of interest (manually)
+%% select time of interest (manually) ONLY RELEVANT FOR DAY2SHORTTERMPDS
 % TO DO: make this automatic, pulled from notes.txt ?
 % selind = true(size(t)); % no selection
 % select only times before stimulation started: 
@@ -141,25 +146,25 @@ selind = find(selind);
 dataOneChannelSelPhase = dataOneChannelPhase(tSel >= tSel(1) & tSel <= tSel(end));
 
 %% determine encode/decode phases of experiment 
-expStates = {SerialLog.ParadigmPhase}';
-SrlTimes = [SerialLog.TimeStamp]';
-SrlTimesSel = (SrlTimes <= max(tRelSel)) & (SrlTimes >= min(tRelSel));
-expStates = expStates(SrlTimesSel);
-SrlTimesSel = SrlTimes(SrlTimesSel);
-[indEncode, encodeStart, encodeEnd] = ...
-    findExpState('ENCODE', expStates, SrlTimesSel, tRelSel);
-[indDecode, decodeStart, decodeEnd] = ...
-    findExpState('DECODE', expStates, SrlTimesSel, tRelSel);
-indNeither = (~indEncode)&(~indDecode);
-[indWait, waitStart, waitEnd] = ...
-    findExpState('HOLD', expStates, SrlTimesSel, tRelSel);
 
-% convert times to absolute 
-varnames = {'encodeStart', 'encodeEnd', 'decodeStart', 'decodeEnd', 'waitStart', 'waitEnd'};
-for V = varnames
-    v = V{:};
-    eval([v,' = seconds(',v,') + t0;'])
-end
+% Use NEV serial code parser to set encode/decode/wait start/end times using default mapping
+
+% Encoding: start = image_1, end = end_encoding
+encodeStartRows = strcmpi(NEVevents.EventName, 'image_1');
+encodeEndRows   = strcmpi(NEVevents.EventName, 'end_encoding');
+encodeStart = NEVevents.Time(encodeStartRows);
+encodeEnd   = NEVevents.Time(encodeEndRows);
+
+% Decoding: start = decoding_start, end = decoding_end
+decodeStartRows = strcmpi(NEVevents.EventName, 'decoding_start');
+decodeEndRows   = strcmpi(NEVevents.EventName, 'decoding_end');
+decodeStart = NEVevents.Time(decodeStartRows);
+decodeEnd   = NEVevents.Time(decodeEndRows);
+
+% Wait: start = end_encoding, end = decoding_start
+waitStart = NEVevents.Time(encodeEndRows);
+waitEnd   = NEVevents.Time(decodeStartRows);
+
 
 %% Plot time series 
 % Individual channel plots have been commented out for now. Alternatively,
