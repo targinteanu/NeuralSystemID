@@ -21,3 +21,4 @@ events.csv
 baselinedata.csv
 baselineinfo.csv
 info.csv
+*.pdf
