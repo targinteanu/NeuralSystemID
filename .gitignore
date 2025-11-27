@@ -22,3 +22,4 @@ baselinedata.csv
 baselineinfo.csv
 info.csv
 *.pdf
+neural_network_pytorch.pth
