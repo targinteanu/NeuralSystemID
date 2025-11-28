@@ -23,3 +23,5 @@ baselineinfo.csv
 info.csv
 *.pdf
 neural_network_pytorch.pth
+neural_network_pytorch_1d9ba25583b47903d37303cbbf82668b3d8c4f68.pth
+neural_network_pytorch_4bc3061d64b7c0e22c9b8faa8268c0c155b40730.pth
