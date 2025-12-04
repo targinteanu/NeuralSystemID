@@ -14,7 +14,10 @@ function [bestOrd, bestAIC, bestMdl, rho, p] = ...
 % actual data as a measure of model accuracy. 
 % 
 % Inputs: 
-%   dta: data to model from one channel without artifact as a timetable
+%   dta: data to model from one channel without artifact as a timetable or 
+%        as a file name (string or character vector) of a csv, mat, or 
+%        blackrock file. If empty or if function run without input, 
+%        user will be prompted to select the file manually. 
 %   predHzn: how much time (sec) ahead to evaluate model prediction
 %            accuracy; default 0.03
 %   fbnd: bandpass filter [low, high] frequency bounds; if empty or omitted, 
