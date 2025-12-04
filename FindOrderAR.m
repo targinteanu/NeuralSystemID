@@ -45,10 +45,18 @@ if nargin < 6
                 fbnd = [];
                 if nargin < 2
                     predHzn = [];
+                    if nargin < 1
+                        dta = [];
+                    end
                 end
             end
         end
     end
+end
+
+if isempty(dta)
+    [fn,fp] = uigetfile('*');
+    dta = fullfile(fp,fn);
 end
 
 if isempty(maxOrd)
@@ -61,6 +69,44 @@ if isempty(predHzn)
     predHzn = .03; % s
 end
 
+%% load file if applicable 
+
+if ischar(dta) || isstring(dta)
+    % assume this is the name of a file to be loaded
+    dta = char(dta);
+    [fp,fn,fe] = fileparts(dta);
+
+    % mat file
+    if strcmpi(fe, '.mat')
+        filevardets = whos('-file', dta);
+        hasTT = find(strcmpi({filevardets.class}, 'timetable'));
+        if ~isempty(hasTT)
+            % try first available timetable
+            dtaname = filevardets(hasTT(1)).name;
+            disp(['Loading ',dtaname])
+            load(dta, dtaname);
+            eval(['dta = ',dtaname,';']);
+        else
+            error('Could not identify data from specified file.')
+        end
+
+    % spreadsheet 
+    elseif strcmpi(fe, '.csv') || (strcmpi(fe, '.xls') || strcmpi(fe, '.xlsx'))
+        % assume first column is time in seconds
+        % TO DO: change this to parse column names looking for time and unit
+        disp('Assuming first column is time in seconds')
+        T = readtable(dta);
+        TT = table2timetable(T, 'RowTimes', seconds(T{:,1}));
+        dta = TT(:,2:end);
+
+    % blackrock file 
+    elseif contains(lower(fe), '.ns')
+        NS = openNSx(dta, 'uV');
+        dta = ns2timetable(NS);
+    end
+
+end
+
 try 
     Fs = dta.Properties.SampleRate;
 catch ME
@@ -69,6 +115,14 @@ catch ME
 end
 if isnan(Fs) || isempty(Fs) 
     Fs = 1/mean(seconds(diff(dta.Time)));
+end
+
+%% handle multiple channels 
+if width(dta) > 1
+    warning('Input data is multi-channel. Please specify channel of interest.')
+    ch = listdlg("PromptString","Choose channel.", "SelectionMode","single", ...
+        "ListString",dta.Properties.VariableNames);
+    dta = dta(:,ch);
 end
 
 %% filter, downsample 
@@ -92,6 +146,8 @@ if ~isempty(fbnd)
             FsNew = 1/mean(seconds(diff(dta.Time)));
         end
     end
+else
+    dtaOrig = dta;
 end
 
 %% compute
@@ -197,6 +253,6 @@ if (~isempty(fbnd)) && doResample
     plot(dtaFore.Time, dtaFore{:,1}, '--r');
     [rho, p] = corr(dta{:,1}, dtaPred{:,1});
 end
-[rho, p] = corr(dtaOrig{:,1}, dtaPred{2:end,1});
+%[rho, p] = corr(dtaOrig{:,1}, dtaPred{2:end,1});
 
 end
