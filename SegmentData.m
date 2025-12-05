@@ -855,6 +855,10 @@ end
 
 
 function saveasmultiple(fig, filename)
+if isvalid(fig)
 saveas(fig, filename, 'fig'); % original matlab figure
 saveas(fig, filename, 'png'); % preview
+else
+    warning('figure handle not valid; may have been closed.')
+end
 end

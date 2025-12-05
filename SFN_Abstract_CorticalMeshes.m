@@ -1,15 +1,28 @@
 % load data
 PDdataAll = ns2timetable('/Users/torenarginteanu/Desktop/Data_PD/PD25N006/datafile001.ns2');
 srate = PDdataAll.Properties.SampleRate;
+if isnan(srate)
+    srate = 1/median(seconds(diff(PDdataAll.Time)));
+end
 
 % baseline selection 
+%{
 PDdata1 = PDdataAll(257001:362001,:);
 PDdata2 = PDdataAll(467001:542001,:);
 PDdata = PDdata1;
+%}
+t1 = datetime(2025,4,3,15,40,0); 
+t2 = datetime(2025,4,3,15,42,0);
+t1.TimeZone = PDdataAll.Time(1).TimeZone; 
+t2.TimeZone = PDdataAll.Time(1).TimeZone; 
+PDdata = PDdataAll( (PDdataAll.Time >= t1) & (PDdataAll.Time <= t2), : );
 
 % channel selection
 PDdata = PDdata(:,[1:63,66]);
 ref_channel = width(PDdata);
+
+% common avg reref 
+% PDdata = PDdata - mean(PDdata.Variables, 2);
 
 % signal processing 
 filtwts = fir1(1024, [13, 30]./(srate/2));
@@ -31,8 +44,20 @@ betaPowerCortex = betaPower([1:(ref_channel-1), (ref_channel+1):end]);
 
 %% mesh plots 
 
-fileElec = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/PD25N006_elec_acpc_fr.mat';
-fileMesh = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/freesurfer/surf/rh.pial.T1';
+%fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/PD25N006_elec_acpc_fr.mat';
+%fileElec = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/PD25N006_elec_acpc_fr.mat';
+%fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/freesurfer/freesurfer/surf/rh.pial.T1';
+%fileElec = load(fileElec).elec_acpc_fr;
+%fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/PD25N006_elec_fsavg_frs.mat';
+%fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Imaging/fsaverage/rh.pial_avg';
+%fileElec = load(fileElec).elec_fsavg_frs;
+fileElec = '/Users/torenarginteanu/Documents/MATLAB/BrainMapping/PD25N006_elec_mni_frv.mat';
+fileElec = load(fileElec).elec_mni_frv;
+[ftver, ftpath] = ft_version;
+fileMesh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
+%fileMesh = ft_read_headshape(fileMesh);
+
+ft_defaults
 
 figure; 
 load_ACPC_FR_mesh(fileElec, fileMesh, ...
@@ -77,12 +102,12 @@ compareRosePlots(PD_Phase_Data, central_channel, comparison_channels);
 
 %% helper functions 
 
-function load_ACPC_FR_mesh(acpc_path, pial_lh_path, data)
+function load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data)
     sphereradius = 6;
 
     % === Step 1: Load Electrode Positions and Mesh ===
-    elec_acpc_fr = load(acpc_path).elec_acpc_fr;
-    pial_lh = ft_read_headshape(pial_lh_path);
+    %elec_acpc_fr = load(acpc_path).elec_acpc_fr;
+    %pial_lh = ft_read_headshape(pial_lh_path);
     pial_lh.coordsys = 'acpc';
 
     pial_lh = ft_convert_units(pial_lh, 'mm');
@@ -130,7 +155,7 @@ function load_ACPC_FR_mesh(acpc_path, pial_lh_path, data)
     % === Step 7: Plot electrodes ===
     % Plot normal electrodes
     elec_plot_colors = data_clean;   % Use interpolated data (0–1)
-    ft_plot_sens(elec_acpc_fr, 'elecsize', 35, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
+    %ft_plot_sens(elec_acpc_fr, 'elecsize', 35, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
 
     % === Step 8: Overlay reference electrodes manually ===
     if any(ref_idx)
@@ -149,7 +174,9 @@ function load_FSAVG_FRS_mesh(fsavg_path, pial_lh_path, data)
 
     % === Step 1: Load Electrode Positions and Mesh ===
     elec_fsavg = load(fsavg_path).elec_fsavg_frs;
-    pial_lh = ft_read_headshape('lh.pial');
+    %pial_lh = ft_read_headshape(pial_lh_path);
+    [ftver, ftpath] = ft_version;
+    pial_lh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
     pial_lh.coordsys = 'fsaverage';
 
     pial_lh = ft_convert_units(pial_lh, 'mm');
