@@ -62,15 +62,15 @@ for ch = 1:numChannels
 end
 
 %% Step 3: Display All Modulation Indices
-disp('Modulation Indices for all channels:');
-disp(modulationIndices);
+%disp('Modulation Indices for all channels:');
+%disp(modulationIndices);
 
 % Plot all MIs in a bar chart
-figure;
-bar(modulationIndices, 'FaceColor', [0.2, 0.6, 0.8]);
-xlabel('Channel');
-ylabel('Modulation Index (MI)');
-title('Phase-Amplitude Coupling (PAC) Across Channels');
+%figure;
+%bar(modulationIndices, 'FaceColor', [0.2, 0.6, 0.8]);
+%xlabel('Channel');
+%ylabel('Modulation Index (MI)');
+%title('Phase-Amplitude Coupling (PAC) Across Channels');
 
 %% Step 4: Calculate PAC for Encoding and Decoding Periods Separately
 numChannels = min(length(theta_encodingsignal), length(gamma_encodingsignal)); 

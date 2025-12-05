@@ -6,8 +6,8 @@ gammaPowerResults = struct();
 %% Loading the data 
 filepath = '~/Documents/Anderson Lab/Saved Data 2025-05-22 11.44.08'; 
 makefullfile = @(f) fullfile(f.folder, f.name);
-OnlineFiles = dir([filepath,filesep,'OnlineDisplaySavedData*.mat']);
-OnlineFile = makefullfile(OnlineFiles(1)); 
+%OnlineFiles = dir([filepath,filesep,'OnlineDisplaySavedData*.mat']); % ignore this moving forward
+%OnlineFile = makefullfile(OnlineFiles(1)); 
 NS2Files = dir([filepath,filesep,'*.ns2']); 
 NS2File = makefullfile(NS2Files(1)); 
 NS5Files = dir([filepath,filesep,'*.ns5']); 
@@ -116,14 +116,14 @@ selind = find(selind);
 % Use NEV serial code parser to set encode/decode/wait start/end times using default mapping
 
 % Encoding: start = image_1, end = end_encoding
-encodeStartRows = strcmpi(NEVevents.EventName, 'image_1');
-encodeEndRows   = strcmpi(NEVevents.EventName, 'end_encoding');
+encodeStartRows = NEVevents.Code == 1;
+encodeEndRows   = NEVevents.Code == 6;
 encodeStart = NEVevents.Time(encodeStartRows);
 encodeEnd   = NEVevents.Time(encodeEndRows);
 
 % Decoding: start = decoding_start, end = decoding_end
-decodeStartRows = strcmpi(NEVevents.EventName, 'decoding_start');
-decodeEndRows   = strcmpi(NEVevents.EventName, 'decoding_end');
+decodeStartRows = NEVevents.Code == 7;
+decodeEndRows   = NEVevents.Code == 8;
 decodeStart = NEVevents.Time(decodeStartRows);
 decodeEnd   = NEVevents.Time(decodeEndRows);
 
