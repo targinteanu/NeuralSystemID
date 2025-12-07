@@ -303,8 +303,10 @@ for SFi = 1:width(tbls)
     inan = isnan(tbls{SFi}.Variables); inan = sum(inan,2);
     inantime = tbls{SFi}.Time(find(inan));
     timetol = 3/SampleRates(SFi); % dur to be considered same event (s)
+    if ~isempty(inantime)
     inantime = inantime([true; seconds(diff(inantime)) > timetol]);
     discont = [discont; inantime];
+    end
 end
 
 clear disctype discevt inan evtbl timetol inantime
