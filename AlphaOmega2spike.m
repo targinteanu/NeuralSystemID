@@ -22,8 +22,7 @@ channelDataFields = {'BitResolution', 'Gain'};
 % For now, only select ANALOG_IN and LFP channels; ignore spike, RAW, and
 % SEG. In the future, spike sorting should be performed later in this
 % script instead of throwing out spikes. Not sure what to do with RAW/SEG
-chincl = contains(channelNames, 'LFP') | ...
-         contains(channelNames, 'ANALOG_IN');
+chincl = contains(channelNames, 'SPK');
 channelNames = channelNames(chincl); 
 
 % group channels by sampling rate 
@@ -77,8 +76,7 @@ for f = filelist'
 
             % look at channels 
             chNames = {Channel_ID_Name_Map.Name};
-            chincl = contains(chNames, 'LFP') | ...
-                     contains(chNames, 'ANALOG_IN');
+            chincl = contains(channelNames, 'SPK');
             chNames = chNames(chincl);
             if ~strcmpwrapper(channelNames, chNames)
                 warning(['On ',fn,': channel names do not match'])
