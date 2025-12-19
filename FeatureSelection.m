@@ -190,6 +190,7 @@ for Ti = 1:height(alltbls)
         Traw = TTraw{Tj};
         Tfilt = [];
 
+        %{
         % broad band
             bpf = buildFIRBPF(SampleRate, bandbounds(1), bandbounds(end));
             varnames = string(Traw.Properties.VariableNames)+" all";
@@ -202,20 +203,25 @@ for Ti = 1:height(alltbls)
                 Tfiltall.Properties.VariableDescriptions = vardescs;
             Tfiltall.Properties.Events = Traw.Properties.Events;
             Xfiltall = envelope(Xfiltall);
+        %}
 
         % specific bands 
         for b = 1:length(bandnames)
             bpf = buildFIRBPF(SampleRate, bandbounds(b), bandbounds(b+1));
             varnames = string(Traw.Properties.VariableNames)+" "+bandnames(b);
+            vardescs = string(Traw.Properties.VariableDescriptions);
+            varunits = string(Traw.Properties.VariableUnits);
             Xfilt = filtfilt(bpf,1,Traw.Variables);
-            Xfilt = Xfilt ./ (Xfiltall + eps); % unitless
+            %Xfilt = Xfilt ./ (Xfiltall + eps); % unitless
             Tfilt_ = array2timetable(Xfilt,...
                 "RowTimes",Traw.Time, "VariableNames",varnames);
                 Tfilt_.Properties.VariableDescriptions = vardescs;
+                Tfilt_.Properties.VariableUnits = varunits;
             Tfilt = [Tfilt, Tfilt_];
         end
 
-        TTfilt{Tj} = [Tfilt, Tfiltall];
+        %TTfilt{Tj} = [Tfilt, Tfiltall];
+        TTfilt{Tj} = Tfilt;
         TTfilt{Tj}.Properties.Description = Traw.Properties.Description;
     end
     alltbls{Ti,2} = TTfilt;
@@ -235,8 +241,8 @@ for Ti = 1:height(alltbls)
         Xabs = abs(Xhilb);
 
         % pink noise correction 
-        P = log10(Xabs.^2); 
-        P = P(:,1:(end-length(chanlistsel)))';
+        P = log10(Xabs.^2)'; 
+        %P = P(:,1:(end-length(chanlistsel)))';
         F = repmat(bandcent, length(chanlistsel), 1); F = F(:);
         F = [log10(F), ones(size(F))];
         pinkcoef = F\P;
@@ -246,7 +252,7 @@ for Ti = 1:height(alltbls)
             % col: sample 
         pinkP = F*pinkcoef;
         pinkP = sqrt( 10.^pinkP' );
-        pinkP = [pinkP, ones(height(pinkP),length(chanlistsel))];
+        %pinkP = [pinkP, ones(height(pinkP),length(chanlistsel))];
         Xhilb = Xhilb./pinkP; Xabs = abs(Xhilb); % corrected
         TTpink = array2timetable(pinkcoef', "RowTimes",Tfilt.Time, ...
             "VariableNames",["Pink1", "Pink2"]); 
@@ -266,13 +272,11 @@ for Ti = 1:height(alltbls)
         TTmaph{Tj} = [...
             array2timetable([Xabs], "RowTimes",Tfilt.Time, ...
                 "VariableNames",varnames+" mag"), ...
-            array2timetable([angle( Xhilb(:,1:(end-length(chanlistsel))) )], ...
-                "RowTimes",Tfilt.Time, ...
-                "VariableNames",varnames(1:(end-length(chanlistsel)))+" phase")];
+            array2timetable([angle(Xhilb)], "RowTimes",Tfilt.Time, ...
+                "VariableNames",varnames+" phase")];
         TTmaph{Tj}.Properties.VariableUnits = [varunits, ...
-            repmat("radians",1, width( Xhilb(:,1:(end-length(chanlistsel))) ))];
-        TTmaph{Tj}.Properties.VariableDescriptions = [vardescs, ...
-            vardescs(1:(end-length(chanlistsel)))];
+            repmat("radians",1, width( Xhilb ))];
+        TTmaph{Tj}.Properties.VariableDescriptions = [vardescs, vardescs];
         TTmaph{Tj} = [TTmaph{Tj}, TTpink];
         TTmaph{Tj}.Properties.Description = Tfilt.Properties.Description;
         TTmaph{Tj}.Properties.Events = Tfilt.Properties.Events;
