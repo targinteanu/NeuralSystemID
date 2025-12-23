@@ -34,3 +34,4 @@ datafilt.csv
 dataraw.csv
 eventsfilt.csv
 eventsraw.csv
+*.csv
