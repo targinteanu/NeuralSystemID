@@ -35,3 +35,4 @@ dataraw.csv
 eventsfilt.csv
 eventsraw.csv
 *.csv
+*.pth
