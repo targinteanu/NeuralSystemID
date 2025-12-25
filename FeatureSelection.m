@@ -529,7 +529,7 @@ end
 
 %% helpers 
 
-function tblslist = selectTbls(tblsOrig, tblsArtrem, chanselmade, chanlistsel)
+function tblslist = selectTbls(tblsOrig, tblsArtrem, chanselmade, channamesel)
 % Select between original and art removed table(s). If selected channels
 % have not been artifact removed, this will try to pull the original data,
 % in which case output table cols might not be in the same order. 
@@ -539,7 +539,13 @@ if ~isempty(tblsArtrem)
     if chanselmade
         for Ti = 1:length(tblslist)
             T = tblslist{Ti};
-            for ch = chanlistsel
+            for ch = string(T.Properties.VariableNames)
+                if ~sum(strcmp(channamesel, ch))
+                    % current channel is not desired 
+                    T = removevars(T, ch);
+                end
+            end
+            for ch = channamesel
                 if ~sum(strcmp(T.Properties.VariableNames, ch))
                     % current channel ch is desired but not art removed
                     terr = nan(size(tblsOrig));
