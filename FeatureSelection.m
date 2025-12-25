@@ -42,8 +42,8 @@ if chanselmade
 end
 
 %% define freq bands
-bandbounds = [0.5,4,9,13,30,70,150];
-bandnames = ["\delta", "\theta", "\alpha", "\beta", "lo\gamma", "hi\gamma"];
+bandbounds = [0.1,4,13,40,80,100];
+bandnames = ["\delta", "\theta\alpha", "\beta", "lo\gamma", "hi\gamma"];
 bandcent = .5 * (bandbounds(2:end) + bandbounds(1:(end-1)));
 
 % calc power spectrum 
