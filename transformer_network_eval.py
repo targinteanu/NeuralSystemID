@@ -11,8 +11,8 @@ import bisect
 hzn = 0.05 # EVALUATION sample time, s
 groupsize=7
 numgroups=6
-netfile = "neural_network_pytorch_5bf2fceb0050b6a9d3ca5c5321a891eb0fa26a9c.pth"
-dt_target = 0.005 # model sample time, s
+netfile = "neural_network_pytorch_1515dd1acfc92f2cffd1bb79b80c7d34637fe54c.pth"
+dt_target = 0.003 # model sample time, s
 seq_len = 32 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 
@@ -32,7 +32,7 @@ baseline_df = pd.read_csv("baselinedataraw.csv")
 baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
 baseline_data = baseline_df.iloc[:, 1:].values           # data columns
 
-iBLstart = math.ceil(0.9*baseline_data.shape[0])
+iBLstart = math.floor(0.99*baseline_data.shape[0])
 baseline_time = baseline_time[iBLstart:]
 baseline_data = baseline_data[iBLstart:, :]
 
@@ -331,7 +331,7 @@ Ysim = np.array(Ysim)
 Ytrue = Y[hzn_len:, :].numpy()
 print("Ysim shape :", Ysim.shape)
 print("Ytrue shape:", Ytrue.shape)
-mse = np.mean((Ysim - Ytrue)**2, axis=0)
+mse = np.mean((Ysim - Ytrue)**2, axis=0) / np.mean((Ytrue)**2, axis=0)
 print("Mean MSE:", np.mean(mse))
 # show a bar plot of mse per feature
 plt.figure()
@@ -347,7 +347,7 @@ plt.show()
 # get index of channels sorted by mse
 sorted_indices = np.argsort(mse)[::-1]  # descending order
 # get first, middle, and end of sorted_indices
-example_indices = [sorted_indices[0], sorted_indices[len(sorted_indices)//2], sorted_indices[-1]]
+example_indices = [sorted_indices[0], sorted_indices[len(sorted_indices)//4], sorted_indices[len(sorted_indices)//2], sorted_indices[3*len(sorted_indices)//4], sorted_indices[-1]]
 # Create a single figure with vertically stacked subplots
 fig, axes = plt.subplots(len(example_indices), 1, sharex=True, figsize=(10, 8))
 for ax, idx in zip(axes, example_indices):
