@@ -2,12 +2,8 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset, Dataset
-from torch.nn import GELU
 import torch.nn.functional as F
 import pandas as pd
-from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import bisect
 
@@ -15,8 +11,8 @@ import bisect
 hzn = 0.05 # EVALUATION sample time, s
 groupsize=7
 numgroups=6
-netfile = "neural_network_pytorch_9018dd202dc95408737ac2108e8e16e62161d31c.pth"
-dt_target = 0.001 # model sample time, s
+netfile = "neural_network_pytorch_5bf2fceb0050b6a9d3ca5c5321a891eb0fa26a9c.pth"
+dt_target = 0.005 # model sample time, s
 seq_len = 32 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 
