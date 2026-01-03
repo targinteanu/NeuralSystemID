@@ -5,7 +5,12 @@ folder = uigetdir;
 NSfiles = dir([folder,filesep,'*.ns*']);
 NEVfiles = dir([folder,filesep,'*.nev']);
 ElecXL = [dir([folder,filesep,'electrode_data.xls*']); ...
-          dir([folder,filesep,pName,filesep,'electrode_data.xls*'])];
+          dir([folder,filesep,pName,filesep,'electrode_data.xls*']); ...
+          dir([folder,filesep,'Imaging',filesep,'electrode_data.xls*']); ...
+          dir([folder,filesep,pName,'_electrode_data.xls*']); ...
+          dir([folder,filesep,pName,filesep,pName,'_electrode_data.xls*']); ...
+          dir([folder,filesep,'Imaging',filesep,pName,'_electrode_data.xls*']) ...
+          ];
 thisfilename = mfilename("fullpath");
 
 %% get electrode data 
@@ -69,6 +74,7 @@ for f = NSfiles'
     timeEnd = max(timeEnd, max(fTbl.Time));
 
     % pair timetable variables with electrode info
+    if ~isempty(electbl)
     for c = 1:width(fTbl)
         cname = fTbl.Properties.VariableNames{c};
         if length(cname) >= 3
@@ -82,6 +88,7 @@ for f = NSfiles'
             end
             fTbl.Properties.VariableDescriptions{c} = electbl.Brainnetome{r};
         end
+    end
     end
 
     % label start/end of file 
