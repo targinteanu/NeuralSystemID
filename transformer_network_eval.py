@@ -27,7 +27,7 @@ hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT dat
 # ------------------------
 info_df = pd.read_csv("info.csv")
 fs = info_df.iloc[0, 5]                  # sampling frequency (Hz)
-feature_names = info_df.iloc[1:, 0].values
+feature_names = info_df.iloc[:, 0].values
 
 # ------------------------
 # Load raw data
@@ -36,7 +36,7 @@ baseline_df = pd.read_csv("baselinedataraw.csv")
 baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
 baseline_data = baseline_df.iloc[:, 1:].values           # data columns
 
-iBLstart = math.ceil(0.8*baseline_data.shape[0])
+iBLstart = math.ceil(0.9*baseline_data.shape[0])
 baseline_time = baseline_time[iBLstart:]
 baseline_data = baseline_data[iBLstart:, :]
 
@@ -305,11 +305,12 @@ class TimeSeriesTransformer(nn.Module):
 model = TimeSeriesTransformer(dim_in=num_feat, dim_out=num_feat, pos_len=seq_len, group_size=groupsize, num_groups=numgroups)
 model.load_state_dict(torch.load(netfile))
 
-# simulaitons -----------------------------------------------------------------------------------
+# simulations -----------------------------------------------------------------------------------
 Ysim = []
 model.eval()
 progtick = 0.05
 progcur = 0.0
+prognext = progtick
 print("Simulating...")
 for i0 in range(len(X) - hzn_len):
     xi = X[i0, :, :].reshape(1,-1,num_feat)
@@ -323,9 +324,9 @@ for i0 in range(len(X) - hzn_len):
             xi = torch.tensor(np.vstack([xi[0, 1:, :], yi]).reshape(1,-1,X.shape[-1]), dtype=torch.float32)
     Ysim.append(yi)
     progcur += 1.0/(len(X) - hzn_len)
-    if progcur >= progtick:
-        print(f"  {int(progtick*100)}%")
-        progcur = 0.0
+    if progcur >= prognext:
+        print(f"  {int(progcur*100)}%")
+        prognext += progtick
 
 # evaluate -------------------------------------------------------------------------------------
 
@@ -351,13 +352,15 @@ plt.show()
 sorted_indices = np.argsort(mse)[::-1]  # descending order
 # get first, middle, and end of sorted_indices
 example_indices = [sorted_indices[0], sorted_indices[len(sorted_indices)//2], sorted_indices[-1]]
-for idx in example_indices:
-    plt.figure()
-    plt.plot(Ytrue[:, idx], label="True")
-    plt.plot(Ysim[:, idx], label="Simulated", alpha=0.7)
-    plt.xlabel("Sample")
-    plt.ylabel("Feature Value")
-    plt.title(f"Feature: {feature_names[idx]} (MSE: {mse[idx]:.4f})")
-    plt.legend()
-    plt.grid(axis='both')
-    plt.show()
+# Create a single figure with vertically stacked subplots
+fig, axes = plt.subplots(len(example_indices), 1, sharex=True, figsize=(10, 8))
+for ax, idx in zip(axes, example_indices):
+    ax.plot(Ytrue[:, idx], label="True")
+    ax.plot(Ysim[:, idx], label="Simulated", alpha=0.7)
+    ax.set_ylabel("Feature Value")
+    ax.set_title(f"Feature: {feature_names[idx]} (MSE: {mse[idx]:.4f})")
+    ax.legend()
+    ax.grid(axis='both')
+axes[-1].set_xlabel("Sample")  # Set x-label only on the last subplot
+plt.tight_layout()
+plt.show()
