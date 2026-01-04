@@ -75,12 +75,18 @@ for f = NSfiles'
 
     % pair timetable variables with electrode info
     if ~isempty(electbl)
+    elecname = electbl.Electrode; elecnum = nan(size(elecname));
+    for c = 1:length(elecname)
+        cname = elecname{c};
+        % extract number
+        cnum = cname((cname >= 48) & (cname <= 57)); cnum = str2double(cnum);
+        elecnum(c) = cnum;
+    end
     for c = 1:width(fTbl)
         cname = fTbl.Properties.VariableNames{c};
-        if length(cname) >= 3
-            cname = [cname(1),cname(3:end)]; % match naming conventions 
-        end
-        r = find(strcmpi(electbl.Electrode, cname));
+        % extract number
+        cnum = cname((cname >= 48) & (cname <= 57)); cnum = str2double(cnum);
+        r = find(elecnum == cnum);
         if ~isempty(r)
             if length(r) > 1
                 warning(['Electrode name ',cname,' is not unique.']);
@@ -181,7 +187,7 @@ for SFi = 1:width(tbls)
 end
 chnames = unique(chnames); chnames = string(chnames);
 
-clear f fNS fEV fTbl EVtbl c r cname proc varnames sortind
+clear f fNS fEV fTbl EVtbl c r cname cnum proc varnames sortind
 
 if isempty(tbls) || isempty(chnames)
     error('Something went wrong.')
