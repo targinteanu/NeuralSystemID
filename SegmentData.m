@@ -183,6 +183,10 @@ chnames = unique(chnames); chnames = string(chnames);
 
 clear f fNS fEV fTbl EVtbl c r cname proc varnames sortind
 
+if isempty(tbls) || isempty(chnames)
+    error('Something went wrong.')
+end
+
 %% user selects channels 
 disp('Please specify channels...')
 channelIndexRec = listdlg("PromptString","Recording Channel(s)", ...
