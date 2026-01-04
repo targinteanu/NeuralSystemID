@@ -11,7 +11,7 @@ if ArtRemoveDone
     load(fullfile(fp,[fnOrig,fe]));
 end
 
-% select channels of interest 
+%% select channels of interest 
 dtaBL = tblsBaseline{1,1};
 dtaBL.Properties.Description = 'Baseline';
 chanlist = dtaBL.Properties.VariableNames; chanlist = string(chanlist);
