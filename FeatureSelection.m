@@ -2,7 +2,7 @@
 % Explore preprocessing steps to see which features depend on (A) previous
 % values of the same features and (B) stimulation 
 
-hzns = [.05, 1]; % s
+hzns = [.05, .1, 1]; % s
 
 % init empty tbl lists 
 tblsTrig_ArtifactRemoved = {};
@@ -146,11 +146,15 @@ for Ti = 1:height(alltbls)
 
         % specific bands 
         for b = 1:length(bandnames)
-            bpf = buildFIRBPF(SampleRate, bandbounds(b), bandbounds(b+1));
+            bpf = buildFIRBPF(SampleRate, bandbounds(b), bandbounds(b+1), 2, 201);
             varnames = string(Traw.Properties.VariableNames)+" "+bandnames(b);
             vardescs = string(Traw.Properties.VariableDescriptions);
             varunits = string(Traw.Properties.VariableUnits);
+            tic
             Xfilt = filtfilt(bpf,1,Traw.Variables);
+            timerdur = toc;
+            disp(" - filter band "+bandnames(b)+" completed after "+...
+                string(num2str(timerdur))+" seconds.")
             %Xfilt = Xfilt ./ (Xfiltall + eps); % unitless
             Tfilt_ = array2timetable(Xfilt,...
                 "RowTimes",Traw.Time, "VariableNames",varnames);
