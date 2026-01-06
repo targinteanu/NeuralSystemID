@@ -32,8 +32,8 @@ end
 % collect by stim type 
 tblsToOrganize = [...
     tblsToOrganize; ... misc, selected channels only
-    selectTbls(tblsTrig, tblsTrig_ArtifactRemoved, chanselmade, chanlistsel); ...
-    selectTbls(tblsStimNoTrig, tblsStimNoTrig_ArtifactRemoved, chanselmade, chanlistsel)];
+    selectTbls(tblsTrig, tblsTrig_ArtifactRemoved, chanselmade, chanlistsel, chanselidx); ...
+    selectTbls(tblsStimNoTrig, tblsStimNoTrig_ArtifactRemoved, chanselmade, chanlistsel, chanselidx)];
 tblsToOrganizeDescs = cellfun(@(T) string(T.Properties.Description), tblsToOrganize);
 
 % other non-stim 
@@ -170,7 +170,7 @@ for Ti = 1:height(alltbls)
     alltbls{Ti,2} = TTfilt;
 end
 
-% hilbert, mag/phase
+%% hilbert, mag/phase
 for Ti = 1:height(alltbls)
     disp(['Hilbert: ',num2str(Ti),' of ',num2str(height(alltbls))])
     TTfilt = alltbls{Ti,2};
@@ -472,7 +472,7 @@ end
 
 %% helpers 
 
-function tblslist = selectTbls(tblsOrig, tblsArtrem, chanselmade, channamesel)
+function tblslist = selectTbls(tblsOrig, tblsArtrem, chanselmade, channamesel, chanselind)
 % Select between original and art removed table(s). If selected channels
 % have not been artifact removed, this will try to pull the original data,
 % in which case output table cols might not be in the same order. 
@@ -510,6 +510,13 @@ if ~isempty(tblsArtrem)
     end
 else
     tblslist = tblsOrig;
+    if chanselmade
+        for Ti = 1:length(tblslist)
+            T = tblslist{Ti};
+            T = T(:,chanselind);
+            tblslist{Ti} = T;
+        end
+    end
 end
 end
 
