@@ -4,6 +4,8 @@
 
 hzns = [.05, .1, 1]; % s
 
+thisfilename = mfilename("fullpath");
+
 % init empty tbl lists 
 tblsTrig_ArtifactRemoved = {};
 tblsTrig = {};

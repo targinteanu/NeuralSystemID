@@ -1,7 +1,6 @@
 %% obtain segmented, artifact-removed data 
 
 % file selection
-thisfilename = mfilename("fullpath");
 [fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Artifact-Free Data File');
 load(fullfile(fp,fn));
 [~,fn,fe] = fileparts(fn);
