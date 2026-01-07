@@ -401,6 +401,8 @@ for H = 1:height(svtbls)
                 tbl.Properties.Events.Time - t0, ...
                 "EventLabels",tbl.Properties.Events.EventLabels, ...
                 "EventEnds",tbl.Properties.Events.EventEnds - t0);
+        else
+            tbl.Properties.Events = [];
         end
         if numel(TBL)
             TBL = [TBL; tbl];
