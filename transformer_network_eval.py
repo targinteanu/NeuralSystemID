@@ -9,9 +9,9 @@ import bisect
 
 # set params -------------------------------------------------------------------------------------
 hzn = 1 # EVALUATION sample time, s
-groupsize=7
+groupsize=41
 numgroups=6
-netfile = "neural_network_pytorch_5bf2fceb0050b6a9d3ca5c5321a891eb0fa26a9c.pth"
+netfile = "neural_network_pytorch_5890686e623f81cdab55b1ecb7aec55ea73cc536.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 32 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -32,7 +32,7 @@ baseline_df = pd.read_csv("baselinedataraw.csv")
 baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
 baseline_data = baseline_df.iloc[:, 1:].values           # data columns
 
-iBLstart = math.floor(0.99*baseline_data.shape[0])
+iBLstart = math.floor(0.995*baseline_data.shape[0])
 baseline_time = baseline_time[iBLstart:]
 baseline_data = baseline_data[iBLstart:, :]
 
