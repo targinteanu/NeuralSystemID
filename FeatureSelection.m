@@ -252,6 +252,7 @@ for feat = 1:size(alltbls,2)
         for Tj = 1:height(tbls)
             T = [T; tbls{Tj}];
         end
+        if numel(T)
         stimnames(stim) = string(T.Properties.Description);
         X = T.Variables;
         X = single(X); % single precision to save runtime and memory
@@ -260,6 +261,7 @@ for feat = 1:size(alltbls,2)
             [~,~,p(c)] = kstest2(XBL(:,c), X(:,c));
         end
         stem((p)); hold on; grid on; 
+        end
     end
         if length(p) > length(chanselidx)
             xticks(1:length(chanselidx):length(p)); 
@@ -432,12 +434,14 @@ svname = fullfile(fp, svname);
 % save each table 
 for W = 1:width(svtbls)
 for H = 1:height(svtbls)
-    TT = svtbls{H,W}; EV = TT.Properties.Events;
-    svname_ = string(svname)+" - "+selfeatname(W)+" - "+string(TT.Properties.Description);
-    disp(" - "+svname_)
+    TT = svtbls{H,W}; 
 
     % data table 
     if numel(TT)
+    svname_ = string(svname)+" - "+selfeatname(W)+" - "+string(TT.Properties.Description);
+    disp(" - "+svname_)
+
+    EV = TT.Properties.Events;
     SvData = [(single(seconds(TT.Time))), (single(TT.Variables))];
     SvData = array2table(SvData, ...
         "VariableNames", ['Time (s)', TT.Properties.VariableNames]);
