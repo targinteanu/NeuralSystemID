@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 import bisect
 
 # set params -------------------------------------------------------------------------------------
-hzn = 1 # EVALUATION sample time, s
+hzn = .05 # EVALUATION sample time, s
 groupsize=41
 numgroups=6
-netfile = "neural_network_pytorch_5890686e623f81cdab55b1ecb7aec55ea73cc536.pth"
+netfile = "neural_network_pytorch.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 32 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
