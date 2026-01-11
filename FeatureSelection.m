@@ -390,6 +390,8 @@ svtbls = alltbls(:,selfeat);
 
 t0 = svtbls{1}{1}.Time(1); 
 
+%sizethresh = 2^34; % max variable size (bytes) to save in single document
+
 % stack each stim type into one table 
 for W = 1:width(svtbls)
 for H = 1:height(svtbls)
@@ -409,6 +411,7 @@ for H = 1:height(svtbls)
             tbl.Properties.Events = [];
         end
         if numel(TBL)
+            %sz = whos('TBL'); sz = sz.bytes;
             TBL = [TBL; tbl];
         else
             TBL = tbl;
