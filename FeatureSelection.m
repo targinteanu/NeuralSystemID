@@ -329,10 +329,11 @@ for hzn = 1:size(allarr,3)
     pause(.01); drawnow; pause(.01);
     for stim = 1:size(allarr,1)
         for feat = 1:size(allarr,2)
+            if numel(allarr{stim,feat,hzn})
             varnames = alltbls{stim,feat}{1}.Properties.VariableNames;
             imgs{stim,feat,hzn} = subplot(size(allarr,1), size(allarr,2), spind); spind = spind+1;
             inp = allarr{stim,feat,hzn}(:,:,1);
-            oup = allarr{stim,feat,hzn}(:,:,1);
+            oup = allarr{stim,feat,hzn}(:,:,2);
             %A = (inp'*inp)^-1*inp'*oup;
             A = nan(width(inp),width(oup));
             for chinp = 1:height(A)
@@ -368,6 +369,7 @@ for hzn = 1:size(allarr,3)
             end
 
             pause(.001); drawnow; pause(.001);
+            end
         end
     end
 end
