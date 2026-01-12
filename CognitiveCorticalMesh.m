@@ -32,6 +32,7 @@ PD_Phase_Data = instPhaseFreqTbl(PDdata);
 PD_Channel_Names = PDdata.Properties.VariableNames;
 
 %% phase locking 
+%{
 PLV_VectorMatrix = compute_PLV_VectorMatrix(PD_Phase_Data); %Get the PLV vector matrix for every channel (64x64)
 PLV_Average = getAveragePLV(PLV_VectorMatrix); %Get the Average PLV for every channel (64x1)
 PLV_Relative_ref = getPLV_wrt_Ref(PLV_VectorMatrix, ref_channel); %Get PLV relative to ref channel (64x1)
@@ -40,6 +41,7 @@ plot_PLV_Relative(PD_Phase_Data,PLV_Relative_ref, ref_channel, PD_Channel_Names)
 PLV_Relative_ref = PLV_Relative_ref([1:(ref_channel-1), (ref_channel+1):end]); % remove ref channel 
 PLV_CortexCortex_matrix = PLV_VectorMatrix([1:(ref_channel-1), (ref_channel+1):end], [1:(ref_channel-1), (ref_channel+1):end]);
 PLV_Average_Cortex = getAveragePLV(PLV_CortexCortex_matrix);
+%}
 thetaPowerCortex = thetaPower([1:(ref_channel-1), (ref_channel+1):end]);
 
 %% mesh plots 
@@ -56,6 +58,7 @@ fileMesh = ft_read_headshape(fileMesh);
 
 ft_defaults
 
+%{
 figure; 
 load_ACPC_FR_mesh(fileElec, fileMesh, ...
     PLV_Relative_ref);
@@ -65,6 +68,7 @@ figure;
 load_ACPC_FR_mesh(fileElec, fileMesh, ...
     PLV_Average_Cortex);
 title('Cortex-Cortex Average PLV')
+%}
 
 figure; 
 load_ACPC_FR_mesh(fileElec, fileMesh, ...
@@ -100,7 +104,7 @@ compareRosePlots(PD_Phase_Data, central_channel, comparison_channels);
 %% helper functions 
 
 function load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data)
-    sphereradius = 6;
+    sphereradius = 3;
 
     % === Step 1: Load Electrode Positions and Mesh ===
     %elec_acpc_fr = load(acpc_path).elec_acpc_fr;
@@ -121,6 +125,7 @@ function load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data)
     source.pow = data_clean;
     source.dimord = 'pos';
     source.coordsys = 'acpc';
+    source.unit = 'mm';
 
     % === Step 4: Interpolate electrode data ===
     cfg = [];
@@ -152,7 +157,8 @@ function load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data)
     % === Step 7: Plot electrodes ===
     % Plot normal electrodes
     elec_plot_colors = data_clean;   % Use interpolated data (0–1)
-    ft_plot_sens(elec_acpc_fr, 'elecsize', 35, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
+    %ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
+    ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', 'black', 'edgecolor', 'black');
 
     % === Step 8: Overlay reference electrodes manually ===
     if any(ref_idx)
