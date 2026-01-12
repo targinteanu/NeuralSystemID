@@ -71,7 +71,7 @@ title('Cortex-Cortex Average PLV')
 %}
 
 figure; 
-load_ACPC_FR_mesh(fileElec, fileMesh, ...
+ThetaPowerInterp = load_ACPC_FR_mesh(fileElec, fileMesh, ...
     thetaPowerCortex);
 title('Theta Power')
 
@@ -103,7 +103,8 @@ compareRosePlots(PD_Phase_Data, central_channel, comparison_channels);
 
 %% helper functions 
 
-function load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data)
+function [interp_source, srcpltcfg] = ...
+    load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data)
     sphereradius = 3;
 
     % === Step 1: Load Electrode Positions and Mesh ===
@@ -144,7 +145,7 @@ function load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data)
     cfg.sphereradius = sphereradius;
     cfg.camlight = 'no';
 
-    ft_sourceplot(cfg, interp_source, pial_lh);
+    srcpltcfg = ft_sourceplot(cfg, interp_source, pial_lh);
 
     %view([-55 10]);
     material dull;
