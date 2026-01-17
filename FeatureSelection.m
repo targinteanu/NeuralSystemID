@@ -173,6 +173,13 @@ for Ti = 1:height(alltbls)
 end
 
 %% hilbert, mag/phase
+
+% pink noise correction factor 
+pinkP = (10.^pinkcoef(2,:)) .* bandcent'.^pinkcoef(1,:); 
+% row = freq band; col = channel
+pinkP = sqrt( 10.^pinkP' ); % Power (dB) -> amplitude
+pinkP = pinkP'; pinkP = pinkP(:)'; % unfolded 
+
 for Ti = 1:height(alltbls)
     disp(['Hilbert: ',num2str(Ti),' of ',num2str(height(alltbls))])
     TTfilt = alltbls{Ti,2};
@@ -184,24 +191,13 @@ for Ti = 1:height(alltbls)
         vardescs = string(Tfilt.Properties.VariableDescriptions);
         Xhilb = hilbert(Tfilt.Variables);
         Xabs = abs(Xhilb);
-
-        % pink noise correction 
-        P = log10(Xabs.^2)'; 
-        %P = P(:,1:(end-length(chanlistsel)))';
-        F = repmat(bandcent, length(chanlistsel), 1); F = F(:);
-        F = [log10(F), ones(size(F))];
-        pinkcoef = F\P;
-            % pink noise: P = k*f^a where a < 0
-            % row 1: slope of log-log, i.e. exponent a of f
-            % row 2: intercept of log-log, i.e. log10(k)
-            % col: sample 
-        pinkP = F*pinkcoef;
-        pinkP = sqrt( 10.^pinkP' );
-        %pinkP = [pinkP, ones(height(pinkP),length(chanlistsel))];
+        
         Xhilb = Xhilb./pinkP; Xabs = abs(Xhilb); % corrected
+        %{
         TTpink = array2timetable(pinkcoef', "RowTimes",Tfilt.Time, ...
             "VariableNames",["Pink1", "Pink2"]); 
         TTpink.Properties.VariableUnits = {'', 'uV^2/s'};
+        %}
 
         TThilb{Tj} = [...
             array2timetable([real(Xhilb)], "RowTimes",Tfilt.Time, ...
@@ -210,7 +206,7 @@ for Ti = 1:height(alltbls)
                 "VariableNames",varnames+" imag")];
         TThilb{Tj}.Properties.VariableUnits = [varunits, varunits];
         TThilb{Tj}.Properties.VariableDescriptions = [vardescs, vardescs];
-        TThilb{Tj} = [TThilb{Tj}, TTpink];
+        %TThilb{Tj} = [TThilb{Tj}, TTpink];
         TThilb{Tj}.Properties.Description = Tfilt.Properties.Description;
         TThilb{Tj}.Properties.Events = Tfilt.Properties.Events;
 
@@ -222,7 +218,7 @@ for Ti = 1:height(alltbls)
         TTmaph{Tj}.Properties.VariableUnits = [varunits, ...
             repmat("radians",1, width( Xhilb ))];
         TTmaph{Tj}.Properties.VariableDescriptions = [vardescs, vardescs];
-        TTmaph{Tj} = [TTmaph{Tj}, TTpink];
+        %TTmaph{Tj} = [TTmaph{Tj}, TTpink];
         TTmaph{Tj}.Properties.Description = Tfilt.Properties.Description;
         TTmaph{Tj}.Properties.Events = Tfilt.Properties.Events;
 
@@ -453,9 +449,15 @@ for H = 1:height(svtbls)
     writetable(SvData, svname_+" - data.csv");
 
     % info 
+    if contains(selfeatname, "Hilbert") || contains(selfeatname, "MagPhase")
+        SvIfoPink = ['Pink correction', string(pinkP)];
+    else
+        SvIfoPink = [];
+    end
     SvIfo = ['Channel Name', TT.Properties.VariableNames; ...
              'Unit', TT.Properties.VariableUnits; ...
-             'Description', TT.Properties.VariableDescriptions]';
+             'Description', TT.Properties.VariableDescriptions; ...
+             SvIfoPink]';
     SvIfo{1, width(SvIfo)+2} = 'Start Time'; 
     SvIfo{1, width(SvIfo)+1} = t0;
     SvIfo{2, width(SvIfo)-1} = 'Sample Rate (Hz)';
