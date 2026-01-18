@@ -31,6 +31,8 @@ PDdata = FilterTimetable(@(b,x) filtfilt(b,1,x), filtwts, PDdata);
 PD_Phase_Data = instPhaseFreqTbl(PDdata);
 PD_Channel_Names = PDdata.Properties.VariableNames;
 
+ElecTbl = table('RowNames',PD_Channel_Names(1:63)); % cortical only
+
 %% phase locking 
 %{
 PLV_VectorMatrix = compute_PLV_VectorMatrix(PD_Phase_Data); %Get the PLV vector matrix for every channel (64x64)
@@ -43,20 +45,22 @@ PLV_CortexCortex_matrix = PLV_VectorMatrix([1:(ref_channel-1), (ref_channel+1):e
 PLV_Average_Cortex = getAveragePLV(PLV_CortexCortex_matrix);
 %}
 thetaPowerCortex = thetaPower([1:(ref_channel-1), (ref_channel+1):end]);
+ElecTbl.ThetaPower = thetaPowerCortex';
 
 %% mesh plots 
 ft_defaults
 [ftver, ftpath] = ft_version;
 
+% patient specific acpc coords
+
 fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/PD25N009_elec_acpc_fr.mat';
 fileElec = load(fileElec).elec_acpc_fr;
-%fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/PD25N009_elec_fsavg_frs.mat';
-%fileElec = load(fileElec).elec_fsavg_frs;
 fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/freesurfer/freesurfer/surf/rh.pial.T1';
 fileMesh = ft_read_headshape(fileMesh);
-%fileMesh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
 
-ft_defaults
+ElecTbl.acpcX = fileElec.chanpos(:,1); 
+ElecTbl.acpcY = fileElec.chanpos(:,2); 
+ElecTbl.acpcZ = fileElec.chanpos(:,3); 
 
 %{
 figure; 
@@ -70,18 +74,34 @@ load_ACPC_FR_mesh(fileElec, fileMesh, ...
 title('Cortex-Cortex Average PLV')
 %}
 
-figure; 
+figACPC = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
 ThetaPowerInterp = load_ACPC_FR_mesh(fileElec, fileMesh, ...
     thetaPowerCortex);
-title('Theta Power')
+title('Theta Power, individual ACPC')
 
-%{
-figure;
-load_FSAVG_FRS_mesh(...
-    '/Users/torenarginteanu/Desktop/Data_PD/PD22N009/PD22N009/SubjectPD22N009_elec_fsavg_frs.mat', ...
-    '/Users/torenarginteanu/Desktop/Data_PD/PD22N009/PD22N009/freesurfer/surf/lh.pial.T1', ...
-    PLV_Relative_ref);
-%}
+%% freesurfer mni coords 
+
+%fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/PD25N009_elec_fsavg_frs.mat';
+%fileElec = load(fileElec).elec_fsavg_frs;
+fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/PD25N009_elec_mni_frv.mat';
+fileElec = load(fileElec).elec_mni_frv;
+fileMesh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
+
+ElecTbl.mniX = fileElec.chanpos(:,1); 
+ElecTbl.mniY = fileElec.chanpos(:,2); 
+ElecTbl.mniZ = fileElec.chanpos(:,3); 
+
+figMNI = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+ThetaPowerInterp = load_ACPC_FR_mesh(fileElec, fileMesh, ...
+    thetaPowerCortex);
+title('Theta Power, MNI space / template brain')
+
+%% saving 
+writetable(ElecTbl, 'BrainHeatmapCoords.xlsx');
+saveas(figACPC, 'BrainHeatmapACPC', 'fig');
+saveas(figMNI, 'BrainHeatmapMNI', 'fig');
+saveas(figMNI, 'BrainHeatmapMNI', 'png');
+saveas(figACPC, 'BrainHeatmapACPC', 'png');
 
 %%
 %{
@@ -151,6 +171,7 @@ function [interp_source, srcpltcfg] = ...
     material dull;
     lighting gouraud;
     camlight;
+    view([150, 5]);
 
     % === Step 6: Normal color map (pure parula) ===
     colormap(parula);   % NO special red added
@@ -172,76 +193,6 @@ function [interp_source, srcpltcfg] = ...
 
 end
 
-
-
-function load_FSAVG_FRS_mesh(fsavg_path, pial_lh_path, data)
-
-    % === Step 1: Load Electrode Positions and Mesh ===
-    elec_fsavg = load(fsavg_path).elec_fsavg_frs;
-    %pial_lh = ft_read_headshape(pial_lh_path);
-    [ftver, ftpath] = ft_version;
-    pial_lh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
-    pial_lh.coordsys = 'fsaverage';
-
-    pial_lh = ft_convert_units(pial_lh, 'mm');
-    elec_fsavg = ft_convert_units(elec_fsavg, 'mm');
-
-    % === Step 2: Prepare Electrode Data ===
-    ref_idx = isnan(data);           % Find reference channels
-    elec_values = data;
-
-    % Replace NaNs with a very large dummy value
-    dummy_value = 2;  % well above PLV 1
-    elec_values(ref_idx) = dummy_value;  % mark reference channels
-
-    % === Step 3: Build source structure ===
-    source = struct();
-    source.pos = elec_fsavg.chanpos;
-    source.inside = true(size(source.pos,1),1);
-    source.pow = elec_values;
-    source.dimord = 'pos';
-    source.coordsys = 'fsaverage';
-
-    % === Step 4: Interpolate electrode data ===
-    cfg = [];
-    cfg.parameter = 'pow';
-    cfg.interpmethod = 'sphere_weighteddistance';
-    cfg.sphereradius = 8;
-    interp_source = ft_sourceinterpolate(cfg, source, pial_lh);
-
-    % === Step 5: After interpolation, restore reference channel to a clean value ===
-    % Any interpolated value >1.5 is from dummy (reference channels)
-    ref_mask = interp_source.pow > 1.5;
-    interp_source.pow(ref_mask) = 1.001;  % set a standard "red" value
-
-    % === Step 6: Plot brain surface ===
-    cfg = [];
-    cfg.funparameter = 'pow';
-    cfg.funcolorlim = [0 1];  % PLVs go between 0 and 1
-    cfg.method = 'surface';
-    cfg.interpmethod = 'nearest';
-    cfg.sphereradius = 3;
-    cfg.camlight = 'no';
-
-    ft_sourceplot(cfg, interp_source, pial_lh);
-
-    view([-55 10]);
-    material dull;
-    lighting gouraud;
-    camlight;
-
-    % === Step 7: Build custom colormap ===
-    base_cmap = parula(256);
-    red_color = [1 0 0];  % pure red
-    cmap_with_red = [base_cmap; red_color];
-    colormap(gca, cmap_with_red);
-
-    % === Step 8: Also plot electrodes ===
-    elec_plot_colors = data;
-    elec_plot_colors(ref_idx) = 1.001;  % manually set reference channels to red
-    ft_plot_sens(elec_fsavg, 'elecsize', 35, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
-
-end
 
 function PLV_Relative_Vector = getPLV_wrt_Ref(PLV_VectorMatrix, ref_channel)
     % Extracts PLV of all channels with respect to the reference channel
