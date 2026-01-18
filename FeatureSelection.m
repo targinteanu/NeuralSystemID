@@ -450,7 +450,8 @@ for H = 1:height(svtbls)
 
     % info 
     if contains(selfeatname, "Hilbert") || contains(selfeatname, "MagPhase")
-        SvIfoPink = ['Pink correction', string(pinkP)];
+        SvIfoPink = arrayfun(@num2str, pinkP, 'UniformOutput', false);
+        SvIfoPink = ['Pink Correction', SvIfoPink, SvIfoPink];
     else
         SvIfoPink = [];
     end
@@ -459,9 +460,9 @@ for H = 1:height(svtbls)
              'Description', TT.Properties.VariableDescriptions; ...
              SvIfoPink]';
     SvIfo{1, width(SvIfo)+2} = 'Start Time'; 
-    SvIfo{1, width(SvIfo)+1} = t0;
+    SvIfo{1, width(SvIfo)+1} = char(t0);
     SvIfo{2, width(SvIfo)-1} = 'Sample Rate (Hz)';
-    SvIfo{2, width(SvIfo)} = SampleRate;
+    SvIfo{2, width(SvIfo)} = num2str(SampleRate);
     writecell(SvIfo, svname_+" - info.csv");
     end
 
