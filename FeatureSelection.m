@@ -175,10 +175,13 @@ end
 %% hilbert, mag/phase
 
 % pink noise correction factor 
-pinkP = (10.^pinkcoef(2,:)) .* bandcent'.^pinkcoef(1,:); 
+% pinkP = (10.^pinkcoef(2,:)) .* bandcent'.^pinkcoef(1,:); 
+f = [log10(bandcent); ones(size(bandcent))]';
+pinkP = f*pinkcoef;
 % row = freq band; col = channel
-pinkP = sqrt( 10.^pinkP' ); % Power (dB) -> amplitude
-pinkP = pinkP'; pinkP = pinkP(:)'; % unfolded 
+pinkP = sqrt( 10.^(pinkP/10)' ); % Power (dB) -> amplitude
+%pinkP = pinkP'; 
+pinkP = pinkP(:)'; % unfolded 
 
 for Ti = 1:height(alltbls)
     disp(['Hilbert: ',num2str(Ti),' of ',num2str(height(alltbls))])
