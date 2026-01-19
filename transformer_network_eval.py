@@ -365,10 +365,7 @@ plt.show()
 # reconstruct raw signal from filtered bands 
 Ysim_grouped = Ysim[:, :numgroups * groupsize]
 Ytrue_grouped = Ytrue[:, :numgroups * groupsize]
-print("Ysim_grouped shape : ", Ysim_grouped.shape)
-print("Ytrue_grouped shape: ", Ytrue_grouped.shape)
 mse_grouped = mse[:numgroups * groupsize].reshape(groupsize, numgroups)
-print("MSE_grouped shape  : ", mse_grouped.shape)
 """
 Yimagsim_grouped = Ysim[:, (numgroups*groupsize):(2*numgroups*groupsize)].reshape(-1, groupsize, numgroups)
 Yimagtrue_grouped = Ytrue[:, (numgroups*groupsize):(2*numgroups*groupsize)].reshape(-1, groupsize, numgroups)
@@ -379,25 +376,17 @@ Ptrue = math.log10( Ytrue_grouped**2 + Yimagtrue_grouped**2 )
 """
 pinksim = Ysim[:, 2*(numgroups * groupsize):]
 pinktrue = Ytrue[:, 2*(numgroups * groupsize):]
-print("pinksim shape: ", pinksim.shape)
-print("pinktrue shape: ", pinktrue.shape)
 f = np.tile(f, (groupsize,1)).T.flatten()
 f = np.column_stack((np.log10(f), np.ones(len(f)))).T
 Ppinksim = np.power(10, pinksim @ f) ** .5
 Ppinktrue = np.power(10, pinktrue @ f) ** .5
-print("Ppinksim shape: ", Ppinksim.shape)
-print("Ppinktrue shape: ", Ppinktrue.shape)
 Ysim_grouped = Ysim_grouped * Ppinksim
 Ytrue_grouped = Ytrue_grouped * Ppinktrue
 Ysim_grouped = Ysim_grouped.reshape(-1, numgroups, groupsize)
 Ytrue_grouped = Ytrue_grouped.reshape(-1, numgroups, groupsize)
-print("Ysim_grouped shape : ", Ysim_grouped.shape)
-print("Ytrue_grouped shape: ", Ytrue_grouped.shape)
 Ysim_recon = np.sum(Ysim_grouped, axis=-2)
 Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
 mse_recon = np.mean((Ysim_recon - Ytrue_recon)**2, axis=0) / np.mean((Ytrue_recon)**2, axis=0)
-print("Reconstructed Ytrue shape: ", Ytrue_recon.shape)
-print("Reconstructed Ysim shape : ", Ysim_recon.shape)
 
 # show a bar plot of mse per feature
 plt.figure()
