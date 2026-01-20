@@ -37,7 +37,7 @@ bandcent = .5 * (bandbounds(2:end) + bandbounds(1:(end-1)));
 
 % calc power spectrum 
 SampleRate = SampleRates(1);
-[pBL, fBL] = periodogram(dtaBL.Variables, [], [], SampleRate, 'power');
+[pBL, fBL] = periodogram(dtaBL.Variables, [], [], SampleRate, 'psd');
 pBL = 10*log10(pBL);
 
 % correct for pink noise 
