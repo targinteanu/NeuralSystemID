@@ -12,7 +12,7 @@ hzn = .05 # EVALUATION sample time, s
 groupsize=16
 numgroups=4
 f = np.array([4,10,27,70]) # freq band center freqs
-netfile = "neural_network_pytorch_1639e948afec6ecef1e37515d791e25403ee7dd4.pth"
+netfile = "neural_network_pytorch_d18e9226493597fb1dcf1e1b55104d41344f801c.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -23,8 +23,10 @@ hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT dat
 # Load info
 # ------------------------
 info_df = pd.read_csv("info.csv")
-fs = info_df.iloc[0, 5]                  # sampling frequency (Hz)
+fs = info_df.iloc[0, 6]                  # sampling frequency (Hz)
+print("Sampling frequency (Hz):", fs)
 feature_names = info_df.iloc[:, 0].values
+feature_correction = info_df.iloc[:, 3].values
 
 # ------------------------
 # Load raw data
@@ -363,8 +365,8 @@ plt.tight_layout()
 plt.show()
 
 # reconstruct raw signal from filtered bands 
-Ysim_grouped = Ysim[:, :numgroups * groupsize]
-Ytrue_grouped = Ytrue[:, :numgroups * groupsize]
+Ysim_grouped = Ysim[:, :numgroups * groupsize] * feature_correction[:numgroups * groupsize]
+Ytrue_grouped = Ytrue[:, :numgroups * groupsize] * feature_correction[:numgroups * groupsize]
 mse_grouped = mse[:numgroups * groupsize].reshape(groupsize, numgroups)
 """
 Yimagsim_grouped = Ysim[:, (numgroups*groupsize):(2*numgroups*groupsize)].reshape(-1, groupsize, numgroups)
@@ -374,6 +376,7 @@ print("Yimagtrue_grouped shape: ", Yimagtrue_grouped.shape)
 Psim = math.log10( Ysim_grouped**2 + Yimagsim_grouped**2 )
 Ptrue = math.log10( Ytrue_grouped**2 + Yimagtrue_grouped**2 )
 """
+"""
 pinksim = Ysim[:, 2*(numgroups * groupsize):]
 pinktrue = Ytrue[:, 2*(numgroups * groupsize):]
 f = np.tile(f, (groupsize,1)).T.flatten()
@@ -382,6 +385,7 @@ Ppinksim = np.power(10, pinksim @ f) ** .5
 Ppinktrue = np.power(10, pinktrue @ f) ** .5
 Ysim_grouped = Ysim_grouped * Ppinksim
 Ytrue_grouped = Ytrue_grouped * Ppinktrue
+"""
 Ysim_grouped = Ysim_grouped.reshape(-1, numgroups, groupsize)
 Ytrue_grouped = Ytrue_grouped.reshape(-1, numgroups, groupsize)
 Ysim_recon = np.sum(Ysim_grouped, axis=-2)
