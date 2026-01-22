@@ -2,7 +2,7 @@
 % Explore preprocessing steps to see which features depend on (A) previous
 % values of the same features and (B) stimulation 
 
-hzns = [.05, .1, 1]; % s
+hzns = [.05]; % s
 
 thisfilename = mfilename("fullpath");
 
@@ -176,6 +176,7 @@ end
 %% hilbert, mag/phase
 
 % pink noise correction factor 
+%{
 % pinkP = (10.^pinkcoef(2,:)) .* bandcent'.^pinkcoef(1,:); 
 f = [log10(bandcent); ones(size(bandcent))]';
 pinkP = f*pinkcoef;
@@ -183,6 +184,20 @@ pinkP = f*pinkcoef;
 pinkP = sqrt( 10.^(pinkP/10)' ); % Power (dB) -> amplitude
 %pinkP = pinkP'; 
 pinkP = pinkP(:)'; % unfolded 
+%}
+Tfilt = alltbls{1,2}{1};
+Xabs = envelope(Tfilt.Variables);
+P = log10(Xabs.^2)';
+F = repmat(bandcent, length(chanlistsel), 1); F = F(:);
+%F = repmat(F, 1, width(P));
+%F = F(:); P = P(:);
+F = [log10(F), ones(size(F))];
+pinkcoef2 = F\P;
+%pinkP = [log10(bandcent)', ones(size(bandcent))']*pinkcoef2;
+pinkP = F*pinkcoef2;
+pinkP = sqrt(10.^pinkP');
+%pinkP = repmat(pinkP, length(chanlistsel), 1); pinkP = pinkP(:)';
+pinkP = median(pinkP);
 
 for Ti = 1:height(alltbls)
     disp(['Hilbert: ',num2str(Ti),' of ',num2str(height(alltbls))])
