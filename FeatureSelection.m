@@ -166,6 +166,7 @@ for Ti = 1:height(alltbls)
         end
 
         %TTfilt{Tj} = [Tfilt, Tfiltall];
+        Tfilt.Properties.Events = Traw.Properties.Events;
         TTfilt{Tj} = Tfilt;
         TTfilt{Tj}.Properties.Description = Traw.Properties.Description;
     end
