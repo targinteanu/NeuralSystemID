@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import bisect
 from myPytorchModels import TimeSeriesTransformer
+from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
 hzn = .05 # EVALUATION sample time, s
@@ -20,132 +21,11 @@ hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT dat
 
 # Prepare the Data ---------------------------------------------------------------------
 
-# ------------------------
-# Load info
-# ------------------------
-info_df = pd.read_csv("info.csv")
-fs = info_df.iloc[0, 5]                  # sampling frequency (Hz)
-print("Sampling frequency (Hz):", fs)
-feature_names = info_df.iloc[:, 0].values
-#feature_correction = info_df.iloc[:, 3].values
-
-# ------------------------
-# Load raw data
-# ------------------------
-baseline_df = pd.read_csv("baselinedataraw.csv")
-baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
-baseline_data = baseline_df.iloc[:, 1:].values           # data columns
-
-iBLstart = math.floor(0.995*baseline_data.shape[0])
-baseline_time = baseline_time[iBLstart:]
-baseline_data = baseline_data[iBLstart:, :]
-
-df = pd.read_csv("dataraw.csv")
-time = df.iloc[:, 0].values            # time column (seconds)
-data = df.iloc[:, 1:].values           # data columns
-
-# ------------------------
-# Determine outliers
-# ------------------------
-threshsd = 3 # standard deviations 
-threshprop = .5 # proportion of features
-BLmean = np.mean(baseline_data, axis=0)
-BLstd = np.std(baseline_data, axis=0)
-BLisout = np.abs(baseline_data - BLmean) > (threshsd * BLstd)
-BLisnoise = np.sum(BLisout, axis=1) > (threshprop * baseline_data.shape[1])
-isout = np.abs(data - BLmean) > (threshsd * BLstd)
-isnoise = np.sum(isout, axis=1) > (threshprop * data.shape[1])
-
-# ------------------------
-# Load processed data
-# ------------------------
-baseline_df = pd.read_csv("baselinedata.csv")
-baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
-baseline_data = baseline_df.iloc[:, 1:].values           # data columns
-
-baseline_time = baseline_time[iBLstart:]
-baseline_data = baseline_data[iBLstart:, :]
-
-df = pd.read_csv("data.csv")
-time = df.iloc[:, 0].values            # time column (seconds)
-data = df.iloc[:, 1:].values           # data columns
-
-# ------------------------
-# Load events
-# ------------------------
-events_df = pd.read_csv("events.csv")
-event_times = events_df.iloc[:, 0].values  # assume first column is event time in seconds
-event_times = np.sort(event_times)         # ensure sorted
-
-# For fast lookup using binary search
-def count_events_in_window(t, window=0.2):
-    """
-    Count how many event_times fall in (t - window, t].
-    Uses bisect for O(log n) search.
-    """
-    left = bisect.bisect_right(event_times, t - window)
-    right = bisect.bisect_right(event_times, t)
-    return right - left
-
-# ------------------------
-# Compute event count for each row
-# ------------------------
-event_counts = np.array([count_events_in_window(t, 1.2/fs) for t in time])
-event_counts = event_counts.reshape(-1, 1)
-
-# Append event_counts as an additional input feature
-data_aug = np.hstack([data, event_counts])
-# Now each input row has: [original data..., event_count]
-
-# ------------------------
-# Build input-output pairs 
-# ------------------------
-dt_tol = 0.15 * dt_target
-drow_target = int(dt_target * fs)  # number of rows 
-
-X_list = []
-Y_list = []
-
-# create sliding windows
-def create_windows(data, seq_len=128, horizon=1):
-    X, Y = [], []
-    for i in range(len(data) - seq_len - horizon + 1):
-        X.append(data[i:i+seq_len])
-        Y.append(data[i+seq_len + horizon - 1])
-    return np.array(X), np.array(Y)
-
-# --- baseline data ---
-#Nbl = len(baseline_df)
-Nbl = len(baseline_data)
-for iStart in range(drow_target):
-    inputs = []
-    for i in range(iStart, (Nbl - drow_target), drow_target):
-        dt = baseline_time[i+drow_target] - baseline_time[i]
-        if (abs(dt - dt_target) <= dt_tol) and (not BLisnoise[i]):
-            inputs.append(baseline_data[i, :]) 
-        else:
-            if len(inputs) > seq_len+hzn_len:
-                x, y = create_windows(inputs, seq_len, hzn_len)
-                if x is not None:
-                    X_list.append(x)
-                    Y_list.append(y)
-            inputs = []
-    # catch trailing segment
-    if len(inputs) > seq_len+hzn_len:
-        x, y = create_windows(inputs, seq_len, hzn_len)
-        if x is not None:
-            X_list.append(x)
-            Y_list.append(y)
-
-X = np.concatenate(X_list, axis=0)
-Y = np.concatenate(Y_list, axis=0)
-
+fs, feature_names, Xs, Ys, X, Y, _, _, _, _ = prepTimeSeqData(seq_len=seq_len, hzn_len=hzn_len, drawFromStart=False)
+Xs = torch.tensor(Xs, dtype=torch.float32)
+Ys = torch.tensor(Ys, dtype=torch.float32)
 X = torch.tensor(X, dtype=torch.float32)
 Y = torch.tensor(Y, dtype=torch.float32)
-
-print("Pairs created:", len(X))
-print("Input shape :", X.shape)   
-print("Output shape:", Y.shape)
 
 num_feat = X.shape[-1]
 
