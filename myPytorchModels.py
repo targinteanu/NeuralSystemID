@@ -246,7 +246,7 @@ class TimeSeriesTransformer(nn.Module):
 
         # stage 3B: feature-only processing to get to dim_model
         self.fc1 = nn.Linear(mlp_in, 256)
-        self.fc2 = nn.Linear(256, 256)
+        #self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 128)
         self.fc4 = nn.Linear(128, 64)
         self.fc5 = nn.Linear(64, dim_model)
@@ -268,8 +268,8 @@ class TimeSeriesTransformer(nn.Module):
 
         # Output head for next-step prediction ------------------------------------------------
         self.fco1 = nn.Linear(dim_model, 64)
-        self.fco2 = nn.Linear(64, 64)
-        self.fco3 = nn.Linear(64, 64)
+        #self.fco2 = nn.Linear(64, 64)
+        #self.fco3 = nn.Linear(64, 64)
         self.fco4 = nn.Linear(64, dim_out)
 
     def forward(self, x):
@@ -313,7 +313,7 @@ class TimeSeriesTransformer(nn.Module):
 
         # Stage 3 MLP
         h = F.gelu(self.fc1(h))
-        h = F.gelu(self.fc2(h))
+        #h = F.gelu(self.fc2(h))
         h = F.gelu(self.fc3(h))
         h = F.gelu(self.fc4(h))
         h = F.gelu(self.fc5(h))
@@ -326,8 +326,8 @@ class TimeSeriesTransformer(nn.Module):
         # Output head --------------------------------------------------------------------
         y = z[:, -1, :]  # (B, dim_model)
         y = F.gelu(self.fco1(y))
-        y = F.gelu(self.fco2(y))
-        y = F.gelu(self.fco3(y))
+        #y = F.gelu(self.fco2(y))
+        #y = F.gelu(self.fco3(y))
         out = self.fco4(y)  # (B, dim_out)
         return out
 
@@ -354,8 +354,8 @@ class TimeSeriesConvTransformer(nn.Module):
         # time conv properties
         # These should all be kept smaller than time_len
         K1 = 8
-        K2 = 32
-        K3 = 64
+        K2 = 64
+        #K3 = 64
 
         # preprocessing features -------------------------------------------
         
@@ -382,12 +382,13 @@ class TimeSeriesConvTransformer(nn.Module):
         # stage 3A: time-only processing to get to len_model
         self.time_conv1 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K1)
         self.time_conv2 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K2)
-        self.time_conv3 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K3)
-        self.time_fc = nn.Linear(time_len - K1 - K2 - K3 + 3, len_model)
+        #self.time_conv3 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K3)
+        #self.time_fc = nn.Linear(time_len - K1 - K2 - K3 + 3, len_model)
+        self.time_fc = nn.Linear(time_len - K1 - K2 + 2, len_model)
 
         # stage 3B: feature-only processing to get to dim_model
         self.fc1 = nn.Linear(mlp_in, 256)
-        self.fc2 = nn.Linear(256, 256)
+        #self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 128)
         self.fc4 = nn.Linear(128, 64)
         self.fc5 = nn.Linear(64, dim_model)
@@ -409,8 +410,8 @@ class TimeSeriesConvTransformer(nn.Module):
 
         # Output head for next-step prediction ------------------------------------------------
         self.fco1 = nn.Linear(dim_model, 64)
-        self.fco2 = nn.Linear(64, 64)
-        self.fco3 = nn.Linear(64, 64)
+        #self.fco2 = nn.Linear(64, 64)
+        #self.fco3 = nn.Linear(64, 64)
         self.fco4 = nn.Linear(64, dim_out)
 
     def forward(self, x):
@@ -457,13 +458,13 @@ class TimeSeriesConvTransformer(nn.Module):
         h = h.permute(0,2,1) # (B, dim_model, T)
         h = F.gelu(self.time_conv1(h))
         h = F.gelu(self.time_conv2(h))
-        h = F.gelu(self.time_conv3(h))
+        #h = F.gelu(self.time_conv3(h))
         h = F.gelu(self.time_fc(h))
         h = h.permute(0,2,1) # (B, T, dim_model)
 
         # Stage 3B MLP
         h = F.gelu(self.fc1(h))
-        h = F.gelu(self.fc2(h))
+        #h = F.gelu(self.fc2(h))
         h = F.gelu(self.fc3(h))
         h = F.gelu(self.fc4(h))
         h = F.gelu(self.fc5(h))
@@ -473,20 +474,11 @@ class TimeSeriesConvTransformer(nn.Module):
         h = self.pos_emb(h)
         z = self.encoder(h)
 
-        # time processing
-        z = z.permute(0, 2, 1)  # (B, dim_model, T)
-        """
-        z = F.gelu(self.time_fc1(z))
-        z = F.gelu(self.time_fc2(z))
-        z = F.gelu(self.time_fc3(z)) # (B, dim_model, 1)
-        #z = z.permute(0, 2, 1)  # (B, T, 1)
-        """
-
         # Output head --------------------------------------------------------------------
-        y = z[:, :, -1]  # (B, dim_model)
+        y = z[:, -1, :]  # (B, dim_model)
         y = F.gelu(self.fco1(y))
-        y = F.gelu(self.fco2(y))
-        y = F.gelu(self.fco3(y))
+        #y = F.gelu(self.fco2(y))
+        #y = F.gelu(self.fco3(y))
         out = self.fco4(y)  # (B, dim_out)
         return out
 
