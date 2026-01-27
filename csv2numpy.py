@@ -412,7 +412,7 @@ def prepTimeSeqData(
         inputs_raw = []
         for i in range(iStart, (N - drow_target), drow_target):
             dt = time[i+drow_target] - time[i]
-            if (abs(dt - dt_target) <= dt_tol) and (not BLisnoise[i]):
+            if (abs(dt - dt_target) <= dt_tol) and (not isnoise[i]):
                 inputs.append(data_aug[i, :]) 
                 inputs_raw.append(data_aug_raw[i, :])
             else:
