@@ -145,7 +145,7 @@ def run_simulation(X, Y):
     # get first, middle, and end of sorted_indices
     example_indices = [sorted_indices[0], sorted_indices[len(sorted_indices)//4], sorted_indices[len(sorted_indices)//2], sorted_indices[3*len(sorted_indices)//4], sorted_indices[-1]]
     # Create a single figure with vertically stacked subplots
-    fig, axes = plt.subplots(len(example_indices), 1, sharex=True, figsize=(10, 8))
+    fig, axes = plt.subplots(len(example_indices)+1, 1, sharex=True, figsize=(10, 8))
     for ax, idx in zip(axes, example_indices):
         ax.plot(Ytrue_recon[:, idx], label="True")
         ax.plot(Ysim_recon[:, idx], label="Simulated", alpha=0.7)
@@ -153,7 +153,12 @@ def run_simulation(X, Y):
         ax.set_title(f"Channel: {idx} (MSE: {mse_recon[idx]:.4f}; corr: {rho_recon[idx]:.4f})")
         ax.legend()
         ax.grid(axis='both')
-    axes[-1].set_xlabel("Sample")  # Set x-label only on the last subplot
+    # plot stim channel (last channel)
+    axes[-1].plot(X[:,-1,-1])
+    axes[-1].set_title("Stimulus Input")
+    axes[-1].set_ylabel("Count")
+    axes[-1].grid(axis='both')
+    axes[-1].set_xlabel("Time Sample")  # Set x-label only on the last subplot
     plt.tight_layout()
     plt.show()
 
