@@ -1,11 +1,7 @@
 import math
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import pandas as pd
 import matplotlib.pyplot as plt
-import bisect
 from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
@@ -14,14 +10,15 @@ hzn = .05 # EVALUATION sample time, s
 groupsize=16
 numgroups=4
 f = np.array([4,10,27,70]) # freq band center freqs
-netfile = "neural_network_pytorch_1639e948afec6ecef1e37515d791e25403ee7dd4.pth"
+netfile = "neural_network_pytorch_3c099e7206580496befc1bd0c2617dfdc040b4bb.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 
 # Prepare the Data ---------------------------------------------------------------------
 
-fs, feature_names, Xs, Ys, X, Y, _, _, _, _ = prepTimeSeqData(seq_len=seq_len, hzn_len=hzn_len, drawFromStart=False)
+fs, feature_names, Xs, Ys, X, Y, _, _, _, _ = prepTimeSeqData(
+    seq_len=seq_len, hzn_len=hzn_len, drawFromStart=False, maxNumel=1e9)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 X = torch.tensor(X, dtype=torch.float32)
@@ -32,7 +29,7 @@ num_feat = X.shape[-1]
 # -----------------------------------------------------------------------------------------------
 
 # define mdl struct ====================================================================
-model = TimeSeriesTransformer(dim_in=num_feat, dim_out=num_feat, time_len=seq_len, group_size=groupsize, num_groups=numgroups)
+model = TimeSeriesTransformer(dim_in=num_feat, dim_out=num_feat-1, time_len=seq_len, group_size=groupsize, num_groups=numgroups)
 model.load_state_dict(torch.load(netfile))
 
 # simulations -----------------------------------------------------------------------------------
@@ -43,15 +40,15 @@ progcur = 0.0
 prognext = progtick
 print("Simulating...")
 for i0 in range(len(X) - hzn_len):
-    xi = X[i0, :, :].reshape(1,-1,num_feat)
+    xi = X[i0, :, :].reshape(1,-1,X.shape[-1])
     for i in range(hzn_len):
         with torch.no_grad():
             yi = model(xi).numpy().flatten()
         # prepare next input
         if i < hzn_len - 1:
-            #event_count_next = X_all_np[i0 + i + 1, -1]  # keep using original event count
-            #xi = torch.tensor(np.hstack([yi, event_count_next]).reshape(1, -1), dtype=torch.float32)
-            xi = torch.tensor(np.vstack([xi[0, 1:, :], yi]).reshape(1,-1,X.shape[-1]), dtype=torch.float32)
+            event_count_next = X[i0 + i + 1, -1, -1]  # keep using original event count
+            yi_aug = np.hstack([yi, event_count_next])
+            xi = torch.tensor(np.vstack([xi[0, 1:, :], yi_aug]).reshape(1,-1,X.shape[-1]), dtype=torch.float32)
     Ysim.append(yi)
     progcur += 1.0/(len(X) - hzn_len)
     if progcur >= prognext:
