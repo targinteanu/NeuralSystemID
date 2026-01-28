@@ -341,10 +341,10 @@ def prepTimeSeqData(
     def create_windows(data, data2, seq_len=128, horizon=1):
         X, Y, W, Z = [], [], [], []
         for i in range(len(data) - seq_len - horizon + 1):
-            X.append(data[i:i+seq_len])
-            Y.append(data[i+seq_len + horizon - 1])
-            W.append(data2[i:i+seq_len])
-            Z.append(data2[i+seq_len + horizon - 1])
+            X.append(data[i:i+seq_len, :])
+            Y.append(data[i+seq_len + horizon - 1, :-1])  # exclude event count in output
+            W.append(data2[i:i+seq_len, :])
+            Z.append(data2[i+seq_len + horizon - 1, :-1])  # exclude event count in output
         return np.array(X), np.array(Y), np.array(W), np.array(Z)
 
     # ------------------------
@@ -369,6 +369,8 @@ def prepTimeSeqData(
                 inputs_raw.append(baseline_data_aug_raw[i, :])
             else:
                 if len(inputs) > seq_len+hzn_len:
+                    inputs = np.array(inputs)
+                    inputs_raw = np.array(inputs_raw)
                     x, y, xr, yr = create_windows(inputs, inputs_raw, seq_len, hzn_len)
                     if x is not None:
                         X_list.append(x)
@@ -379,6 +381,8 @@ def prepTimeSeqData(
                 inputs_raw = []
         # catch trailing segment
         if len(inputs) > seq_len+hzn_len:
+            inputs = np.array(inputs)
+            inputs_raw = np.array(inputs_raw)
             x, y, xr, yr = create_windows(inputs, inputs_raw, seq_len, hzn_len)
             if x is not None:
                 X_list.append(x)
@@ -417,6 +421,8 @@ def prepTimeSeqData(
                 inputs_raw.append(data_aug_raw[i, :])
             else:
                 if len(inputs) > seq_len+hzn_len:
+                    inputs = np.array(inputs)
+                    inputs_raw = np.array(inputs_raw)
                     x, y, xr, yr = create_windows(inputs, inputs_raw, seq_len, hzn_len)
                     if x is not None:
                         X_list.append(x)
@@ -427,6 +433,8 @@ def prepTimeSeqData(
                 inputs_raw = []
         # catch trailing segment
         if len(inputs) > seq_len+hzn_len:
+            inputs = np.array(inputs)
+            inputs_raw = np.array(inputs_raw)
             x, y, xr, yr = create_windows(inputs, inputs_raw, seq_len, hzn_len)
             if x is not None:
                 X_list.append(x)
