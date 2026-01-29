@@ -17,12 +17,12 @@ hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT dat
 
 # Prepare the Data ---------------------------------------------------------------------
 
-fs, feature_names, Xs, Ys, X, Y, _, _, _, _ = prepTimeSeqData(
+fs, feature_names, Xs, Ys, Xb, Yb, _, _, _, _ = prepTimeSeqData(
     seq_len=seq_len, hzn_len=hzn_len, drawFromStart=False, maxNumel=1e8)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
-Xb = torch.tensor(X, dtype=torch.float32)
-Yb = torch.tensor(Y, dtype=torch.float32)
+Xb = torch.tensor(Xb, dtype=torch.float32)
+Yb = torch.tensor(Yb, dtype=torch.float32)
 
 num_feat = X.shape[-1]
 
