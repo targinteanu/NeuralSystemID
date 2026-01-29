@@ -24,12 +24,10 @@ Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
 Yb = torch.tensor(Yb, dtype=torch.float32)
 
-num_feat = X.shape[-1]
-
 # -----------------------------------------------------------------------------------------------
 
 # define mdl struct ====================================================================
-model = TimeSeriesTransformer(dim_in=num_feat, dim_out=num_feat-1, time_len=seq_len, group_size=groupsize, num_groups=numgroups)
+model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups)
 model.load_state_dict(torch.load(netfile))
 
 # simulations -----------------------------------------------------------------------------------
