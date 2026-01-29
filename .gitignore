@@ -36,3 +36,4 @@ eventsfilt.csv
 eventsraw.csv
 *.csv
 *.pth
+/__pycache__
