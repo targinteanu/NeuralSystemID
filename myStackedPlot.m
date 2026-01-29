@@ -30,6 +30,7 @@ for c = 1:N
         iv = v;
         v = tbl.Properties.VariableNames{v};
     else
+        v = char(v);
         if ~sum(strcmp(tbl.Properties.VariableNames, v))
             iv = find(contains(tbl.Properties.VariableNames, v));
             if isempty(iv)
@@ -37,7 +38,7 @@ for c = 1:N
             end
             if length(iv) > 1
                 warning(['Multiple table variables closely match ',v,...
-                    '; choosing ',tbl.Properties.VariableNames(iv(1))]);
+                    '; choosing ',tbl.Properties.VariableNames{iv(1)}]);
             end
             iv = iv(1);
             v = tbl.Properties.VariableNames(iv);
