@@ -62,7 +62,7 @@ def run_simulation(X, Y):
     Ytrue = Y[hzn_len:, :].numpy()
     print("Ysim shape :", Ysim.shape)
     print("Ytrue shape:", Ytrue.shape)
-    mse = np.mean((Ysim - Ytrue)**2, axis=0) / np.mean((Ytrue)**2, axis=0)
+    mse = np.mean((Ysim - Ytrue)**2, axis=0) / (np.mean((Ytrue)**2, axis=0) + np.finfo(float).eps)
     rho = np.array([ np.corrcoef(Ysim[:,i], Ytrue[:,i])[0,1] for i in range(Ytrue.shape[1]) ])
     print("Mean MSE:", np.mean(mse))
     print("Mean correlation:", np.mean(rho))
@@ -122,7 +122,7 @@ def run_simulation(X, Y):
     Ytrue_grouped = Ytrue_grouped.reshape(-1, numgroups, groupsize)
     Ysim_recon = np.sum(Ysim_grouped, axis=-2)
     Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
-    mse_recon = np.mean((Ysim_recon - Ytrue_recon)**2, axis=0) / np.mean((Ytrue_recon)**2, axis=0)
+    mse_recon = np.mean((Ysim_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
     rho_recon = np.array([ np.corrcoef(Ysim_recon[:,i], Ytrue_recon[:,i])[0,1] for i in range(Ytrue_recon.shape[1]) ])
 
     # show a bar plot of mse per feature
