@@ -499,6 +499,9 @@ for H = 1:height(svtbls)
         SvIfoPink = [];
     end
     %}
+    if isempty(TT.Properties.VariableUnits)
+        TT.Properties.VariableUnits = repmat("", 1, width(TT));
+    end
     SvIfo = ['Channel Name', TT.Properties.VariableNames; ...
              'Unit', TT.Properties.VariableUnits; ...
              'Description', TT.Properties.VariableDescriptions]';
