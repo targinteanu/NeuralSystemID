@@ -28,7 +28,7 @@ def prepTimeData(
     # Load info
     # ------------------------
     info_df = pd.read_csv(infofile)
-    fs = info_df.iloc[0, 5]                  # sampling frequency (Hz)
+    fs = info_df.iloc[0, 6]                  # sampling frequency (Hz)
     print("Sampling frequency (Hz):", fs)
     feature_names = info_df.iloc[:, 0].values
     maxPairs = math.floor(maxNumel / (len(feature_names)))
@@ -225,7 +225,7 @@ def prepTimeSeqData(
     # Load info
     # ------------------------
     info_df = pd.read_csv(infofile)
-    fs = info_df.iloc[0, 5]                  # sampling frequency (Hz)
+    fs = info_df.iloc[0, 6]                  # sampling frequency (Hz)
     print("Sampling frequency (Hz):", fs)
     feature_names = info_df.iloc[:, 0].values
     maxPairs = math.floor(maxNumel / (seq_len * len(feature_names)))
