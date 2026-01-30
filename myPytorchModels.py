@@ -212,7 +212,7 @@ class TimeSeriesTransformer(nn.Module):
     final output. 
     """
 
-    def __init__(self, dim_in, dim_out, time_len=64, group_size=7, num_groups=7):
+    def __init__(self, dim_in, dim_out, time_len=64, group_size=7, num_groups=7, tuple_size=2):
         super().__init__()
 
         # transformer properties
@@ -229,13 +229,14 @@ class TimeSeriesTransformer(nn.Module):
 
         self.num_groups = num_groups
         self.group_size = group_size
+        self.tuple_size = tuple_size
         self.num_pairs = num_groups * group_size  
-        self.used_for_pairing = self.num_pairs * 2
+        self.used_for_pairing = self.num_pairs * tuple_size
         self.leftover_dim = dim_in - self.used_for_pairing
         self.pair_output = 8
 
         # Stage 1: pairwise linear 
-        self.pair_fc1 = nn.Linear(2, C1)  
+        self.pair_fc1 = nn.Linear(tuple_size, C1)  
         self.pair_fc2 = nn.Linear(C1, self.pair_output)  
 
         # Stage 2: linear over flattened group
@@ -286,7 +287,8 @@ class TimeSeriesTransformer(nn.Module):
         B = x.size(0)
 
         x_left = x[:, :, self.used_for_pairing:]  # (B,T,n)
-        x_used = x[:, :, :self.used_for_pairing]  # (B,T,2N)
+        x_used = x[:, :, :self.used_for_pairing]  # (B,T,kN)
+        """
         x_pairs = torch.stack( 
             (
                 x_used[:, :, :self.num_pairs],             # first half
@@ -294,6 +296,8 @@ class TimeSeriesTransformer(nn.Module):
             ),
             dim=3
         )  # (B,T,N,2)
+        """
+        x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N,k)
 
         # Stage 1
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
@@ -341,7 +345,7 @@ class TimeSeriesConvTransformer(nn.Module):
     TO DO: try combining stage 3A and 3B into a single conv processing stream without groups.
     """
 
-    def __init__(self, dim_in, dim_out, time_len=256, group_size=7, num_groups=7):
+    def __init__(self, dim_in, dim_out, time_len=256, group_size=7, num_groups=7, tuple_size=2):
         super().__init__()
 
         # transformer properties
@@ -364,13 +368,14 @@ class TimeSeriesConvTransformer(nn.Module):
 
         self.num_groups = num_groups
         self.group_size = group_size
+        self.tuple_size = tuple_size
         self.num_pairs = num_groups * group_size  
-        self.used_for_pairing = self.num_pairs * 2
+        self.used_for_pairing = self.num_pairs * tuple_size
         self.leftover_dim = dim_in - self.used_for_pairing
         self.pair_output = 8
 
         # Stage 1: pairwise linear 
-        self.pair_fc1 = nn.Linear(2, C1) 
+        self.pair_fc1 = nn.Linear(tuple_size, C1) 
         self.pair_fc2 = nn.Linear(C1, self.pair_output) 
 
         # Stage 2: linear over flattened group
@@ -428,7 +433,8 @@ class TimeSeriesConvTransformer(nn.Module):
         B = x.size(0)
 
         x_left = x[:, :, self.used_for_pairing:]  # (B,T,n)
-        x_used = x[:, :, :self.used_for_pairing]  # (B,T,2N)
+        x_used = x[:, :, :self.used_for_pairing]  # (B,T,kN)
+        """
         x_pairs = torch.stack( 
             (
                 x_used[:, :, :self.num_pairs],            # first half
@@ -436,6 +442,8 @@ class TimeSeriesConvTransformer(nn.Module):
             ),
             dim=3
         )  # (B,T,N,2)
+        """
+        x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N,k)
 
         # Stage 1
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
