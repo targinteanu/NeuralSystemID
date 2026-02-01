@@ -246,11 +246,14 @@ class TimeSeriesTransformer(nn.Module):
         mlp_in = (num_groups * C2) + (group_size * C2) + self.leftover_dim
 
         # stage 3B: feature-only processing to get to dim_model
+        """
         self.fc1 = nn.Linear(mlp_in, 256)
         #self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 128)
         self.fc4 = nn.Linear(128, 64)
         self.fc5 = nn.Linear(64, dim_model)
+        """
+        self.fc1 = nn.Linear(mlp_in, dim_model)
 
         # ---------------------------------------------------------------------------------------
 
@@ -267,11 +270,19 @@ class TimeSeriesTransformer(nn.Module):
         )
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
+        # MLP latent dynamics 
+        self.fc2 = nn.Linear(dim_model, 256)
+        self.fc3 = nn.Linear(256, 256)
+        self.fc4 = nn.Linear(256, dim_model)
+
         # Output head for next-step prediction ------------------------------------------------
+        """
         self.fco1 = nn.Linear(dim_model, 64)
         #self.fco2 = nn.Linear(64, 64)
         #self.fco3 = nn.Linear(64, 64)
         self.fco4 = nn.Linear(64, dim_out)
+        """
+        self.fco1 = nn.Linear(dim_model, dim_out)
 
     def forward(self, x):
         """
@@ -318,22 +329,29 @@ class TimeSeriesTransformer(nn.Module):
         # Stage 3 MLP
         h = F.gelu(self.fc1(h))
         #h = F.gelu(self.fc2(h))
+        """
         h = F.gelu(self.fc3(h))
         h = F.gelu(self.fc4(h))
         h = F.gelu(self.fc5(h))
+        """
 
         # Transformer --------------------------------------------------------------------
 
         h = self.pos_emb(h)
         z = self.encoder(h)
 
-        # Output head --------------------------------------------------------------------
+        # latent dynamics 
         y = z[:, -1, :]  # (B, dim_model)
+        y = F.gelu(self.fc2(y))
+        y = F.gelu(self.fc3(y))
+        y = F.gelu(self.fc4(y))
+
+        # Output head --------------------------------------------------------------------
         y = F.gelu(self.fco1(y))
         #y = F.gelu(self.fco2(y))
         #y = F.gelu(self.fco3(y))
-        out = self.fco4(y)  # (B, dim_out)
-        return out
+        #y = self.fco4(y)  # (B, dim_out)
+        return y
 
 
 class TimeSeriesConvTransformer(nn.Module):
