@@ -273,16 +273,14 @@ class TimeSeriesTransformer(nn.Module):
         # MLP latent dynamics 
         self.fc2 = nn.Linear(dim_model, 256)
         self.fc3 = nn.Linear(256, 256)
-        self.fc4 = nn.Linear(256, dim_model)
+        self.fc4 = nn.Linear(256, 256)
+        self.fc5 = nn.Linear(256, dim_model)
 
         # Output head for next-step prediction ------------------------------------------------
-        """
         self.fco1 = nn.Linear(dim_model, 64)
         #self.fco2 = nn.Linear(64, 64)
         #self.fco3 = nn.Linear(64, 64)
         self.fco4 = nn.Linear(64, dim_out)
-        """
-        self.fco1 = nn.Linear(dim_model, dim_out)
 
     def forward(self, x):
         """
@@ -345,12 +343,13 @@ class TimeSeriesTransformer(nn.Module):
         y = F.gelu(self.fc2(y))
         y = F.gelu(self.fc3(y))
         y = F.gelu(self.fc4(y))
+        y = F.gelu(self.fc5(y))
 
         # Output head --------------------------------------------------------------------
         y = F.gelu(self.fco1(y))
         #y = F.gelu(self.fco2(y))
         #y = F.gelu(self.fco3(y))
-        #y = self.fco4(y)  # (B, dim_out)
+        y = self.fco4(y)  # (B, dim_out)
         return y
 
 
