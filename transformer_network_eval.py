@@ -10,15 +10,15 @@ hzn = .025 # EVALUATION sample time, s
 groupsize=16
 numgroups=4
 fc = np.array([4,10,27,70]) # freq band center freqs
-netfile = "neural_network_pytorch_3c099e7206580496befc1bd0c2617dfdc040b4bb.pth"
+netfile = "neural_network_pytorch_399ae2badc3a09420d8d8dfaab235c85e525ac34.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 
 # Prepare the Data ---------------------------------------------------------------------
 
-fs, feature_names, Xs, Ys, Xb, Yb, _, _, _, _ = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=hzn_len, drawFromStart=False, maxNumel=1e8)
+fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, _, _, _ = prepTimeSeqData(
+    seq_len=seq_len, hzn_len=hzn_len, drawFromStart=False, maxNumel=5e8)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
@@ -31,6 +31,22 @@ model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_le
 model.load_state_dict(torch.load(netfile))
 
 # simulations -----------------------------------------------------------------------------------
+
+# recover filtered signal from processed features 
+def unprocess(Y, featcorrection):
+    Ymag = Y[:, :numgroups*groupsize]
+    Ycos = Y[:, (numgroups*groupsize):(2*numgroups*groupsize)]
+    Ysin = Y[:, 2*numgroups*groupsize:]
+    print("Ymag shape :", Ymag.shape)
+    print("Ycos shape :", Ycos.shape)
+    print("Ysin shape :", Ysin.shape)
+    print("featcorrection shape :", featcorrection.shape)
+    Ymag = (np.exp(Ymag)) * featcorrection[:numgroups*groupsize]
+    Ytan = Ysin / (Ycos + np.finfo(float).eps)
+    Yphase = np.arctan(Ytan)
+    Yreal = Ymag * np.cos(Yphase)
+    return Yreal
+
 def run_simulation(X, Y):
 
     Ysim = []
@@ -86,7 +102,7 @@ def run_simulation(X, Y):
     # get first, middle, and end of sorted_indices
     example_indices = [sorted_indices[0], sorted_indices[len(sorted_indices)//4], sorted_indices[len(sorted_indices)//2], sorted_indices[3*len(sorted_indices)//4], sorted_indices[-1]]
     # Create a single figure with vertically stacked subplots
-    fig, axes = plt.subplots(len(example_indices), 1, sharex=True, figsize=(10, 8))
+    fig, axes = plt.subplots(len(example_indices)+1, 1, sharex=True, figsize=(10, 8))
     for ax, idx in zip(axes, example_indices):
         ax.plot(Ytrue[:, idx], label="True")
         ax.plot(Ysim[:, idx], label="Simulated", alpha=0.7)
@@ -94,22 +110,20 @@ def run_simulation(X, Y):
         ax.set_title(f"Feature: {feature_names[idx]} (MSE: {mse[idx]:.4f}; corr: {rho[idx]:.4f})")
         ax.legend()
         ax.grid(axis='both')
+    # plot stim channel (last channel)
+    axes[-1].plot(X[:,-1,-1])
+    axes[-1].set_title("Stimulus Input")
+    axes[-1].set_ylabel("Count")
+    axes[-1].grid(axis='both')
     axes[-1].set_xlabel("Sample")  # Set x-label only on the last subplot
     plt.tight_layout()
     plt.show()
 
     # reconstruct raw signal from filtered bands 
+    """
     Ysim_grouped = Ysim[:, :numgroups * groupsize] # * feature_correction[:numgroups * groupsize]
     Ytrue_grouped = Ytrue[:, :numgroups * groupsize] # * feature_correction[:numgroups * groupsize]
     mse_grouped = mse[:numgroups * groupsize].reshape(groupsize, numgroups)
-    """
-    Yimagsim_grouped = Ysim[:, (numgroups*groupsize):(2*numgroups*groupsize)].reshape(-1, groupsize, numgroups)
-    Yimagtrue_grouped = Ytrue[:, (numgroups*groupsize):(2*numgroups*groupsize)].reshape(-1, groupsize, numgroups)
-    print("Yimagsim_grouped shape : ", Yimagsim_grouped.shape)
-    print("Yimagtrue_grouped shape: ", Yimagtrue_grouped.shape)
-    Psim = math.log10( Ysim_grouped**2 + Yimagsim_grouped**2 )
-    Ptrue = math.log10( Ytrue_grouped**2 + Yimagtrue_grouped**2 )
-    """
     pinksim = Ysim[:, 2*(numgroups * groupsize):]
     pinktrue = Ytrue[:, 2*(numgroups * groupsize):]
     f = np.tile(fc, (groupsize,1)).T.flatten()
@@ -118,6 +132,9 @@ def run_simulation(X, Y):
     Ppinktrue = np.power(10, pinktrue @ f) ** .5
     Ysim_grouped = Ysim_grouped * Ppinksim
     Ytrue_grouped = Ytrue_grouped * Ppinktrue
+    """
+    Ysim_grouped = unprocess(Ysim, feature_correction)
+    Ytrue_grouped = unprocess(Ytrue, feature_correction)
     Ysim_grouped = Ysim_grouped.reshape(-1, numgroups, groupsize)
     Ytrue_grouped = Ytrue_grouped.reshape(-1, numgroups, groupsize)
     Ysim_recon = np.sum(Ysim_grouped, axis=-2)
