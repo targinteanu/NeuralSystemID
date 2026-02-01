@@ -31,6 +31,7 @@ def prepTimeData(
     fs = info_df.iloc[0, 6]                  # sampling frequency (Hz)
     print("Sampling frequency (Hz):", fs)
     feature_names = info_df.iloc[:, 0].values
+    feature_correction = info_df.iloc[:, 3].values
     maxPairs = math.floor(maxNumel / (len(feature_names)))
 
     # ------------------------
@@ -198,7 +199,7 @@ def prepTimeData(
     print("Input shape :", X.shape)   
     print("Output shape:", Y.shape)
 
-    return fs, feature_names, X, Y, Xbl, Ybl, X_raw, Y_raw, Xbl_raw, Ybl_raw
+    return fs, feature_names, feature_correction, X, Y, Xbl, Ybl, X_raw, Y_raw, Xbl_raw, Ybl_raw
 
 
 def prepTimeSeqData(
@@ -228,6 +229,7 @@ def prepTimeSeqData(
     fs = info_df.iloc[0, 6]                  # sampling frequency (Hz)
     print("Sampling frequency (Hz):", fs)
     feature_names = info_df.iloc[:, 0].values
+    feature_correction = info_df.iloc[:, 3].values
     maxPairs = math.floor(maxNumel / (seq_len * len(feature_names)))
 
     # ------------------------
@@ -451,4 +453,4 @@ def prepTimeSeqData(
     print("Input shape :", X.shape)   
     print("Output shape:", Y.shape)
 
-    return fs, feature_names, X, Y, Xbl, Ybl, X_raw, Y_raw, Xbl_raw, Ybl_raw
+    return fs, feature_names, feature_correction, X, Y, Xbl, Ybl, X_raw, Y_raw, Xbl_raw, Ybl_raw
