@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from scipy.signal import firwin, filtfilt
 import torch
 import matplotlib.pyplot as plt
 from myPytorchModels import TimeSeriesTransformer
@@ -14,15 +15,26 @@ netfile = "neural_network_pytorch_399ae2badc3a09420d8d8dfaab235c85e525ac34.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
+filtorder = 201
 
 # Prepare the Data ---------------------------------------------------------------------
 
-fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, _, _, _ = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=hzn_len, drawFromStart=False, maxNumel=5e8)
+fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw = prepTimeSeqData(
+    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e8)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
 Yb = torch.tensor(Yb, dtype=torch.float32)
+
+filtwts = firwin(filtorder, [2, 99], pass_zero=False, fs=1/dt_target)
+print(YsRaw.shape)
+print(YbRaw.shape)
+YsRaw = filtfilt(filtwts, 1, YsRaw, axis=0)
+YbRaw = filtfilt(filtwts, 1, YbRaw, axis=0)
+print(YsRaw.shape)
+print(YbRaw.shape)
+#YsRaw = torch.tensor(YsRaw, dtype=torch.float32)
+#YbRaw = torch.tensor(YbRaw, dtype=torch.float32)
 
 # -----------------------------------------------------------------------------------------------
 
@@ -37,17 +49,14 @@ def unprocess(Y, featcorrection):
     Ymag = Y[:, :numgroups*groupsize]
     Ycos = Y[:, (numgroups*groupsize):(2*numgroups*groupsize)]
     Ysin = Y[:, 2*numgroups*groupsize:]
-    print("Ymag shape :", Ymag.shape)
-    print("Ycos shape :", Ycos.shape)
-    print("Ysin shape :", Ysin.shape)
-    print("featcorrection shape :", featcorrection.shape)
     Ymag = (np.exp(Ymag)) * featcorrection[:numgroups*groupsize]
-    Ytan = Ysin / (Ycos + np.finfo(float).eps)
-    Yphase = np.arctan(Ytan)
+    #Ytan = Ysin / (Ycos + np.finfo(float).eps)
+    Yphase = np.arctan2(Ysin, Ycos)
     Yreal = Ymag * np.cos(Yphase)
+    #Yreal = Ymag * Ycos
     return Yreal
 
-def run_simulation(X, Y):
+def run_simulation(X, Y, Ytrue_recon=None):
 
     Ysim = []
     model.eval()
@@ -138,7 +147,10 @@ def run_simulation(X, Y):
     Ysim_grouped = Ysim_grouped.reshape(-1, numgroups, groupsize)
     Ytrue_grouped = Ytrue_grouped.reshape(-1, numgroups, groupsize)
     Ysim_recon = np.sum(Ysim_grouped, axis=-2)
-    Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
+    if Ytrue_recon is None:
+        Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
+    else:
+        Ytrue_recon = Ytrue_recon[hzn_len:, :]
     mse_recon = np.mean((Ysim_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
     rho_recon = np.array([ np.corrcoef(Ysim_recon[:,i], Ytrue_recon[:,i])[0,1] for i in range(Ytrue_recon.shape[1]) ])
 
@@ -178,7 +190,7 @@ def run_simulation(X, Y):
     plt.show()
 
 print("Evaluating baseline data...")
-run_simulation(Xb, Yb)
+run_simulation(Xb, Yb, YbRaw)
 
 print("Evaluating stimulated data...")
-run_simulation(Xs, Ys)
+run_simulation(Xs, Ys, YsRaw)
