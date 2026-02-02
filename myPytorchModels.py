@@ -271,16 +271,16 @@ class TimeSeriesTransformer(nn.Module):
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # MLP latent dynamics 
-        self.fc2 = nn.Linear(dim_model, 256)
-        self.fc3 = nn.Linear(256, 256)
-        self.fc4 = nn.Linear(256, 256)
-        self.fc5 = nn.Linear(256, dim_model)
+        self.fc2 = nn.Linear(dim_model, 512)
+        self.fc3 = nn.Linear(512, 512)
+        self.fc4 = nn.Linear(512, 512)
+        self.fc5 = nn.Linear(512, dim_model)
 
         # Output head for next-step prediction ------------------------------------------------
-        self.fco1 = nn.Linear(dim_model, 64)
+        self.fco1 = nn.Linear(dim_model, 128)
         #self.fco2 = nn.Linear(64, 64)
         #self.fco3 = nn.Linear(64, 64)
-        self.fco4 = nn.Linear(64, dim_out)
+        self.fco4 = nn.Linear(128, dim_out)
 
     def forward(self, x):
         """
