@@ -21,45 +21,48 @@ function [phAll, phEst, frAll, frEst, TtoStim, phStim, W, R, dur, ...
     numCycle, numMissing, numExtra] = ...
     offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength, ...
-    stepsize, donorm, doresample, useIIR, showplots, dodebug)
+    stepsize, donorm, doresample, useIIR, showplots, dodebug, PDSusefuture)
 
 if height(dataOneChannel) > 1
     error('Data should be one channel only and horizontal.')
 end
 
 % signal to use default values if any arguments are not passed in
-if nargin < 18
-    dodebug = false;
-    if nargin < 17
-        showplots = false;
-        if nargin < 16
-            useIIR = false;
-            if nargin < 15
-                doresample = false;
-                if nargin < 14
-                    donorm = false;
-                    if nargin < 13
-                        stepsize = [];
-                        if nargin < 12
-                            packetLength = [];
-                            if nargin < 11
-                                artDur = [];
-                                if nargin < 10
-                                    predWin = [];
-                                    if nargin < 9
-                                        ARlen = [];
-                                        if nargin < 8
-                                            ARwin = [];
-                                            if nargin < 7
-                                                FreqRange = [];
-                                                if nargin < 6
-                                                    PhaseOfInterest = [];
-                                                    if nargin < 5
-                                                        channelName = '';
-                                                        if nargin < 4
-                                                            t = [];
-                                                            if nargin < 3
-                                                                StimTrainRec = [];
+if nargin < 19
+    PDSusefuture = true;
+    if nargin < 18
+        dodebug = false;
+        if nargin < 17
+            showplots = false;
+            if nargin < 16
+                useIIR = false;
+                if nargin < 15
+                    doresample = false;
+                    if nargin < 14
+                        donorm = false;
+                        if nargin < 13
+                            stepsize = [];
+                            if nargin < 12
+                                packetLength = [];
+                                if nargin < 11
+                                    artDur = [];
+                                    if nargin < 10
+                                        predWin = [];
+                                        if nargin < 9
+                                            ARlen = [];
+                                            if nargin < 8
+                                                ARwin = [];
+                                                if nargin < 7
+                                                    FreqRange = [];
+                                                    if nargin < 6
+                                                        PhaseOfInterest = [];
+                                                        if nargin < 5
+                                                            channelName = '';
+                                                            if nargin < 4
+                                                                t = [];
+                                                                if nargin < 3
+                                                                    StimTrainRec = [];
+                                                                end
                                                             end
                                                         end
                                                     end
@@ -432,7 +435,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         [t2nextStim,i2nextStim, phEst(tind),frEst(tind), pwr] = blockPDS(...
             dataPast, dataFuture, SamplingFreq, PhaseOfInterest, ...
             filtdelay/SamplingFreq, ... FIR filter imposes this delay (s)
-            loco, hico);
+            loco, hico, PDSusefuture);
         i2nextStim = i2nextStim - filtdelay; % in terms of current time
         if dodebug
             figure(fig1);
