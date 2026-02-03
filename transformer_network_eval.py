@@ -7,11 +7,11 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .01 # EVALUATION sample time, s
+hzn = .005 # EVALUATION sample time, s
 groupsize=16
 numgroups=4
 fc = np.array([4,10,27,70]) # freq band center freqs
-netfile = "neural_network_pytorch.pth"
+netfile = "neural_network_pytorch_fc33d7e55865e9597c0969b396deaebf405bd1e1.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -27,16 +27,24 @@ Xb = torch.tensor(Xb, dtype=torch.float32)
 Yb = torch.tensor(Yb, dtype=torch.float32)
 
 filtwts = firwin(filtorder, [2, 99], pass_zero=False, fs=1/dt_target)
-print(YsRaw.shape)
-print(YbRaw.shape)
+#print(YsRaw.shape)
+#print(YbRaw.shape)
 YsRaw = filtfilt(filtwts, 1, YsRaw, axis=0)
 YbRaw = filtfilt(filtwts, 1, YbRaw, axis=0)
-print(YsRaw.shape)
-print(YbRaw.shape)
+#print(YsRaw.shape)
+#print(YbRaw.shape)
 #YsRaw = torch.tensor(YsRaw, dtype=torch.float32)
 #YbRaw = torch.tensor(YbRaw, dtype=torch.float32)
 
 # -----------------------------------------------------------------------------------------------
+
+# identify simpler models for comparison ------------------------------------------------------
+Nsimple = 2000
+Xflat = Xb[:Nsimple,:,:-1].reshape(Nsimple, -1, 1).numpy()
+Xflat = Xflat[:,:,0]
+print("Flattened X shape:", Xflat.shape)
+A,_,_,_ = np.linalg.lstsq(Xflat, Yb[:Nsimple,:].numpy(), rcond=None)
+print("Simple model shape:", A.shape)
 
 # define mdl struct ====================================================================
 model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups)
@@ -59,6 +67,8 @@ def unprocess(Y, featcorrection):
 def run_simulation(X, Y, Ytrue_recon=None):
 
     Ysim = []
+    Ysimple = []
+    Ynull = []
     model.eval()
     progtick = 0.05
     progcur = 0.0
@@ -66,7 +76,11 @@ def run_simulation(X, Y, Ytrue_recon=None):
     print("Simulating...")
     for i0 in range(len(X) - hzn_len):
         xi = X[i0, :, :].reshape(1,-1,X.shape[-1])
+        xflat = xi[:,:,:-1].reshape(1, -1, 1)
+        xflat = xflat[:,:,0]
+        yni = xi[:,-1,:-1]
         for i in range(hzn_len):
+            ysi = xflat @ A
             with torch.no_grad():
                 yi = model(xi).numpy().flatten()
             # prepare next input
@@ -74,23 +88,42 @@ def run_simulation(X, Y, Ytrue_recon=None):
                 event_count_next = X[i0 + i + 1, -1, -1]  # keep using original event count
                 yi_aug = np.hstack([yi, event_count_next])
                 xi = torch.tensor(np.vstack([xi[0, 1:, :], yi_aug]).reshape(1,-1,X.shape[-1]), dtype=torch.float32)
+                ysi_aug = np.hstack([ysi, event_count_next])
+                Xflat = torch.tensor(np.vstack([xflat[0, 1:, 0], ysi_aug]).reshape(1,-1,X.shape[-1]), dtype=torch.float32)
+                xflat = Xflat[:,:,:-1].reshape(1, -1, 1)
+                xflat = xflat[:,:,0]
         Ysim.append(yi)
+        Ysimple.append(ysi)
+        Ynull.append(yni)
         progcur += 1.0/(len(X) - hzn_len)
         if progcur >= prognext:
             print(f"  {int(progcur*100)}%")
             prognext += progtick
 
-    # evaluate -------------------------------------------------------------------------------------
+    Ysimple = np.array(Ysimple)
+    Ynull = np.array(Ynull)
+    Ysimple = Ysimple[:,0,:]
+    Ynull = Ynull[:,0,:]
 
-    # overall 
+    # evaluate overall -------------------------------------------------------------------------------------
+ 
     Ysim = np.array(Ysim)
+    Ysimple = np.array(Ysimple)
+    Ynull = np.array(Ynull)
     Ytrue = Y[hzn_len:, :].numpy()
     print("Ysim shape :", Ysim.shape)
     print("Ytrue shape:", Ytrue.shape)
+    print("Ysimple shape:", Ysimple.shape)
+    print("Ynull shape:", Ynull.shape)
     mse = np.mean((Ysim - Ytrue)**2, axis=0) / (np.mean((Ytrue)**2, axis=0) + np.finfo(float).eps)
+    mse_simple = np.mean((Ysimple - Ytrue)**2, axis=0) / (np.mean((Ytrue)**2, axis=0) + np.finfo(float).eps)
+    mse_null = np.mean((Ynull - Ytrue)**2, axis=0) / (np.mean((Ytrue)**2, axis=0) + np.finfo(float).eps)
     rho = np.array([ np.corrcoef(Ysim[:,i], Ytrue[:,i])[0,1] for i in range(Ytrue.shape[1]) ])
+    rho_simple = np.array([ np.corrcoef(Ysimple[:,i], Ytrue[:,i])[0,1] for i in range(Ytrue.shape[1]) ])
+    rho_null = np.array([ np.corrcoef(Ynull[:,i], Ytrue[:,i])[0,1] for i in range(Ytrue.shape[1]) ])
     print("Mean MSE:", np.mean(mse))
     print("Mean correlation:", np.mean(rho))
+
     # show a bar plot of mse per feature
     barwid = .35
     barx = np.arange(len(mse))
@@ -105,6 +138,30 @@ def run_simulation(X, Y, Ytrue_recon=None):
     plt.grid(axis='y')
     plt.show()
 
+    plt.figure()
+    plt.bar(barx-barwid, mse, width=.5*barwid, label="Transformer")
+    plt.bar(barx, mse_simple, width=.5*barwid, label="Simple")
+    plt.bar(barx+barwid, mse_null, width=.5*barwid, label="Null")
+    plt.legend()
+    plt.xlabel("Feature index")
+    plt.xticks(ticks=range(0, len(mse), groupsize), labels=feature_names[::groupsize], rotation=90, ha='right')
+    plt.ylabel("MSE")
+    plt.title("Models Inaccuracy by Feature")
+    plt.grid(axis='y')
+    plt.show()
+
+    plt.figure()
+    plt.bar(barx-barwid, rho, width=.5*barwid, label="Transformer")
+    plt.bar(barx, rho_simple, width=.5*barwid, label="Simple")
+    plt.bar(barx+barwid, rho_null, width=.5*barwid, label="Null")
+    plt.legend()
+    plt.xlabel("Feature index")
+    plt.xticks(ticks=range(0, len(mse), groupsize), labels=feature_names[::groupsize], rotation=90, ha='right')
+    plt.ylabel("Correlation")
+    plt.title("Models Accuracy by Feature")
+    plt.grid(axis='y')
+    plt.show()
+
     # a few example channels 
     # get index of channels sorted by mse
     sorted_indices = np.argsort(rho-mse)  # ascending order
@@ -115,6 +172,8 @@ def run_simulation(X, Y, Ytrue_recon=None):
     for ax, idx in zip(axes, example_indices):
         ax.plot(Ytrue[:, idx], label="True")
         ax.plot(Ysim[:, idx], label="Simulated", alpha=0.7)
+        ax.plot(Ysimple[:, idx], label="Simple", alpha=0.6)
+        ax.plot(Ynull[:, idx], label="Null", alpha=0.1)
         ax.set_ylabel("Feature Value")
         ax.set_title(f"Feature: {feature_names[idx]} (MSE: {mse[idx]:.4f}; corr: {rho[idx]:.4f})")
         ax.legend()
@@ -128,7 +187,8 @@ def run_simulation(X, Y, Ytrue_recon=None):
     plt.tight_layout()
     plt.show()
 
-    # reconstruct raw signal from filtered bands 
+    # reconstruct raw signal from filtered bands --------------------------------------------------
+
     """
     Ysim_grouped = Ysim[:, :numgroups * groupsize] # * feature_correction[:numgroups * groupsize]
     Ytrue_grouped = Ytrue[:, :numgroups * groupsize] # * feature_correction[:numgroups * groupsize]
@@ -144,15 +204,25 @@ def run_simulation(X, Y, Ytrue_recon=None):
     """
     Ysim_grouped = unprocess(Ysim, feature_correction)
     Ytrue_grouped = unprocess(Ytrue, feature_correction)
+    Ysimple_grouped = unprocess(Ysimple, feature_correction)
+    Ynull_grouped = unprocess(Ynull, feature_correction)
     Ysim_grouped = Ysim_grouped.reshape(-1, numgroups, groupsize)
     Ytrue_grouped = Ytrue_grouped.reshape(-1, numgroups, groupsize)
+    Ysimple_grouped = Ysimple_grouped.reshape(-1, numgroups, groupsize)
+    Ynull_grouped = Ynull_grouped.reshape(-1, numgroups, groupsize)
     Ysim_recon = np.sum(Ysim_grouped, axis=-2)
+    Ysimple_recon = np.sum(Ysimple_grouped, axis=-2)
+    Ynull_recon = np.sum(Ynull_grouped, axis=-2)
     if Ytrue_recon is None:
         Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
     else:
         Ytrue_recon = Ytrue_recon[hzn_len:, :]
     mse_recon = np.mean((Ysim_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
+    mse_simple_recon = np.mean((Ysimple_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
+    mse_null_recon = np.mean((Ynull_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
     rho_recon = np.array([ np.corrcoef(Ysim_recon[:,i], Ytrue_recon[:,i])[0,1] for i in range(Ytrue_recon.shape[1]) ])
+    rho_simple_recon = np.array([ np.corrcoef(Ysimple_recon[:,i], Ytrue_recon[:,i])[0,1] for i in range(Ytrue_recon.shape[1]) ])
+    rho_null_recon = np.array([ np.corrcoef(Ynull_recon[:,i], Ytrue_recon[:,i])[0,1] for i in range(Ytrue_recon.shape[1]) ])
 
     # show a bar plot of mse per feature
     barx = np.arange(len(mse_recon))
@@ -166,6 +236,28 @@ def run_simulation(X, Y, Ytrue_recon=None):
     plt.grid(axis='y')
     plt.show()
 
+    plt.figure()
+    plt.bar(barx-barwid, mse_recon, width=.5*barwid, label="Transformer")
+    plt.bar(barx, mse_simple_recon, width=.5*barwid, label="Simple")
+    plt.bar(barx+barwid, mse_null_recon, width=.5*barwid, label="Null")
+    plt.legend()
+    plt.xlabel("Channel index")
+    plt.ylabel("MSE")
+    plt.title("Models Inaccuracy by Channel")
+    plt.grid(axis='y')
+    plt.show()
+
+    plt.figure()
+    plt.bar(barx-barwid, rho_recon, width=.5*barwid, label="Transformer")
+    plt.bar(barx, rho_simple_recon, width=.5*barwid, label="Simple")
+    plt.bar(barx+barwid, rho_null_recon, width=.5*barwid, label="Null")
+    plt.legend()
+    plt.xlabel("Channel index")
+    plt.ylabel("Correlation")
+    plt.title("Models Accuracy by Channel")
+    plt.grid(axis='y')
+    plt.show()
+
     # a few example channels 
     # get index of channels sorted by mse
     sorted_indices = np.argsort(rho_recon-mse_recon)  # ascending order
@@ -176,6 +268,8 @@ def run_simulation(X, Y, Ytrue_recon=None):
     for ax, idx in zip(axes, example_indices):
         ax.plot(Ytrue_recon[:, idx], label="True")
         ax.plot(Ysim_recon[:, idx], label="Simulated", alpha=0.7)
+        ax.plot(Ysimple_recon[:, idx], label="Simple", alpha=0.6)
+        ax.plot(Ynull_recon[:, idx], label="Null", alpha=0.1)
         ax.set_ylabel("Channel Value")
         ax.set_title(f"Channel: {idx} (MSE: {mse_recon[idx]:.4f}; corr: {rho_recon[idx]:.4f})")
         ax.legend()
