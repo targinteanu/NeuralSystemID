@@ -7,11 +7,11 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .005 # EVALUATION sample time, s
+hzn = .01 # EVALUATION sample time, s
 groupsize=16
 numgroups=4
 fc = np.array([4,10,27,70]) # freq band center freqs
-netfile = "neural_network_pytorch_fc33d7e55865e9597c0969b396deaebf405bd1e1.pth"
+netfile = "neural_network_pytorch.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -94,7 +94,6 @@ def run_simulation(X, Y, Ytrue_recon=None):
     # show a bar plot of mse per feature
     barwid = .35
     barx = np.arange(len(mse))
-    """
     plt.figure()
     plt.bar(barx-barwid, 1-mse, width=barwid, label="1-MSE")
     plt.bar(barx, rho, width=barwid, label="correlation")
@@ -128,7 +127,6 @@ def run_simulation(X, Y, Ytrue_recon=None):
     axes[-1].set_xlabel("Sample")  # Set x-label only on the last subplot
     plt.tight_layout()
     plt.show()
-    """
 
     # reconstruct raw signal from filtered bands 
     """
@@ -156,7 +154,6 @@ def run_simulation(X, Y, Ytrue_recon=None):
     mse_recon = np.mean((Ysim_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
     rho_recon = np.array([ np.corrcoef(Ysim_recon[:,i], Ytrue_recon[:,i])[0,1] for i in range(Ytrue_recon.shape[1]) ])
 
-    """
     # show a bar plot of mse per feature
     barx = np.arange(len(mse_recon))
     plt.figure()
@@ -191,25 +188,9 @@ def run_simulation(X, Y, Ytrue_recon=None):
     axes[-1].set_xlabel("Time Sample")  # Set x-label only on the last subplot
     plt.tight_layout()
     plt.show()
-    """
-
-    return rho_recon
 
 print("Evaluating baseline data...")
-rb = run_simulation(Xb, Yb, YbRaw)
+run_simulation(Xb, Yb, YbRaw)
 
 print("Evaluating stimulated data...")
-rs = run_simulation(Xs, Ys, YsRaw)
-
-# show a bar plot of mse per feature
-barwid = .35
-barx = np.arange(len(rb))
-plt.figure()
-plt.bar(barx-barwid, rb, width=barwid, label="Baseline")
-plt.bar(barx, rs, width=barwid, label="Stimulation")
-plt.legend()
-plt.xlabel("Channel index")
-plt.ylabel("correlation")
-plt.title("Accuracy per Channel")
-plt.grid(axis='y')
-plt.show()
+run_simulation(Xs, Ys, YsRaw)
