@@ -325,6 +325,7 @@ def prepTimeSeqData(
     event_counts = np.array([count_events_in_window(t, 1.05*dt_target) for t in time])
     event_counts = event_counts.reshape(-1, 1)
 
+    """
     # Append event_counts as an additional input feature
     data_aug = np.hstack([data, event_counts])
     data_aug_raw = np.hstack([data_raw, event_counts])
@@ -332,6 +333,7 @@ def prepTimeSeqData(
     baseline_data_aug = np.hstack([baseline_data, np.zeros((baseline_data.shape[0], 1))]) 
     baseline_data_aug_raw = np.hstack([baseline_data_raw, np.zeros((baseline_data_raw.shape[0], 1))]) 
     # baseline has zero event counts
+    """
 
     # ------------------------
     # Build input-output pairs using the _ ms rule
@@ -340,14 +342,16 @@ def prepTimeSeqData(
     drow_target = int(dt_target * fs)  # number of rows 
 
     # create sliding windows
-    def create_windows(data, data2, seq_len=128, horizon=1):
-        X, Y, W, Z = [], [], [], []
+    def create_windows(data, data2, data3=None, seq_len=128, horizon=1):
+        X, Y, W, Z, U = [], [], [], [], []
         for i in range(len(data) - seq_len - horizon + 1):
             X.append(data[i:i+seq_len, :])
-            Y.append(data[i+seq_len + horizon - 1, :-1])  # exclude event count in output
+            Y.append(data[i+seq_len + horizon - 1, :]) 
             W.append(data2[i:i+seq_len, :])
-            Z.append(data2[i+seq_len + horizon - 1, :-1])  # exclude event count in output
-        return np.array(X), np.array(Y), np.array(W), np.array(Z)
+            Z.append(data2[i+seq_len + horizon - 1, :]) 
+            if data3 is not None:
+                U.append(data3[(i+seq_len):(i+seq_len + horizon - 1), :])
+        return np.array(X), np.array(Y), np.array(W), np.array(Z), np.array(U)
 
     # ------------------------
     # baseline data 
@@ -360,20 +364,20 @@ def prepTimeSeqData(
     if drawFromStart:
         Nbl = iBLend
     else:
-        Nbl = len(baseline_data_aug)
+        Nbl = len(baseline_data)
     for iStart in range(drow_target):
         inputs = []
         inputs_raw = []
         for i in range(iStart, (Nbl - drow_target), drow_target):
             dt = baseline_time[i+drow_target] - baseline_time[i]
             if (abs(dt - dt_target) <= dt_tol) and (not BLisnoise[i]):
-                inputs.append(baseline_data_aug[i, :]) 
-                inputs_raw.append(baseline_data_aug_raw[i, :])
+                inputs.append(baseline_data[i, :]) 
+                inputs_raw.append(baseline_data_raw[i, :])
             else:
                 if len(inputs) > seq_len+hzn_len:
                     inputs = np.array(inputs)
                     inputs_raw = np.array(inputs_raw)
-                    x, y, xr, yr = create_windows(inputs, inputs_raw, seq_len, hzn_len)
+                    x, y, xr, yr, _ = create_windows(inputs, inputs_raw, None, seq_len, hzn_len)
                     if x is not None:
                         X_list.append(x)
                         Y_list.append(y)
@@ -385,7 +389,7 @@ def prepTimeSeqData(
         if len(inputs) > seq_len+hzn_len:
             inputs = np.array(inputs)
             inputs_raw = np.array(inputs_raw)
-            x, y, xr, yr = create_windows(inputs, inputs_raw, seq_len, hzn_len)
+            x, y, xr, yr, _ = create_windows(inputs, inputs_raw, None, seq_len, hzn_len)
             if x is not None:
                 X_list.append(x)
                 Y_list.append(y)
@@ -396,10 +400,12 @@ def prepTimeSeqData(
     Ybl = np.concatenate(Y_list, axis=0)
     Xbl_raw = np.concatenate(Xr_list, axis=0)
     Ybl_raw = np.concatenate(Yr_list, axis=0)
+    Ubl = np.zeros((Xbl.shape[0], 1))
 
     print("Baseline Pairs created:", len(Xbl))
     print("Input shape :", Xbl.shape)   
     print("Output shape:", Ybl.shape)
+    print("Event shape:", Ubl.shape)
 
     # ------------------------
     # main data 
@@ -408,49 +414,59 @@ def prepTimeSeqData(
     Y_list = []
     Xr_list = []
     Yr_list = []
+    U_list = []
 
     if drawFromStart:
         N = iEnd
     else:
-        N = len(data_aug)
+        N = len(data)
     for iStart in range(drow_target):
         inputs = []
         inputs_raw = []
+        evs = []
         for i in range(iStart, (N - drow_target), drow_target):
             dt = time[i+drow_target] - time[i]
             if (abs(dt - dt_target) <= dt_tol) and (not isnoise[i]):
-                inputs.append(data_aug[i, :]) 
-                inputs_raw.append(data_aug_raw[i, :])
+                inputs.append(data[i, :]) 
+                inputs_raw.append(data_raw[i, :])
+                evs.append(event_counts[i])
             else:
                 if len(inputs) > seq_len+hzn_len:
                     inputs = np.array(inputs)
                     inputs_raw = np.array(inputs_raw)
-                    x, y, xr, yr = create_windows(inputs, inputs_raw, seq_len, hzn_len)
+                    evs = np.array(evs)
+                    x, y, xr, yr, u = create_windows(inputs, inputs_raw, evs, seq_len, hzn_len)
                     if x is not None:
                         X_list.append(x)
                         Y_list.append(y)
                         Xr_list.append(xr)
                         Yr_list.append(yr)
+                        U_list.append(u)
                 inputs = []
                 inputs_raw = []
+                evs = []
         # catch trailing segment
         if len(inputs) > seq_len+hzn_len:
             inputs = np.array(inputs)
             inputs_raw = np.array(inputs_raw)
-            x, y, xr, yr = create_windows(inputs, inputs_raw, seq_len, hzn_len)
+            evs = np.array(evs)
+            x, y, xr, yr, u = create_windows(inputs, inputs_raw, evs, seq_len, hzn_len)
             if x is not None:
                 X_list.append(x)
                 Y_list.append(y)
                 Xr_list.append(xr)
                 Yr_list.append(yr)
+                U_list.append(u)
 
     X = np.concatenate(X_list, axis=0)
     Y = np.concatenate(Y_list, axis=0)
     X_raw = np.concatenate(Xr_list, axis=0)
     Y_raw = np.concatenate(Yr_list, axis=0)
+    U = np.concatenate(U_list, axis=0)
 
     print("Main Pairs created:", len(X))
     print("Input shape :", X.shape)   
     print("Output shape:", Y.shape)
+    print("Event shape:", U.shape)
 
-    return fs, feature_names, feature_correction, X, Y, Xbl, Ybl, X_raw, Y_raw, Xbl_raw, Ybl_raw
+    return fs, feature_names, feature_correction, X, Y, Xbl, Ybl, X_raw, Y_raw, Xbl_raw, Ybl_raw, U, Ubl

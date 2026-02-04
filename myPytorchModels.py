@@ -212,7 +212,7 @@ class TimeSeriesTransformer(nn.Module):
     final output. 
     """
 
-    def __init__(self, dim_in, dim_out, time_len=64, group_size=7, num_groups=7, tuple_size=2):
+    def __init__(self, dim_in, dim_out, dim_u=1, time_len=64, group_size=7, num_groups=7, tuple_size=2):
         super().__init__()
 
         # transformer properties
@@ -242,7 +242,6 @@ class TimeSeriesTransformer(nn.Module):
         # Stage 2: linear over flattened group
         self.group_fcA = nn.Linear(group_size * self.pair_output, C2)
         self.group_fcB = nn.Linear(num_groups * self.pair_output, C2)
-        # MLP input = 56 + 56 + leftover(3) = 115
         mlp_in = (num_groups * C2) + (group_size * C2) + self.leftover_dim
 
         # stage 3B: feature-only processing to get to dim_model
@@ -271,7 +270,7 @@ class TimeSeriesTransformer(nn.Module):
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # MLP latent dynamics 
-        self.fc2 = nn.Linear(dim_model, 512)
+        self.fc2 = nn.Linear(dim_model + dim_u, 512)
         self.fc3 = nn.Linear(512, 512)
         self.fc4 = nn.Linear(512, 512)
         self.fc5 = nn.Linear(512, dim_model)
@@ -282,18 +281,15 @@ class TimeSeriesTransformer(nn.Module):
         #self.fco3 = nn.Linear(64, 64)
         self.fco4 = nn.Linear(128, dim_out)
 
-    def forward(self, x):
+    def forward(self, x, u_seq):
         """
         x: (B, T, dim_in)
         """
         if x.ndim != 3:
             raise ValueError(f"Expected input ndim=3, got {x.ndim}")
         T = x.size(1)
-        #if T > self.pos_emb.size(1):
-        #    raise RuntimeError(f"Sequence length T={T} exceeds time_len={self.pos_emb.size(1)}. "
-        #                       "Either increase time_len or ensure inputs have smaller T.")
-        #x = self.input_proj(x) + self.pos_emb[:, :T, :]
         B = x.size(0)
+        rollout = u_seq.size(1)
 
         x_left = x[:, :, self.used_for_pairing:]  # (B,T,n)
         x_used = x[:, :, :self.used_for_pairing]  # (B,T,kN)
@@ -340,10 +336,13 @@ class TimeSeriesTransformer(nn.Module):
 
         # latent dynamics 
         y = z[:, -1, :]  # (B, dim_model)
-        y = F.gelu(self.fc2(y))
-        y = F.gelu(self.fc3(y))
-        y = F.gelu(self.fc4(y))
-        y = F.gelu(self.fc5(y))
+        for r in range(rollout):
+            u = u_seq[:, r]
+            y = torch.cat([y, u], dim=2) # (B, dim_model+dim_u)
+            y = F.gelu(self.fc2(y))
+            y = F.gelu(self.fc3(y))
+            y = F.gelu(self.fc4(y))
+            y = F.gelu(self.fc5(y))
 
         # Output head --------------------------------------------------------------------
         y = F.gelu(self.fco1(y))
