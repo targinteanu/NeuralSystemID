@@ -337,8 +337,8 @@ class TimeSeriesTransformer(nn.Module):
         # latent dynamics 
         y = z[:, -1, :]  # (B, dim_model)
         for r in range(rollout):
-            u = u_seq[:, r]
-            y = torch.cat([y, u], dim=2) # (B, dim_model+dim_u)
+            u = u_seq[:, r, :] # (B, dim_u)
+            y = torch.cat([y, u], dim=1) # (B, dim_model+dim_u)
             y = F.gelu(self.fc2(y))
             y = F.gelu(self.fc3(y))
             y = F.gelu(self.fc4(y))

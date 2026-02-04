@@ -350,7 +350,7 @@ def prepTimeSeqData(
             W.append(data2[i:i+seq_len, :])
             Z.append(data2[i+seq_len + horizon - 1, :]) 
             if data3 is not None:
-                U.append(data3[(i+seq_len):(i+seq_len + horizon - 1), :])
+                U.append(data3[(i+seq_len):(i+seq_len + horizon), :])
         return np.array(X), np.array(Y), np.array(W), np.array(Z), np.array(U)
 
     # ------------------------
@@ -400,7 +400,7 @@ def prepTimeSeqData(
     Ybl = np.concatenate(Y_list, axis=0)
     Xbl_raw = np.concatenate(Xr_list, axis=0)
     Ybl_raw = np.concatenate(Yr_list, axis=0)
-    Ubl = np.zeros((Xbl.shape[0], 1))
+    Ubl = np.zeros((Xbl.shape[0], hzn_len, 1))
 
     print("Baseline Pairs created:", len(Xbl))
     print("Input shape :", Xbl.shape)   
