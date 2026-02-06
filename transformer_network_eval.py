@@ -19,12 +19,14 @@ filtorder = 201
 
 # Prepare the Data ---------------------------------------------------------------------
 
-fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw = prepTimeSeqData(
+fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw, Us, Ub = prepTimeSeqData(
     seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e8)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
 Yb = torch.tensor(Yb, dtype=torch.float32)
+Us = torch.tensor(Us, dtype=torch.float32)
+Ub = torch.tensor(Ub, dtype=torch.float32)
 
 filtwts = firwin(filtorder, [2, 99], pass_zero=False, fs=1/dt_target)
 print(YsRaw.shape)
