@@ -293,6 +293,7 @@ class TimeSeriesTransformer(nn.Module):
 
         x_left = x[:, :, self.used_for_pairing:]  # (B,T,n)
         x_used = x[:, :, :self.used_for_pairing]  # (B,T,kN)
+        xy_skip = x_used[:,-1,:]  # for skip connection at output
         """
         x_pairs = torch.stack( 
             (
@@ -332,24 +333,28 @@ class TimeSeriesTransformer(nn.Module):
         # Transformer --------------------------------------------------------------------
 
         h = self.pos_emb(h)
-        z = self.encoder(h)
+        h = self.encoder(h)
 
         # latent dynamics 
-        y = z[:, -1, :]  # (B, dim_model)
+        z = h[:, -1, :]  # (B, dim_model)
+        zskip = z
         for r in range(rollout):
             u = u_seq[:, r, :] # (B, dim_u)
-            y = torch.cat([y, u], dim=1) # (B, dim_model+dim_u)
-            y = F.gelu(self.fc2(y))
-            y = F.gelu(self.fc3(y))
-            y = F.gelu(self.fc4(y))
-            y = F.gelu(self.fc5(y))
+            z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
+            z = F.gelu(self.fc2(z))
+            z = F.gelu(self.fc3(z))
+            z = F.gelu(self.fc4(z))
+            z = F.gelu(self.fc5(z))
+            z = z + zskip # skip connection
+            zskip = z
 
         # Output head --------------------------------------------------------------------
-        y = F.gelu(self.fco1(y))
+        y = F.gelu(self.fco1(z))
         #y = F.gelu(self.fco2(y))
         #y = F.gelu(self.fco3(y))
         y = self.fco4(y)  # (B, dim_out)
-        return y
+        out = y + xy_skip # skip connection
+        return out
 
 
 class TimeSeriesConvTransformer(nn.Module):
