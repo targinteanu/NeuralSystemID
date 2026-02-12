@@ -270,16 +270,16 @@ class TimeSeriesTransformer(nn.Module):
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # MLP latent dynamics 
-        self.fc2 = nn.Linear(dim_model + dim_u, 256)
-        self.fc3 = nn.Linear(256, 256)
-        self.fc4 = nn.Linear(256, 256)
-        self.fc5 = nn.Linear(256, dim_model)
+        self.fc2 = nn.Linear(dim_model + dim_u, 128)
+        self.fc3 = nn.Linear(128, 128)
+        #self.fc4 = nn.Linear(256, 256)
+        self.fc5 = nn.Linear(128, dim_model)
 
         # Output head for next-step prediction ------------------------------------------------
-        self.fco1 = nn.Linear(dim_model, 128)
+        self.fco1 = nn.Linear(dim_model, 64)
         #self.fco2 = nn.Linear(64, 64)
         #self.fco3 = nn.Linear(64, 64)
-        self.fco4 = nn.Linear(128, dim_out)
+        self.fco4 = nn.Linear(64, dim_out)
 
     def forward(self, x, u_seq):
         """
@@ -343,7 +343,7 @@ class TimeSeriesTransformer(nn.Module):
             z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
             z = F.gelu(self.fc2(z))
             z = F.gelu(self.fc3(z))
-            z = F.gelu(self.fc4(z))
+            #z = F.gelu(self.fc4(z))
             z = F.gelu(self.fc5(z))
             z = z + zskip # skip connection
             zskip = z
