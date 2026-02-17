@@ -28,8 +28,7 @@ end
 if isempty(KA)
     KA = lyap(Am',eye(size(Am)));
 elseif numel(KA) == 1
-    %KA = lyap(Am',KA*eye(size(Am)));
-    KA = KA*eye(size(Am));
+    KA = lyap(Am',KA*eye(size(Am)));
 end
 if isempty(shutoff)
     shutoff = false(1,height(testData));
@@ -223,15 +222,12 @@ end
 
 for t = 2:width(Xtrain)
     dAhat = -KA*(xest-x)*x';
-    Ahat_d = Ahat_d + Th*dAhat;
-    dxest = Ahat_d*x + Am*(xest-x);
-    xest = xest + Th*dxest;
-    %delBeta_d = M*dAhat;
-        %Beta_d = Beta_d + delBeta_d;
-        %xest = A_d*xest + Beta_d*x;
+    delBeta_d = M*dAhat;
+        Beta_d = Beta_d + delBeta_d;
+        xest = A_d*xest + Beta_d*x;
     xtrain_est_t(:,t) = xest;
     x = Xtrain(:,t);
-    %Ahat_d = Beta_d + A_d;
+    Ahat_d = Beta_d + A_d;
     A_t_train(:,:,t) = Ahat_d;
 
     if showfit
