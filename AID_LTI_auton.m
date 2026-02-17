@@ -22,9 +22,13 @@ end
 % handle empty args 
 if isempty(Am)
     Am = -eye(width(testData));
+elseif numel(Am) == 1
+    Am = Am*eye(width(testData));
 end
 if isempty(KA)
     KA = lyap(Am',eye(size(Am)));
+elseif numel(KA) == 1
+    KA = lyap(Am',KA*eye(size(Am)));
 end
 if isempty(shutoff)
     shutoff = false(1,height(testData));
@@ -47,6 +51,34 @@ if sum(lambda <= 0) | ~isequal(dLyap,dLyap')
     warning('KA produces unstable system.')
 end
 
+AmInv = Am^-1;
+
+% choose display channel 
+chandisp = [];
+if numel(showfit) > 1
+    if iscell(showfit)
+        if ischar(showfit{1})
+            chandisp = showfit; showfit = true;
+        end
+    end
+end
+if isstring(showfit) | ischar(showfit)
+    chandisp(showfit); showfit = true;
+end
+if showfit & isempty(chandisp)
+    % choose the most average channel
+    xavg = mean(testData.Variables,2);
+    xdev = testData.Variables - xavg;
+    xdev = sum(xdev.^2);
+    [~,ch] = min(xdev);
+    chans = testData.Properties.VariableNames;
+    if isstring(chans)
+        chandisp = chans(ch);
+    else
+        chandisp = chans{ch};
+    end
+end
+
 %% sample rate 
 %{
 Time = testData.Time; 
@@ -64,55 +96,53 @@ if isempty(trainData)
     % no starting knowledge 
     A0 = eye(width(testData)); % discrete 
 else
-    Xtrain = table2array(trainData)'; 
-    X1 = Xtrain(:,1:(end-1)); X2 = Xtrain(:,2:end); 
-    A0 = X2*X1' * (X1*X1')^-1;
+    Xtrain = table2array(trainData); 
+    X1 = Xtrain(1:(end-1),:); X2 = Xtrain(2:end,:); 
+    Xtrain = Xtrain';
+    A0 = (X1\X2)';
 end
 
 %% run "test" data
 
 Xtest = table2array(testData)';
 xtest_est_t = nan(size(Xtest));
-%{
-A_t_test = nan([size(A0),width(Xtest)]);
-A_t_test(:,:,1) = Ac0;
-%}
 
 x = Xtest(:,1); 
-A = A0;
+Ahat_d = A0;
 xest = x; 
 xtest_est_t(:,1) = xest;
-[Ad,Bd0] = c2d(Am,eye(size(Am)),Th);
-Ac0 = d2c(A,zeros(size(A,1),1),Th);
-Ac = Ac0;
+A_d = expm(Am*Th);
+Beta_d = Ahat_d - A_d;
+M = Th*AmInv*(A_d-eye(size(A_d)));
+
+%%{
+A_t_test = nan([size(A0),width(Xtest)]);
+A_t_test(:,:,1) = Ahat_d;
+%}
 
 if showfit 
     figure('Units','Normalized','Position',[.1 .3 .8 .4]); 
-    subplot(121); imgL = imagesc(Ac); colorbar; 
-    title('Cont A LSQ fit');
-    cmin = min(Ac(:)); cmax = max(Ac(:)); cdiff = cmax-cmin; 
+    subplot(121); imgL = imagesc(A0); colorbar; 
+    title('Disc A LSQ fit');
+    cmin = min(A0(:)); cmax = max(A0(:)); cdiff = cmax-cmin; 
     if cdiff == 0
         cdiff = .01;
     end
     cmin = cmin - .05*cdiff; cmax = cmax + .05*cdiff;
     imgL.Parent.CLim = [cmin, cmax];
-    Ac = zeros(size(Ac)); % reset 
-    subplot(122); img = imagesc(Ac, [cmin,cmax]); colorbar;
-    ttxt = title('Cont A Adapt: 0%');
+    subplot(122); img = imagesc(Ahat_d, [cmin,cmax]); colorbar;
+    ttxt = title('Disc A Adapt: 0%');
     pause(1e-9);
     prog_curr = 0; prog_prev = 0; prog_updTick = 1; % percent progress
 end
 
 for t = 2:width(Xtest)
-    dA = -KA*(xest-x)*x';
+    dAhat = -KA*(xest-x)*x';
+    delBeta_d = M*dAhat;
     if ~shutoff(t)
         % adaptively update the system 
-        Ac = Ac + dA*Th; 
-        %[Ad,Bd] = c2d(Am,Ac-Am,Th);
-        Bd = Bd0*(Ac-Am);
-        xest = Ad*xest + Bd*x;
-        %dxest = Am*xest + (Ac-Am)*x;
-        %xest = xest + dxest*Th;
+        Beta_d = Beta_d + delBeta_d;
+        xest = A_d*xest + Beta_d*x;
     else
         %%{
         if ~shutoff(t-1)
@@ -121,24 +151,24 @@ for t = 2:width(Xtest)
         end
         %}
         % no adaptive updates during shutoff
-        Ad2 = expm(Ac*Th);
-        xest = Ad2*xest; 
+        xest = A_d*xest + Beta_d*x;
     end
     xtest_est_t(:,t) = xest;
     x = Xtest(:,t);
-    %A_t_test(:,:,t) = Ac;
+    Ahat_d = Beta_d + A_d;
+    A_t_test(:,:,t) = Ahat_d;
     if showfit
         prog_curr = 100*t/width(Xtest); 
         if prog_curr - prog_prev > prog_updTick
             prog_prev = prog_curr;
-            [cmin,chg_min] = min([cmin, min(Ac(:))]); chg_min = chg_min-1;
-            [cmax,chg_max] = max([cmax, max(Ac(:))]); chg_max = chg_max-1;
-            img.CData = Ac;
+            [cmin,chg_min] = min([cmin, min(Ahat_d(:))]); chg_min = chg_min-1;
+            [cmax,chg_max] = max([cmax, max(Ahat_d(:))]); chg_max = chg_max-1;
+            img.CData = Ahat_d;
             if chg_max | chg_min
                 img.Parent.CLim = [cmin, cmax];
                 imgL.Parent.CLim = [cmin, cmax];
             end
-            ttxt.String = ['Cont A Estimate: ',num2str(prog_curr,3),'%'];
+            ttxt.String = ['Disc A Estimate: ',num2str(prog_curr,3),'%'];
             pause(1e-9);
         end
     end
@@ -147,56 +177,71 @@ end
 testPred = testData; 
 testPred{:,:} = xtest_est_t';
 
+if showfit
+    figure; 
+    ax(1) = subplot(2,1,1);
+    plot(testData, chandisp); 
+    grid on; hold on;
+    plot(testPred, chandisp);
+    legend('Actual', 'Estimate');
+    title('Test Data');
+    ax(2) = subplot(2,1,2);
+    semilogy(testData.Time, (testPred.(chandisp)-testData.(chandisp)).^2);
+    grid on;
+    title('Squared Error');
+    linkaxes(ax, 'x');
+end
+
 %% run "train" data
 if ~isempty(trainData)
 
 xtrain_est_t = nan(size(Xtrain));
-%{
-A_t_train = nan([size(A0),width(Xtrain)]);
-A_t_train(:,:,1) = Ac0;
-%}
-
 x = Xtrain(:,1); 
-A = A0;
 xest = x; 
 xtrain_est_t(:,1) = xest;
-Ac = Ac0;
+Ahat_d = eye(size(A0));
+Beta_d = Ahat_d - A_d;
+
+%%{
+A_t_train = nan([size(A0),width(Xtrain)]);
+A_t_train(:,:,1) = Ahat_d;
+%}
 
 if showfit 
     figure('Units','Normalized','Position',[.1 .3 .8 .4]); 
-    subplot(121); imgL = imagesc(Ac); colorbar; 
-    title('Cont A LSQ fit');
-    cmin = min(Ac(:)); cmax = max(Ac(:)); cdiff = cmax-cmin; 
+    subplot(121); imgL = imagesc(A0); colorbar; 
+    title('Disc A LSQ fit');
+    cmin = min(A0(:)); cmax = max(A0(:)); cdiff = cmax-cmin; 
     cmin = cmin - .05*cdiff; cmax = cmax + .05*cdiff;
     imgL.Parent.CLim = [cmin, cmax];
-    Ac = zeros(size(Ac)); % reset 
-    subplot(122); img = imagesc(Ac, [cmin,cmax]); colorbar;
-    ttxt = title('Cont A Adapt: 0%');
+    subplot(122); img = imagesc(Ahat_d, [cmin,cmax]); colorbar;
+    ttxt = title('Disc A Adapt: 0%');
     pause(1e-9);
     prog_curr = 0; prog_prev = 0; prog_updTick = 1; % percent progress
 end
 
 for t = 2:width(Xtrain)
-    dA = -KA*(xest-x)*x';
-        Ac = Ac + dA*Th; 
-        %[Ad,Bd] = c2d(Am,Ac-Am,Th);
-        Bd = Bd0*(Ac-Am);
-        xest = Ad*xest + Bd*x;
+    dAhat = -KA*(xest-x)*x';
+    delBeta_d = M*dAhat;
+        Beta_d = Beta_d + delBeta_d;
+        xest = A_d*xest + Beta_d*x;
     xtrain_est_t(:,t) = xest;
     x = Xtrain(:,t);
-    %A_t_train(:,:,t) = Ac;
+    Ahat_d = Beta_d + A_d;
+    A_t_train(:,:,t) = Ahat_d;
+
     if showfit
         prog_curr = 100*t/width(Xtrain); 
         if prog_curr - prog_prev > prog_updTick
             prog_prev = prog_curr;
-            [cmin,chg_min] = min([cmin, min(Ac(:))]); chg_min = chg_min-1;
-            [cmax,chg_max] = max([cmax, max(Ac(:))]); chg_max = chg_max-1;
-            img.CData = Ac;
+            [cmin,chg_min] = min([cmin, min(Ahat_d(:))]); chg_min = chg_min-1;
+            [cmax,chg_max] = max([cmax, max(Ahat_d(:))]); chg_max = chg_max-1;
+            img.CData = Ahat_d;
             if chg_max | chg_min
                 img.Parent.CLim = [cmin, cmax];
                 imgL.Parent.CLim = [cmin, cmax];
             end
-            ttxt.String = ['Cont A Estimate: ',num2str(prog_curr,3),'%'];
+            ttxt.String = ['Disc A Estimate: ',num2str(prog_curr,3),'%'];
             pause(1e-9);
         end
     end
@@ -204,6 +249,21 @@ end
 
 trainPred = trainData; 
 trainPred{:,:} = xtrain_est_t';
+
+if showfit
+    figure; 
+    ax(1) = subplot(2,1,1);
+    plot(trainData, chandisp); 
+    grid on; hold on;
+    plot(trainPred, chandisp);
+    legend('Actual', 'Estimate');
+    title('Test Data');
+    ax(2) = subplot(2,1,2);
+    semilogy(trainData.Time, (trainPred.(chandisp)-trainData.(chandisp)).^2);
+    grid on;
+    title('Squared Error');
+    linkaxes(ax, 'x');
+end
 
 else
     trainPred = [];
@@ -217,7 +277,7 @@ if ~isempty(trainData)
     trainEval.RMSE = rmse(Xtrain(:), xtrain_est_t(:));
     trainEval.pRMSE = (trainEval.RMSE)/rms(Xtrain(:));
 else
-    trainEval = [];
+    trainEval = []; A_t_train = [];
 end
 
 end
