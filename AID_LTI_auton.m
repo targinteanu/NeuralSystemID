@@ -28,7 +28,8 @@ end
 if isempty(KA)
     KA = lyap(Am',eye(size(Am)));
 elseif numel(KA) == 1
-    KA = lyap(Am',KA*eye(size(Am)));
+    %KA = lyap(Am',KA*eye(size(Am)));
+    KA = KA*eye(size(Am));
 end
 if isempty(shutoff)
     shutoff = false(1,height(testData));
@@ -63,7 +64,7 @@ if numel(showfit) > 1
     end
 end
 if isstring(showfit) | ischar(showfit)
-    chandisp(showfit); showfit = true;
+    chandisp = showfit; showfit = true;
 end
 if showfit & isempty(chandisp)
     % choose the most average channel
@@ -89,7 +90,10 @@ Th = seconds(Th); % seconds
 Fs = testData.Properties.SampleRate;
 Th = 1/Fs; % seconds
 %}
-Th = seconds(testData.Properties.TimeStep);
+Th = seconds(trainData.Properties.TimeStep);
+if isnan(Th)
+    Th = median(seconds(diff(trainData.Time)));
+end
 
 %% starting estimate of discrete A 
 if isempty(trainData)
@@ -257,7 +261,7 @@ if showfit
     grid on; hold on;
     plot(trainPred, chandisp);
     legend('Actual', 'Estimate');
-    title('Test Data');
+    title('Train Data');
     ax(2) = subplot(2,1,2);
     semilogy(trainData.Time, (trainPred.(chandisp)-trainData.(chandisp)).^2);
     grid on;
