@@ -296,9 +296,9 @@ class TimeSeriesTransformer(nn.Module):
         x_left = x[:, :, self.used_for_pairing:]  # (B,T,n)
         x_used = x[:, :, :self.used_for_pairing]  # (B,T,kN)
         # for skip connection at output:
-        xAmp_skip = x_used[:self.num_pairs,-1,:] 
-        xCos_skip = x_used[self.num_pairs:2*self.num_pairs,-1,:]
-        xSin_skip = x_used[2*self.num_pairs:3*self.num_pairs,-1,:]
+        xAmp_skip = x_used[:,-1,:self.num_pairs] 
+        xCos_skip = x_used[:,-1,self.num_pairs:2*self.num_pairs]
+        xSin_skip = x_used[:,-1,2*self.num_pairs:3*self.num_pairs]
         """
         x_pairs = torch.stack( 
             (
