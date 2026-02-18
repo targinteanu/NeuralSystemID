@@ -212,7 +212,7 @@ class TimeSeriesTransformer(nn.Module):
     final output. 
     """
 
-    def __init__(self, dim_in, dim_out, dim_u=1, time_len=64, group_size=7, num_groups=7, tuple_size=2):
+    def __init__(self, dim_in, dim_out, dim_u=1, time_len=64, group_size=7, num_groups=7, tuple_size=3):
         super().__init__()
 
         # transformer properties
@@ -279,7 +279,9 @@ class TimeSeriesTransformer(nn.Module):
         self.fco1 = nn.Linear(dim_model, 128)
         #self.fco2 = nn.Linear(64, 64)
         #self.fco3 = nn.Linear(64, 64)
-        self.fco4 = nn.Linear(128, dim_out)
+        #self.fco4 = nn.Linear(128, dim_out)
+        self.fcoAmp = nn.Linear(128, num_groups*group_size) # for predicting amplitude of each feature
+        self.fcoFreq = nn.Linear(128, num_groups*group_size) # for predicting inst frequency of each feature
 
     def forward(self, x, u_seq):
         """
@@ -293,7 +295,10 @@ class TimeSeriesTransformer(nn.Module):
 
         x_left = x[:, :, self.used_for_pairing:]  # (B,T,n)
         x_used = x[:, :, :self.used_for_pairing]  # (B,T,kN)
-        xy_skip = x_used[:,-1,:]  # for skip connection at output
+        # for skip connection at output:
+        xAmp_skip = x_used[:self.num_pairs,-1,:] 
+        xCos_skip = x_used[self.num_pairs:2*self.num_pairs,-1,:]
+        xSin_skip = x_used[2*self.num_pairs:3*self.num_pairs,-1,:]
         """
         x_pairs = torch.stack( 
             (
@@ -352,8 +357,13 @@ class TimeSeriesTransformer(nn.Module):
         y = F.gelu(self.fco1(z))
         #y = F.gelu(self.fco2(y))
         #y = F.gelu(self.fco3(y))
-        y = self.fco4(y)  # (B, dim_out)
-        out = y + xy_skip # skip connection
+        #y = self.fco4(y)  # (B, dim_out)
+        #out = y + xy_skip # skip connection
+        yAmp = self.fcoAmp(y) + xAmp_skip # predict amplitude with skip connection
+        yFreq = self.fcoFreq(y) 
+        yCos = xCos_skip*torch.cos(yFreq) - xSin_skip*torch.sin(yFreq) # reconstruct cosine with predicted freq and skip connection
+        ySin = xSin_skip*torch.cos(yFreq) + xCos_skip*torch.sin(yFreq) # reconstruct sine with predicted freq and skip connection
+        out = torch.cat([yAmp, yCos, ySin], dim=1)
         return out
 
 
