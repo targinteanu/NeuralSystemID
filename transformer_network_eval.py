@@ -7,11 +7,11 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .01 # EVALUATION sample time, s
+hzn = .005 # EVALUATION sample time, s
 groupsize=16
 numgroups=4
 fc = np.array([4,10,27,70]) # freq band center freqs
-netfile = "neural_network_pytorch.pth"
+netfile = "neural_network_pytorch_b7cc13eb3147d17ba42aae34332c1c6a046eec48.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -41,7 +41,7 @@ print(YbRaw.shape)
 # -----------------------------------------------------------------------------------------------
 
 # define mdl struct ====================================================================
-model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups)
+model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups, tuple_size=3)
 model.load_state_dict(torch.load(netfile))
 
 # simulations -----------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ def unprocess(Y, featcorrection):
     #Yreal = Ymag * Ycos
     return Yreal
 
-def run_simulation(X, Y, Ytrue_recon=None):
+def run_simulation(U, X, Y, Ytrue_recon=None):
 
     Ysim = []
     model.eval()
@@ -67,16 +67,16 @@ def run_simulation(X, Y, Ytrue_recon=None):
     prognext = progtick
     print("Simulating...")
     for i0 in range(len(X) - hzn_len):
-        xi = X[i0, :, :].reshape(1,-1,X.shape[-1])
+        xi = X[i0, :, :].reshape(1,-1,X.shape[-1]) 
         for i in range(hzn_len):
+            ui = U[i0:i0+i+1,0:1,:] # use rollout
+            ui = ui.permute(1,0,2)
+            #ui = U[i0+i:i0+i+1,0:1,:] # do not use rollout
             with torch.no_grad():
-                yi = model(xi).numpy().flatten()
+                yi = model(xi, ui)
             # prepare next input
-            if i < hzn_len - 1:
-                event_count_next = X[i0 + i + 1, -1, -1]  # keep using original event count
-                yi_aug = np.hstack([yi, event_count_next])
-                xi = torch.tensor(np.vstack([xi[0, 1:, :], yi_aug]).reshape(1,-1,X.shape[-1]), dtype=torch.float32)
-        Ysim.append(yi)
+            #xi = torch.cat([xi[0, 1:, :], yi], dim=0).reshape(1,-1,X.shape[-1]) # remove line to enable rollout
+        Ysim.append(yi.numpy().flatten())
         progcur += 1.0/(len(X) - hzn_len)
         if progcur >= prognext:
             print(f"  {int(progcur*100)}%")
@@ -122,7 +122,7 @@ def run_simulation(X, Y, Ytrue_recon=None):
         ax.legend()
         ax.grid(axis='both')
     # plot stim channel (last channel)
-    axes[-1].plot(X[:,-1,-1])
+    axes[-1].plot(U[:,-1,-1])
     axes[-1].set_title("Stimulus Input")
     axes[-1].set_ylabel("Count")
     axes[-1].grid(axis='both')
@@ -183,7 +183,7 @@ def run_simulation(X, Y, Ytrue_recon=None):
         ax.legend()
         ax.grid(axis='both')
     # plot stim channel (last channel)
-    axes[-1].plot(X[:,-1,-1])
+    axes[-1].plot(U[:,-1,-1])
     axes[-1].set_title("Stimulus Input")
     axes[-1].set_ylabel("Count")
     axes[-1].grid(axis='both')
@@ -192,7 +192,7 @@ def run_simulation(X, Y, Ytrue_recon=None):
     plt.show()
 
 print("Evaluating baseline data...")
-run_simulation(Xb, Yb, YbRaw)
+run_simulation(Ub, Xb, Yb, YbRaw)
 
 print("Evaluating stimulated data...")
-run_simulation(Xs, Ys, YsRaw)
+run_simulation(Us, Xs, Ys, YsRaw)
