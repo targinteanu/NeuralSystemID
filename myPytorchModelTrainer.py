@@ -1,4 +1,5 @@
 import torch
+import copy
 
 def trainDynsysModel(
         model, 
@@ -54,7 +55,7 @@ def trainDynsysModel(
         if allow_early_stopping:
             if epoch_val_loss < best_val - 1e-9:
                 best_val = epoch_val_loss
-                best_model = model.state_dict()  # save the best model weights
+                best_model = copy.deepcopy(model.state_dict())  # save the best model weights
                 no_improve = 0
             else:
                 no_improve += 1
@@ -64,6 +65,13 @@ def trainDynsysModel(
 
     # Load the best model weights before returning
     if allow_early_stopping:
-        model.load_state_dict(best_model)
-        
+        print(f"Restoring the best model with val_loss: {best_val:.6f}")
+        missing, unexpected = model.load_state_dict(best_model)
+        if missing:
+            print(f"Warning: Missing keys when loading best model: {missing}")
+        if unexpected:
+            print(f"Warning: Unexpected keys when loading best model: {unexpected}")
+    else:
+        print("Early stopping disabled. Returning the final model.")
+
     return model, train_losses, val_losses
