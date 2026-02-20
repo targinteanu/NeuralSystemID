@@ -360,7 +360,7 @@ class TimeSeriesTransformer(nn.Module):
         #y = self.fco4(y)  # (B, dim_out)
         #out = y + xy_skip # skip connection
         yAmp = self.fcoAmp(y) + xAmp_skip # predict amplitude with skip connection
-        yFreq = self.fcoFreq(y) 
+        yFreq = self.fcoFreq(y) * rollout
         yCos = xCos_skip*torch.cos(yFreq) - xSin_skip*torch.sin(yFreq) # reconstruct cosine with predicted freq and skip connection
         ySin = xSin_skip*torch.cos(yFreq) + xCos_skip*torch.sin(yFreq) # reconstruct sine with predicted freq and skip connection
         out = torch.cat([yAmp, yCos, ySin], dim=1)
