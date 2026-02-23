@@ -7,11 +7,11 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .005 # EVALUATION sample time, s
+hzn = .025 # EVALUATION sample time, s
 groupsize=16
 numgroups=4
 fc = np.array([4,10,27,70]) # freq band center freqs
-netfile = "neural_network_pytorch_b7cc13eb3147d17ba42aae34332c1c6a046eec48.pth"
+netfile = "neural_network_pytorch_9f88f1c13bbe6bf02107711360a7aa608342c168_4.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -68,14 +68,21 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     print("Simulating...")
     for i0 in range(len(X) - hzn_len):
         xi = X[i0, :, :].reshape(1,-1,X.shape[-1]) 
+        # using rollout: 
+        ui = U[i0:i0+hzn_len,0:1,:] # use rollout
+        ui = ui.permute(1,0,2)
+        with torch.no_grad():
+            yi = model(xi, ui)
+        """
+        # without using rollout:
         for i in range(hzn_len):
-            ui = U[i0:i0+i+1,0:1,:] # use rollout
+            ui = U[i0+i:i0+i+1,0:1,:] # do not use rollout
             ui = ui.permute(1,0,2)
-            #ui = U[i0+i:i0+i+1,0:1,:] # do not use rollout
             with torch.no_grad():
                 yi = model(xi, ui)
             # prepare next input
-            #xi = torch.cat([xi[0, 1:, :], yi], dim=0).reshape(1,-1,X.shape[-1]) # remove line to enable rollout
+            xi = torch.cat([xi[0, 1:, :], yi], dim=0).reshape(1,-1,X.shape[-1]) # remove line to enable rollout
+        """
         Ysim.append(yi.numpy().flatten())
         progcur += 1.0/(len(X) - hzn_len)
         if progcur >= prognext:
