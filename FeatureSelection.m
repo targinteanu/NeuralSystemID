@@ -128,46 +128,11 @@ for Ti = 3:height(alltbls)
     EPfigs_ = cell(height(alltbls{Ti,1}),1);
     for Tj = 1:height(alltbls{Ti,1})
         T = alltbls{Ti,1}{Tj};
-        if ~isempty(T)
-        fs = T.Properties.SampleRate;
-        if isnan(fs)
-            fs = 1/median(seconds(diff(T.Time)));
-        end
-        L = floor(eventwindow*fs); % samples before and after 
-        Ev = T.Properties.Events;
-        if ~isempty(Ev)
-        EvTypeSel = ...
-            contains(lower(Ev.EventLabels), 'stim') | ...
-            contains(lower(Ev.EventLabels), 'trig');
-        Ev = Ev(EvTypeSel, :);
-        Ev = Ev(Ev.Time > Ev.Time(1)+1.15*seconds(eventwindow), :);
-        Ev = Ev(Ev.Time < Ev.Time(end)-1.15*seconds(eventwindow), :);
-        if ~isempty(Ev)
-        EPs = nan(2*L+1, width(T), height(Ev));
-        for Ei = 1:height(Ev)
-            [~,ti] = min(abs(T.Time - Ev.Time(Ei)));
-            EPs(:,:,Ei) = T{ti+(-L:L),:};
-        end
-        EPt = (-L:L)/fs; EPt = EPt'; % seconds 
-        EPavg = mean(EPs,3, 'omitnan');
-        EPstd = std(EPs,[],3, 'omitnan');
-        EPpatch = [EPavg+EPstd; flipud(EPavg)-flipud(EPstd)];
-        EPfigs_{Tj} = figure; 
-        for ch = 1:width(T)
-            patch([EPt; flipud(EPt)], ...
-                EPpatch(:,ch), ...
-                colorwheel(ch/width(T)), 'FaceAlpha',.5, 'EdgeColor','none');
-            hold on;
-        end
-        grid on;
-        xlabel('time from stim (s)'); 
-        ylabel('Signal ± 1SD')
-        legend(T.Properties.VariableNames, 'Location','westoutside');
-        title(T.Properties.Description);
-        end
-        end
-        end
+        EPfigs_{Tj} = DetectEventDelay(T,eventwindow, alltbls{1,1}{1});
+        pause(.001); drawnow; pause(.001);
     end
+    EPfigs{Ti} = EPfigs_;
+    clear EPfigs_ Tj
 end
 
 %% calc features 
