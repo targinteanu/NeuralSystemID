@@ -77,6 +77,7 @@ imagesc(G); colorbar;
 title('median windowed envelope')
 %}
 thetaPowerCortex = thetaPowerWindowed;
+thetaPowerCortexOrig = thetaPowerCortex;
 
 %% mesh plots 
 ft_defaults
@@ -94,6 +95,14 @@ fileMesh = ft_read_headshape(fileMesh);
 ElecTbl.acpcX = fileElec.chanpos(:,1); 
 ElecTbl.acpcY = fileElec.chanpos(:,2); 
 ElecTbl.acpcZ = fileElec.chanpos(:,3); 
+
+for ch = 1:length(thetaPowerCortex)
+    if isnan(thetaPowerCortex(ch))
+        dr = fileElec.chanpos(ch,:) - fileElec.chanpos;
+        dl = rms(dr,2);
+        thetaPowerCortex(ch) = mean(thetaPowerCortexOrig./dl', 'omitnan');
+    end
+end
 
 %{
 figure; 
