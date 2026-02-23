@@ -346,9 +346,9 @@ def prepTimeSeqData(
         X, Y, W, Z, U = [], [], [], [], []
         for i in range(len(data) - seq_len - horizon + 1):
             X.append(data[i:i+seq_len, :])
-            Y.append(data[i+seq_len + horizon - 1, :]) 
+            Y.append(data[(i+seq_len):(i+seq_len + horizon), :]) 
             W.append(data2[i:i+seq_len, :])
-            Z.append(data2[i+seq_len + horizon - 1, :]) 
+            Z.append(data2[(i+seq_len):(i+seq_len + horizon), :]) 
             if data3 is not None:
                 U.append(data3[(i+seq_len):(i+seq_len + horizon), :])
         return np.array(X), np.array(Y), np.array(W), np.array(Z), np.array(U)

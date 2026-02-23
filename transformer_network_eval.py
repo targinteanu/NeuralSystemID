@@ -38,6 +38,12 @@ print(YbRaw.shape)
 #YsRaw = torch.tensor(YsRaw, dtype=torch.float32)
 #YbRaw = torch.tensor(YbRaw, dtype=torch.float32)
 
+# for output, only consider the final step of the horizon for evaluation, since that's the hardest to predict and most relevant for control applications.
+Ys = Ys[:,-1,:]
+Yb = Yb[:,-1,:]
+YsRaw = YsRaw[:,-1,:]
+YbRaw = YbRaw[:,-1,:]
+
 # -----------------------------------------------------------------------------------------------
 
 # define mdl struct ====================================================================
@@ -83,6 +89,7 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
             # prepare next input
             xi = torch.cat([xi[0, 1:, :], yi], dim=0).reshape(1,-1,X.shape[-1]) # remove line to enable rollout
         """
+        yi = yi[:,-1,:] # only take final step of rollout for evaluation
         Ysim.append(yi.numpy().flatten())
         progcur += 1.0/(len(X) - hzn_len)
         if progcur >= prognext:

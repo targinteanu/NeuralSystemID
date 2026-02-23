@@ -343,6 +343,7 @@ class TimeSeriesTransformer(nn.Module):
         # latent dynamics 
         z = h[:, -1, :]  # (B, dim_model)
         zskip = z
+        Z = torch.zeros(z.size(0), rollout, z.size(1))
         for r in range(rollout):
             u = u_seq[:, r, :] # (B, dim_u)
             z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
@@ -352,18 +353,20 @@ class TimeSeriesTransformer(nn.Module):
             z = F.gelu(self.fc5(z))
             z = z + zskip # skip connection
             zskip = z
+            Z[:, r, :] = z
 
         # Output head --------------------------------------------------------------------
-        y = F.gelu(self.fco1(z))
+        R = torch.arange(rollout).float().unsqueeze(0).unsqueeze(2) + 1 # (1, rollout, 1)
+        y = F.gelu(self.fco1(Z))
         #y = F.gelu(self.fco2(y))
         #y = F.gelu(self.fco3(y))
         #y = self.fco4(y)  # (B, dim_out)
         #out = y + xy_skip # skip connection
-        yAmp = self.fcoAmp(y) + xAmp_skip # predict amplitude with skip connection
-        yFreq = self.fcoFreq(y) * rollout
+        yAmp = self.fcoAmp(y)*R + xAmp_skip # predict amplitude with skip connection
+        yFreq = self.fcoFreq(y) * R
         yCos = xCos_skip*torch.cos(yFreq) - xSin_skip*torch.sin(yFreq) # reconstruct cosine with predicted freq and skip connection
         ySin = xSin_skip*torch.cos(yFreq) + xCos_skip*torch.sin(yFreq) # reconstruct sine with predicted freq and skip connection
-        out = torch.cat([yAmp, yCos, ySin], dim=1)
+        out = torch.cat([yAmp, yCos, ySin], dim=2) # (B, rollout, ...)
         return out
 
 
