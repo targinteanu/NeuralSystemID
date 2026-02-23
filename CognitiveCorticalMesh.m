@@ -1,5 +1,5 @@
 % load data
-PDdataAll = ns2timetable('/Users/torenarginteanu/Desktop/Data_PD/PD25N009/baseline001.ns2');
+PDdataAll = ns2timetable('/Users/torenarginteanu/Desktop/Data_PD/PD25N008/baseline/baseline001.ns2');
 srate = PDdataAll.Properties.SampleRate;
 if isnan(srate)
     srate = 1/median(seconds(diff(PDdataAll.Time)));
@@ -11,11 +11,16 @@ PDdata1 = PDdataAll(257001:362001,:);
 PDdata2 = PDdataAll(467001:542001,:);
 PDdata = PDdata1;
 %}
-t1 = datetime(2025,6,26,16,34,0); 
-t2 = datetime(2025,6,26,16,39,40);
+%%{
+%t1 = datetime(2025,6,26,16,34,0); 
+%t2 = datetime(2025,6,26,16,39,40);
+t1 = datetime(2025,6,19,15,13,0);
+t2 = datetime(2025,6,19,15,27,0);
 t1.TimeZone = PDdataAll.Time(1).TimeZone; 
 t2.TimeZone = PDdataAll.Time(1).TimeZone; 
 PDdata = PDdataAll( (PDdataAll.Time >= t1) & (PDdataAll.Time <= t2), : );
+%}
+%PDdata = PDdataAll;
 
 % channel selection
 PDdata = PDdata(:,[1:63,65]);
@@ -28,10 +33,20 @@ PDdata{:,:} = PDdata{:,:} - mean(PDdata{:,1:63}, 2);
 thetaPower = bandpower(PDdata.Variables, srate, [4,9]);
 filtwts = fir1(1024, [4, 9]./(srate/2));
 PDdata = FilterTimetable(@(b,x) filtfilt(b,1,x), filtwts, PDdata);
+PDdata = PDdata(:,1:63);
 PD_Phase_Data = instPhaseFreqTbl(PDdata);
 PD_Channel_Names = PDdata.Properties.VariableNames;
 
 ElecTbl = table('RowNames',PD_Channel_Names(1:63)); % cortical only
+
+%% windowed theta power 
+% Calculate windowed theta power
+windowSize = 1000; % samples 
+thetaPowerWindowed = movmean(envelope(PDdata.Variables).^2, windowSize);
+thetaPowerWindowed = thetaPowerWindowed(round(windowSize/2):windowSize:end, :);
+thetaPowerWindowed = median(thetaPowerWindowed);
+ElecTbl.ThetaPowerWindowed = thetaPowerWindowed';
+thetaPowerWindowed(isoutlier(sqrt(thetaPowerWindowed))) = nan;
 
 %% phase locking 
 %{
@@ -46,16 +61,31 @@ PLV_Average_Cortex = getAveragePLV(PLV_CortexCortex_matrix);
 %}
 thetaPowerCortex = thetaPower([1:(ref_channel-1), (ref_channel+1):end]);
 ElecTbl.ThetaPower = thetaPowerCortex';
+thetaPowerCortex(isoutlier(sqrt(thetaPowerCortex))) = nan;
+
+%%
+figure; 
+G = zeros(21,3);
+subplot(1,2,1); 
+G(:) = log10(thetaPowerCortex); 
+imagesc(G); colorbar;
+title('bandpower')
+subplot(1,2,2);
+G(:) = log10(thetaPowerWindowed);
+imagesc(G); colorbar;
+title('median windowed envelope')
 
 %% mesh plots 
 ft_defaults
 [ftver, ftpath] = ft_version;
 
+lat = 'left';
+
 % patient specific acpc coords
 
-fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/PD25N009_elec_acpc_fr.mat';
+fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N008/Imaging/PD25N008_elec_acpc_fr.mat';
 fileElec = load(fileElec).elec_acpc_fr;
-fileMesh = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/freesurfer/freesurfer/surf/rh.pial.T1';
+fileMesh = ['/Users/torenarginteanu/Desktop/Data_PD/PD25N008/Imaging/',lat(1),'h.pial.T1'];
 fileMesh = ft_read_headshape(fileMesh);
 
 ElecTbl.acpcX = fileElec.chanpos(:,1); 
@@ -79,13 +109,21 @@ ThetaPowerInterp = load_ACPC_FR_mesh(fileElec, fileMesh, ...
     thetaPowerCortex);
 title('Theta Power, individual ACPC')
 
+camlight;
+if lat(1)=='r'
+    view([150,5]);
+else
+    view([0,90]);
+end
+camlight headlight;
+
 %% freesurfer mni coords 
 
 %fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/PD25N009_elec_fsavg_frs.mat';
 %fileElec = load(fileElec).elec_fsavg_frs;
-fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/PD25N009_elec_mni_frv.mat';
+fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N008/Imaging/PD25N008_elec_mni_frv.mat';
 fileElec = load(fileElec).elec_mni_frv;
-fileMesh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat']).mesh;
+fileMesh = load([ftpath,filesep,'template/anatomy/surface_pial_',lat,'.mat']).mesh;
 
 ElecTbl.mniX = fileElec.chanpos(:,1); 
 ElecTbl.mniY = fileElec.chanpos(:,2); 
@@ -95,6 +133,14 @@ figMNI = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
 ThetaPowerInterp = load_ACPC_FR_mesh(fileElec, fileMesh, ...
     thetaPowerCortex);
 title('Theta Power, MNI space / template brain')
+
+camlight;
+if lat(1)=='r'
+    view([150,5]);
+else
+    view([0,90]);
+end
+camlight headlight;
 
 %% saving 
 writetable(ElecTbl, 'BrainHeatmapCoords.xlsx');
@@ -168,10 +214,13 @@ function [interp_source, srcpltcfg] = ...
     srcpltcfg = ft_sourceplot(cfg, interp_source, pial_lh);
 
     %view([-55 10]);
-    material dull;
+    ax = gca;
+    ax.Children(2).FaceColor = [.8 .8 .8];
+    ax.Children(2).FaceAlpha = .8;
+    material shiny;
     lighting gouraud;
-    camlight;
-    view([150, 5]);
+    %camlight;
+    %view([150, 5]);
 
     % === Step 6: Normal color map (pure parula) ===
     colormap(parula);   % NO special red added
@@ -180,7 +229,7 @@ function [interp_source, srcpltcfg] = ...
     % Plot normal electrodes
     elec_plot_colors = data_clean;   % Use interpolated data (0–1)
     %ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
-    ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', 'black', 'edgecolor', 'black');
+    ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', 'red', 'edgecolor', 'black');
 
     % === Step 8: Overlay reference electrodes manually ===
     if any(ref_idx)
