@@ -7,11 +7,11 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .025 # EVALUATION sample time, s
+hzn = .015 # EVALUATION sample time, s
 groupsize=16
 numgroups=4
 fc = np.array([4,10,27,70]) # freq band center freqs
-netfile = "neural_network_pytorch_9f88f1c13bbe6bf02107711360a7aa608342c168_4.pth"
+netfile = "neural_network_pytorch_e791b73783febcc0e11d6f538b5d3097a179b23c.pth"
 dt_target = 0.005 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
