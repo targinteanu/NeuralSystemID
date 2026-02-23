@@ -60,10 +60,11 @@ PLV_CortexCortex_matrix = PLV_VectorMatrix([1:(ref_channel-1), (ref_channel+1):e
 PLV_Average_Cortex = getAveragePLV(PLV_CortexCortex_matrix);
 %}
 thetaPowerCortex = thetaPower([1:(ref_channel-1), (ref_channel+1):end]);
-ElecTbl.ThetaPower = thetaPowerCortex';
+%ElecTbl.ThetaPower = thetaPowerCortex';
 thetaPowerCortex(isoutlier(sqrt(thetaPowerCortex))) = nan;
 
 %%
+%{
 figure; 
 G = zeros(21,3);
 subplot(1,2,1); 
@@ -74,6 +75,8 @@ subplot(1,2,2);
 G(:) = log10(thetaPowerWindowed);
 imagesc(G); colorbar;
 title('median windowed envelope')
+%}
+thetaPowerCortex = thetaPowerWindowed;
 
 %% mesh plots 
 ft_defaults
@@ -106,7 +109,7 @@ title('Cortex-Cortex Average PLV')
 
 figACPC = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
 ThetaPowerInterp = load_ACPC_FR_mesh(fileElec, fileMesh, ...
-    thetaPowerCortex);
+    thetaPowerCortex, 'acpc');
 title('Theta Power, individual ACPC')
 
 camlight;
@@ -131,7 +134,7 @@ ElecTbl.mniZ = fileElec.chanpos(:,3);
 
 figMNI = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
 ThetaPowerInterp = load_ACPC_FR_mesh(fileElec, fileMesh, ...
-    thetaPowerCortex);
+    thetaPowerCortex, 'mni');
 title('Theta Power, MNI space / template brain')
 
 camlight;
@@ -170,28 +173,31 @@ compareRosePlots(PD_Phase_Data, central_channel, comparison_channels);
 %% helper functions 
 
 function [interp_source, srcpltcfg] = ...
-    load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data)
+    load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data, coordsys)
     sphereradius = 3;
 
     % === Step 1: Load Electrode Positions and Mesh ===
     %elec_acpc_fr = load(acpc_path).elec_acpc_fr;
     %pial_lh = ft_read_headshape(pial_lh_path);
-    pial_lh.coordsys = 'acpc';
+    pial_lh.coordsys = coordsys;
 
     pial_lh = ft_convert_units(pial_lh, 'mm');
     elec_acpc_fr = ft_convert_units(elec_acpc_fr, 'mm');
 
+    %{
     % === Step 2: Identify reference channels ===
     ref_idx = isnan(data);          % Logical array: true if it's reference
     data_clean = data;              % Copy data
     data_clean(ref_idx) = 0;         % Set NaNs to 0 for interpolation
+    %}
+    data_clean = data;
 
     % === Step 3: Build source structure ===
     source = struct();
     source.pos = elec_acpc_fr.chanpos;
     source.pow = data_clean;
     source.dimord = 'pos';
-    source.coordsys = 'acpc';
+    source.coordsys = coordsys;
     source.unit = 'mm';
 
     % === Step 4: Interpolate electrode data ===
@@ -216,7 +222,7 @@ function [interp_source, srcpltcfg] = ...
     %view([-55 10]);
     ax = gca;
     ax.Children(2).FaceColor = [.8 .8 .8];
-    ax.Children(2).FaceAlpha = .8;
+    ax.Children(2).FaceAlpha = .6;
     material shiny;
     lighting gouraud;
     %camlight;
@@ -231,6 +237,7 @@ function [interp_source, srcpltcfg] = ...
     %ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
     ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', 'red', 'edgecolor', 'black');
 
+    %{
     % === Step 8: Overlay reference electrodes manually ===
     if any(ref_idx)
         ref_positions = elec_acpc_fr.chanpos(ref_idx, :);
@@ -239,6 +246,7 @@ function [interp_source, srcpltcfg] = ...
             100, 'r', 'filled', 'MarkerEdgeColor', 'k', 'LineWidth', 1.5);
         hold off;
     end
+    %}
 
 end
 
