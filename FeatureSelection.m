@@ -558,8 +558,7 @@ end
 
 function tblslist = selectTbls(tblsOrig, tblsArtrem, chanselmade, channamesel, chanselind)
 % Select between original and art removed table(s). If selected channels
-% have not been artifact removed, this will try to pull the original data,
-% in which case output table cols might not be in the same order. 
+% have not been artifact removed, this will try to pull the original data. 
 tblsOrig = tblsOrig(:,1);
 if ~isempty(tblsArtrem)
     tblslist = tblsArtrem;
@@ -589,6 +588,7 @@ if ~isempty(tblsArtrem)
                     T = synchronize(T,To_ch,'first','nearest');
                 end
             end
+            T = T(:,channamesel);
             tblslist{Ti} = T;
         end
     end
