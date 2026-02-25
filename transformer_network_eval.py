@@ -57,7 +57,7 @@ def unprocess(Y, featcorrection):
     Ymag = Y[:, :numgroups*groupsize]
     Ycos = Y[:, (numgroups*groupsize):(2*numgroups*groupsize)]
     Ysin = Y[:, 2*numgroups*groupsize:]
-    Ymag = (np.exp(Ymag)) * featcorrection[:numgroups*groupsize]
+    Ymag = np.sqrt(np.exp(Ymag)) * featcorrection[:numgroups*groupsize]
     #Ytan = Ysin / (Ycos + np.finfo(float).eps)
     Yphase = np.arctan2(Ysin, Ycos)
     Yreal = Ymag * np.cos(Yphase)
