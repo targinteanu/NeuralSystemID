@@ -46,6 +46,8 @@ end
 EPt = (-L:L)/fs; EPt = EPt'; % seconds 
 EPavg = mean(EPs,3, 'omitnan');
 EPstd = std(EPs,[],3, 'omitnan');
+EPstat = nan(2*L+1, width(T));
+estDelays = nan(1,width(T));
 myttl = 'Signal ± 1SD';
 if ~isempty(Tbase)
     baseAvg = mean(Tbase.Variables, 'omitnan');
@@ -53,17 +55,45 @@ if ~isempty(Tbase)
     EPavg = EPavg - baseAvg;
     EPstd = EPstd./baseStd;
     myttl = [myttl,', baseline-adjusted'];
+    for ch = 1:size(EPs,2)
+        y = Tbase{:,ch};
+        for ti = 1:size(EPs,1)
+            x = squeeze(EPs(ti,ch,:));
+            [~,EPstat(ti,ch)] = ttest2(x,y, 'VarType','unequal');
+        end
+        estDelay_ch = find(EPstat(1:L,ch) > 0.01, 1, 'last');
+        if ~isempty(estDelay_ch)
+            estDelays(ch) = -EPt(estDelay_ch);
+        end
+    end
+else
+    x = EPavg(1:L,:); y = EPstd(1:L,:);
+    x = x - median(x,1); x = (x.^2) ./ (y.^2);
+    for ch = 1:size(x,2)
+        x1 = x(:,ch);
+        [tr,trloc,trw,trp] = findpeaks(-x1, 'MinPeakProminence',std(x1)); 
+        [selw, seli] = max(trw+trloc);
+        estDelay_ch = trloc(seli);
+        if ~isempty(estDelay_ch)
+            estDelays(ch) = -EPt(estDelay_ch);
+        end
+    end
 end
+
+estDelay = median(estDelays, 'omitnan');
 
 % prepare figure 
 EPpatch = [EPavg+EPstd; flipud(EPavg)-flipud(EPstd)];
 fig = figure; 
+%%{
 for ch = 1:width(T)
     patch([EPt; flipud(EPt)], ...
         EPpatch(:,ch), ...
         colorwheel(ch/width(T)), 'FaceAlpha',.5, 'EdgeColor','none');
     hold on;
 end
+%}
+%plot(EPt, EPstat);
 grid on;
 xlabel('time from stim (s)'); 
 ylabel(myttl)
