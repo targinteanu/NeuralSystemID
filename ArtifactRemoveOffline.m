@@ -103,10 +103,12 @@ end
 %% loop through table list 
 
 tblsListOut = cell(size(tblsList));
+EPlistOut = cell(size(tblsListOut));
 
 for Li = 1:height(tblsList)
     tbls = tblsList{Li};
     tblsOut = cell(height(tbls),1);
+    EPout = cell(size(tblsOut));
     for Ti = 1:height(tbls)
         dta = tbls{Ti,1}; % only process the "main table"
         dta = dta(:, chanlistsel);
@@ -128,6 +130,14 @@ for Li = 1:height(tblsList)
         end
         gname = evlbl(selidx);
         selrow = strcmp(evtbl.EventLabels, gname);
+        [trigDelay, ~, EPout{Ti}] = DetectEventDelay(dta,[],selrow,[],channelNameRec);
+        pause(.001); drawnow; pause(.001);
+        trigDelay = inputdlg('Triggers are delayed by (s):', ...
+            'Apply trigger delay', 1, {num2str(trigDelay)});
+        trigDelay = (eval(trigDelay{1}));
+        if trigDelay > 0
+            evtbl.Time = evtbl.Time - seconds(trigDelay);
+        end
         gtbl = evtbl(selrow,:);
         gt = gtbl.Time; 
         g = zeros(size(t));
@@ -217,7 +227,7 @@ for chnmst = channelNameStim
         end
     end
 end
-figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+figExampleChans = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
 for ch = 1:length(chandispname)
     ax(ch) = subplot(H+1,1,ch);
     plot(dta, chandispname(ch)); grid on; hold on; 
@@ -230,7 +240,7 @@ linkaxes(ax, 'x');
 pause(.001); drawnow; pause(.001);
 
 % show overlapping artifact
-figure; 
+figExampleArts = figure; 
 for ch = 1:H
 ax2(ch) = subplot(H,1,ch);
 hold on; grid on;
@@ -262,7 +272,7 @@ for itype = 1:size(tracetypes,2)
 end
 showtraceinds = [tracebest(1:NumTraceToShow,:); tracebest((end-NumTraceToShow+1):end,:)];
 showtraceinds = showtraceinds(:); showtraceinds = unique(showtraceinds);
-figure; 
+figAvgArt = figure; 
 for ch = 1:H
 ax3(ch) = subplot(H,1,ch);
 yavg = artavg(:,chandisp(ch),1,1); xavg = artavg(:,chandisp(ch),1,2);
@@ -288,10 +298,15 @@ pause(.001); drawnow; pause(.001);
 dtaArtRem = dtaArtRem + DCOSBL; % replace DC offset 
 dtaArtRemDesc = dtaArtRem.Properties.Description;
 dtaArtRem.Properties.Description = [char(dtaArtRemDesc),', Artifact Removed'];
+if trigDelay > 0
+    dtaArtRem.Properties.Events.Time(selrow) = ...
+        dtaArtRem.Properties.Events.Time(selrow) - seconds(trigDelay);
+end
 tblsOut{Ti,1} = dtaArtRem;
 
     end
     tblsListOut{Li} = tblsOut;
+    EPlistOut{Li} = EPout;
 end
 
 %% saving 
@@ -307,7 +322,33 @@ svstruct.chanlistsel = chanlistsel;
 % stamp saved output with version
 thisfilever = getFileVersion(thisfilename);
 [~,thisfilename] = fileparts(thisfilename);
-svname = [fn,'_',thisfilename,'_',thisfilever];
+svname = [thisfilename,'_',thisfilever];
+fp = [fp,svname];
+mkdir(fp);
+svname = [fn,'_',svname];
+svname = fullfile(fp,svname);
 
 % save vars (table lists)
-save(fullfile(fp,svname), '-struct', 'svstruct', "-v7.3");
+save(svname, '-struct', 'svstruct', "-v7.3");
+
+% save figures 
+saveasmultiple(figAvgArt, svname+" - Average Artifact");
+saveasmultiple(figExampleChans, svname+" - Example Channels");
+nfig = 1;
+for EPi = 1:length(EPlistOut)
+    EPout = EPlistOut{EPi};
+    for EPj = 1:length(EPout)
+        saveasmultiple(EPout{EPj}, svname+" - stim response ("+num2str(nfig)+")");
+        nfig = nfig+1;
+    end
+end
+saveasmultiple(figExampleArts, svname+" - Example Artifacts");
+
+function saveasmultiple(fig, filename)
+if isvalid(fig)
+saveas(fig, filename, 'fig'); % original matlab figure
+saveas(fig, filename, 'png'); % preview
+else
+    warning('figure handle not valid; may have been closed.')
+end
+end

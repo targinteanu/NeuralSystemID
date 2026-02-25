@@ -123,13 +123,21 @@ pause(.001); drawnow; pause(.001);
 %% event delay detection 
 % determine if there is event delay in stim conditions 
 EPfigs = cell(height(alltbls),1);
-eventwindow = 0.5; % s before and after 
+eventwindow = []; % s before and after (blank = compute based on ISI)
 for Ti = 3:height(alltbls)
     EPfigs_ = cell(height(alltbls{Ti,1}),1);
     for Tj = 1:height(alltbls{Ti,1})
         T = alltbls{Ti,1}{Tj};
-        EPfigs_{Tj} = DetectEventDelay(T,eventwindow, alltbls{1,1}{1});
+        [trigDelay, ~, EPfigs_{Tj}] = DetectEventDelay(T,eventwindow,[], ...
+            alltbls{1,1}{1}, channelNameRec);
         pause(.001); drawnow; pause(.001);
+        trigDelay = inputdlg('Triggers are delayed by (s):', ...
+            'Apply trigger delay', 1, {num2str(trigDelay)});
+        trigDelay = (eval(trigDelay{1}));
+        if trigDelay > 0
+        T.Properties.Events.Time = T.Properties.Events.Time - seconds(trigDelay);
+        alltbls{Ti,1}{Tj} = T;
+        end
     end
     EPfigs{Ti} = EPfigs_;
     clear EPfigs_ Tj
@@ -548,10 +556,19 @@ saveasmultiple(fig_stimresponse, svname+" - Stim Response");
 saveasmultiple(fig_spec1, svname+" - Spectrum");
 for hzn = length(hzns):-1:1
     myfig = fig_auton(hzn);
-    if strcmp(class(myfig), 'double')
+    if isnumeric(myfig)
         myfig = figure(myfig);
     end
     saveasmultiple(myfig, svname+" - Interchannel "+num2str(round(1000*hzns(hzn)))+"ms");
+end
+EPfigs = EPfigs(:); nfig = 1;
+for EPfig = 1:length(EPfigs)
+    EPfigs_ = EPfigs{EPfig}(:);
+    for EPfig_ = 1:length(EPfigs_)
+        EPfig__ = EPfigs_{EPfig_};
+        saveasmultiple(EPfig__, svname+" - trigger response ("+num2str(nfig)+")");
+        nfig = nfig+1;
+    end
 end
 
 %% helpers 

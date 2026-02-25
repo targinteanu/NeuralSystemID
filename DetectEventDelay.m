@@ -1,16 +1,19 @@
-function [estDelay, EPs, fig] = DetectEventDelay(T, eventwindow, Tbase, examplechannel)
+function [estDelay, EPs, fig] = DetectEventDelay(T, eventwindow, EvTypeSel, Tbase, examplechannel)
 % Determine whether the timing events in table <T> are delayed by examining
 % the evoked potentials within ± <eventwindow> seconds surrounding reported
 % event times. If baseline values <Tbase> are provided, evoked potentials
 % will be adjusted to reflect change from baseline.
 
 % handle input args 
-if nargin < 4
+if nargin < 5
     examplechannel = '';
-    if nargin < 3
+    if nargin < 4
         Tbase = []; % bypass baseline adjustment
-        if nargin < 2
-            eventwindow = []; % compute event window if not provided
+        if nargin < 3
+            EvTypeSel = []; % choose events with names like "stim" or "trig"
+            if nargin < 2
+                eventwindow = []; % compute event window if not provided
+            end
         end
     end
 end
@@ -55,9 +58,11 @@ end
 L = floor(eventwindow*fs); % samples before and after 
 
 % select events to be analyzed 
+if isempty(EvTypeSel)
 EvTypeSel = ...
     contains(lower(Ev.EventLabels), 'stim') | ...
     contains(lower(Ev.EventLabels), 'trig');
+end
 Ev = Ev(EvTypeSel, :);
 Ev = Ev(Ev.Time > Ev.Time(1)+1.15*seconds(eventwindow), :);
 Ev = Ev(Ev.Time < Ev.Time(end)-1.15*seconds(eventwindow), :);
