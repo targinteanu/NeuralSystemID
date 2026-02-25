@@ -442,10 +442,18 @@ BaselineBetaPower = bandpower(BaselineData, SamplingFreq, [13,30]);
 BaselineThetaPower = bandpower(BaselineData, SamplingFreq, [4,9]);
 BaselineGammaPower = bandpower(BaselineData, SamplingFreq, [30,80]);
 
-% # of outliers 
+% # of outlier samples 
 disp('  - outlier detection:')
 io = isoutlier(BaselineData, 'mean');
 BaselineNumOL = sum(io,1);
+
+% # of outlier bands 
+BaselineBands = [BaselineBetaPower; BaselineThetaPower; BaselineGammaPower];
+BaselineBandOL = false(size(BaselineBands));
+for b = 1:height(BaselineBands)
+    BaselineBandOL(b,:) = isoutlier(sqrt(BaselineBands(b,:)));
+end
+BaselineBandOL = sum(BaselineBandOL, 1);
 
 % display format selection 
 toshowas = [false, false]; % stem, grid
@@ -464,23 +472,26 @@ end
 % stem display
 if toshowas(1)
     fig2 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
-    subplot(6,1,1);
+    subplot(7,1,1);
     plotstem(BaselineThetaPower, varnames); 
     ylabel('\theta Power'); grid on; axis tight;
     xl = xlim();
-    subplot(6,1,2);
+    subplot(7,1,2);
     plotstem(BaselineBetaPower,  varnames); 
     ylabel('\beta Power'); grid on; axis tight;
-    subplot(6,1,3);
+    subplot(7,1,3);
     plotstem(BaselineGammaPower, varnames); 
     ylabel('\gamma Power'); grid on; axis tight;
-    subplot(6,1,4);
+    subplot(7,1,4);
     plotstem(BaselineSD, varnames); 
     ylabel('S.D.'); grid on; axis tight;
-    subplot(6,1,5);
+    subplot(7,1,5);
     plotstem(BaselineNumOL, varnames); 
-    ylabel('# OutL.'); grid on; axis tight;
-    subplot(6,1,6);
+    ylabel('# Sample OutL.'); grid on; axis tight;
+    subplot(7,1,6);
+    plotstem(BaselineBandOL, varnames); 
+    ylabel('# Band OutL.'); grid on; axis tight;
+    subplot(7,1,7);
     text(1:length(varnames), zeros(size(varnames)), vardescs, ...
         'Rotation',90, 'HorizontalAlignment','center', 'VerticalAlignment','middle');
     xlim(xl); xticks([]); yticks([]);
@@ -490,21 +501,24 @@ end
 % grid display 
 if toshowas(2)
     fig3 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
-    subplot(1,5,1); 
+    subplot(1,6,1); 
     plotgrid(BaselineThetaPower, varnames, 21, 3); 
     title('\theta Power'); axis tight;
-    subplot(1,5,2); 
+    subplot(1,6,2); 
     plotgrid(BaselineBetaPower,  varnames, 21, 3); 
     title('\beta Power'); axis tight;
-    subplot(1,5,3); 
+    subplot(1,6,3); 
     plotgrid(BaselineGammaPower, varnames, 21, 3); 
     title('\gamma Power'); axis tight;
-    subplot(1,5,4); 
+    subplot(1,6,4); 
     plotgrid(BaselineSD, varnames, 21, 3); 
     title('S.D.'); axis tight;
-    subplot(1,5,5); 
+    subplot(1,6,5); 
     plotgrid(BaselineNumOL, varnames, 21, 3); 
-    title('# OutL.'); axis tight;
+    title('# Samp. OutL.'); axis tight;
+    subplot(1,6,6); 
+    plotgrid(BaselineBandOL, varnames, 21, 3); 
+    title('# Band OutL.'); axis tight;
     sgtitle('Baseline Properties')
 end
 
