@@ -8,7 +8,7 @@ function [estDelay, EPs, fig] = DetectEventDelay(T, eventwindow, Tbase)
 if nargin < 3
     Tbase = []; % bypass baseline adjustment
     if nargin < 2
-        eventwindow = 0.5; % Default event window if not provided
+        eventwindow = []; % compute event window if not provided
     end
 end
 % output default args if unable to compute 
@@ -22,9 +22,12 @@ fs = T.Properties.SampleRate;
 if isnan(fs)
     fs = 1/median(seconds(diff(T.Time)));
 end
-L = floor(eventwindow*fs); % samples before and after 
 Ev = T.Properties.Events;
 if ~isempty(Ev)
+if isempty(eventwindow)
+    eventwindow = median(seconds(diff(Ev.Time))); % median inter-ev interval
+end
+L = floor(eventwindow*fs); % samples before and after 
 
 % select events to be analyzed 
 EvTypeSel = ...
