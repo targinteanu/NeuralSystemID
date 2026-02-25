@@ -1,14 +1,39 @@
-function [estDelay, EPs, fig] = DetectEventDelay(T, eventwindow, Tbase)
+function [estDelay, EPs, fig] = DetectEventDelay(T, eventwindow, Tbase, examplechannel)
 % Determine whether the timing events in table <T> are delayed by examining
 % the evoked potentials within ± <eventwindow> seconds surrounding reported
 % event times. If baseline values <Tbase> are provided, evoked potentials
 % will be adjusted to reflect change from baseline.
 
 % handle input args 
-if nargin < 3
-    Tbase = []; % bypass baseline adjustment
-    if nargin < 2
-        eventwindow = []; % compute event window if not provided
+if nargin < 4
+    examplechannel = '';
+    if nargin < 3
+        Tbase = []; % bypass baseline adjustment
+        if nargin < 2
+            eventwindow = []; % compute event window if not provided
+        end
+    end
+end
+% example channel 
+if ~isempty(examplechannel)
+    if isnumeric(examplechannel)
+        exchname = T.Properties.VariableNames(examplechannel);
+        if isa(exchname, 'cell')
+            exchname = string(exchname);
+        end
+    else
+        exchname = string(examplechannel);
+        examplechannel = find(strcmp(examplechannel, T.Properties.VariableNames));
+        if isempty(examplechannel)
+            warning("Channel "+string(examplechannel)+" not found.")
+        else
+            examplechannel = examplechannel(1);
+        end
+    end
+    exchunit = T.Properties.VariableUnits(examplechannel);
+    if isa(exchunit, 'cell')
+        exchunit = string(exchunit);
+        exchunit = " ("+exchunit+")";
     end
 end
 % output default args if unable to compute 
@@ -55,8 +80,8 @@ myttl = 'Signal ± 1SD';
 if ~isempty(Tbase)
     baseAvg = mean(Tbase.Variables, 'omitnan');
     baseStd = std(Tbase.Variables, 'omitnan');
-    EPavg = EPavg - baseAvg;
-    EPstd = EPstd./baseStd;
+    EPavg_adj = EPavg - baseAvg;
+    EPstd_adj = EPstd./baseStd;
     myttl = [myttl,', baseline-adjusted'];
     for ch = 1:size(EPs,2)
         y = Tbase{:,ch};
@@ -70,6 +95,7 @@ if ~isempty(Tbase)
         end
     end
 else
+    EPavg_adj = EPavg; EPstd_adj = EPstd;
     x = EPavg(1:L,:); y = EPstd(1:L,:);
     x = x - median(x,1); x = (x.^2) ./ (y.^2);
     for ch = 1:size(x,2)
@@ -85,9 +111,12 @@ end
 
 estDelay = median(estDelays, 'omitnan');
 
-% prepare figure 
-EPpatch = [EPavg+EPstd; flipud(EPavg)-flipud(EPstd)];
+% prepare main figure 
+EPpatch = [EPavg_adj+EPstd_adj; flipud(EPavg_adj)-flipud(EPstd_adj)];
 fig = figure; 
+if ~isempty(examplechannel)
+    ax(1) = subplot(2,1,1);
+end
 %%{
 for ch = 1:width(T)
     patch([EPt; flipud(EPt)], ...
@@ -102,6 +131,25 @@ xlabel('time from stim (s)');
 ylabel(myttl)
 legend(T.Properties.VariableNames, 'Location','westoutside');
 title(T.Properties.Description);
+
+% show an example channel if requested
+if ~isempty(examplechannel)
+    ax(2) = subplot(2,1,2);
+    EPpatch = [EPavg+EPstd; flipud(EPavg)-flipud(EPstd)];
+    EPpatch = EPpatch(:,examplechannel);
+    for Ei = 1:size(EPs,3)
+        plot(EPt, EPs(:,examplechannel,Ei), 'Color',colorwheel(Ei/size(EPs,3)), ...
+            'LineWidth', 1.5-Ei/size(EPs,3));
+        hold on;
+    end
+    grid on;
+    patch([EPt; flipud(EPt)], EPpatch, 'r', 'FaceAlpha',.5, 'EdgeColor','none');
+    plot(EPt, EPavg(:,examplechannel), 'r', 'LineWidth', 2.5);
+    xlabel('time from stim (s)'); 
+    title("Channel "+exchname);
+    ylabel("Signal"+exchunit); 
+    linkaxes(ax, 'x');
+end
 
 end
 end
