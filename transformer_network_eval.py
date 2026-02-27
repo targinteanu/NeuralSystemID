@@ -9,7 +9,7 @@ from csv2numpy import prepTimeSeqData
 # set params -------------------------------------------------------------------------------------
 hzn = .015 # EVALUATION sample time, s
 groupsize=16
-numgroups=4
+numgroups=5
 fc = np.array([4,10,27,70]) # freq band center freqs
 netfile = "neural_network_pytorch_e791b73783febcc0e11d6f538b5d3097a179b23c.pth"
 dt_target = 0.005 # model sample time, s
@@ -54,10 +54,11 @@ model.load_state_dict(torch.load(netfile))
 
 # recover filtered signal from processed features 
 def unprocess(Y, featcorrection):
-    Ymag = Y[:, :numgroups*groupsize]
-    Ycos = Y[:, (numgroups*groupsize):(2*numgroups*groupsize)]
-    Ysin = Y[:, 2*numgroups*groupsize:]
-    Ymag = np.sqrt(np.exp(Ymag)) * featcorrection[:numgroups*groupsize]
+    numGrpIgnored = 2 # last two groups will not be used
+    Ymag = Y[:, :(numgroups-numGrpIgnored)*groupsize]
+    Ycos = Y[:, (numgroups*groupsize):((2*numgroups-numGrpIgnored)*groupsize)]
+    Ysin = Y[:, ((2*numgroups-numGrpIgnored)*groupsize):]
+    Ymag = np.sqrt(np.exp(Ymag)) * featcorrection[:(numgroups-numGrpIgnored)*groupsize]
     #Ytan = Ysin / (Ycos + np.finfo(float).eps)
     Yphase = np.arctan2(Ysin, Ycos)
     Yreal = Ymag * np.cos(Yphase)

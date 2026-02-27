@@ -31,8 +31,8 @@ end
 %% define freq bands
 %bandbounds = [0.1,2,6,14,40,80,100];
 %bandnames = ["\delta", "\theta", "\alpha", "\beta", "lo\gamma", "hi\gamma"];
-bandbounds = [2,6,14,40,100];
-bandnames = ["\theta", "\alpha", "\beta", "\gamma"];
+bandbounds = [2,6,14,40,100,200];
+bandnames = ["\theta", "\alpha", "\beta", "lo\gamma", "hi\gamma"];
 bandcent = .5 * (bandbounds(2:end) + bandbounds(1:(end-1)));
 
 % calc power spectrum 

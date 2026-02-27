@@ -22,7 +22,7 @@ class PairedDualNet(nn.Module):
         self.group_size = group_size
         self.num_pairs = num_groups * group_size  
         self.used_for_pairing = self.num_pairs * 2
-        self.leftover_dim = input_dim - self.used_for_pairing
+        leftover_dim = input_dim - self.used_for_pairing
         self.pair_output = 8
 
         # Stage 1: pairwise linear 
@@ -33,7 +33,7 @@ class PairedDualNet(nn.Module):
         self.group_fcA = nn.Linear(group_size * self.pair_output, C2)
         self.group_fcB = nn.Linear(num_groups * self.pair_output, C2)
         # MLP input = 56 + 56 + leftover(3) = 115
-        mlp_in = (num_groups * C2) + (group_size * C2) + self.leftover_dim
+        mlp_in = (num_groups * C2) + (group_size * C2) + leftover_dim
 
         self.fc1 = nn.Linear(mlp_in, 256)
         self.fc2 = nn.Linear(256, 256)
@@ -212,7 +212,7 @@ class TimeSeriesTransformer(nn.Module):
     final output. 
     """
 
-    def __init__(self, dim_in, dim_out, dim_u=1, time_len=64, group_size=7, num_groups=7, tuple_size=3):
+    def __init__(self, dim_in, dim_out, dim_u=1, time_len=64, group_size=16, num_groups=4, tuple_size=3, numGrpUnpaired=2):
         super().__init__()
 
         # transformer properties
@@ -225,14 +225,14 @@ class TimeSeriesTransformer(nn.Module):
         # preprocessing features -------------------------------------------
         
         C1 = 32 # stage 1 hidden dim
-        C2 = 32 # stage 2 hidden dim
 
         self.num_groups = num_groups
         self.group_size = group_size
+        self.numGrpUnpaired = numGrpUnpaired
         self.tuple_size = tuple_size
-        self.num_pairs = num_groups * group_size  
-        self.used_for_pairing = self.num_pairs * tuple_size
-        self.leftover_dim = dim_in - self.used_for_pairing
+        self.num_pairs = (num_groups - numGrpUnpaired) * group_size  
+        used_for_pairing = self.num_pairs * tuple_size
+        leftover_dim = dim_in - used_for_pairing
         self.pair_output = 8
 
         # Stage 1: pairwise linear 
@@ -240,9 +240,10 @@ class TimeSeriesTransformer(nn.Module):
         self.pair_fc2 = nn.Linear(C1, self.pair_output)  
 
         # Stage 2: linear over flattened group
-        self.group_fcA = nn.Linear(group_size * self.pair_output, C2)
-        self.group_fcB = nn.Linear(num_groups * self.pair_output, C2)
-        mlp_in = (num_groups * C2) + (group_size * C2) + self.leftover_dim
+        self.group_fcA = nn.Linear(group_size * self.pair_output, 32)
+        self.group_fcC = nn.Linear(group_size * numGrpUnpaired, 16)
+        self.group_fcB = nn.Linear((num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired, 16)
+        mlp_in = ((num_groups-numGrpUnpaired) * 32) + (group_size * 16) + (numGrpUnpaired * 16) + leftover_dim
 
         # stage 3B: feature-only processing to get to dim_model
         """
@@ -280,8 +281,9 @@ class TimeSeriesTransformer(nn.Module):
         #self.fco2 = nn.Linear(64, 64)
         #self.fco3 = nn.Linear(64, 64)
         #self.fco4 = nn.Linear(128, dim_out)
-        self.fcoAmp = nn.Linear(128, num_groups*group_size) # for predicting amplitude of each feature
-        self.fcoFreq = nn.Linear(128, num_groups*group_size) # for predicting inst frequency of each feature
+        self.fcoAmp = nn.Linear(128, (num_groups-numGrpUnpaired)*group_size) # for predicting amplitude of each feature
+        self.fcoFreq = nn.Linear(128, (num_groups-numGrpUnpaired)*group_size) # for predicting inst frequency of each feature
+        self.fcoUnpaired = nn.Linear(128, numGrpUnpaired*group_size) # for predicting unpaired features directly
 
     def forward(self, x, u_seq):
         """
@@ -293,12 +295,16 @@ class TimeSeriesTransformer(nn.Module):
         B = x.size(0)
         rollout = u_seq.size(1)
 
-        x_left = x[:, :, self.used_for_pairing:]  # (B,T,n)
-        x_used = x[:, :, :self.used_for_pairing]  # (B,T,kN)
+        num_paired = (self.num_pairs * self.tuple_size) # "kN1"
+        num_unpaired = self.numGrpUnpaired * self.group_size # "N2"
+        x_used = x[:, :, :num_paired]  # (B,T,kN1)
+        x_unpaired = x[:, :, num_paired:(num_paired+num_unpaired)] # (B,T,N2)
+        x_left = x[:, :, (num_paired+num_unpaired):]  # (B,T,n); may be unused
         # for skip connection at output:
-        xAmp_skip = x_used[:,-1:,:self.num_pairs] 
-        xCos_skip = x_used[:,-1:,self.num_pairs:2*self.num_pairs]
-        xSin_skip = x_used[:,-1:,2*self.num_pairs:3*self.num_pairs]
+        xAmp_skip = x_used[:,-1:,:self.num_pairs].clone()
+        xCos_skip = x_used[:,-1:,self.num_pairs:2*self.num_pairs].clone()
+        xSin_skip = x_used[:,-1:,2*self.num_pairs:3*self.num_pairs].clone()
+        xUnpaired_skip = x_unpaired[:,-1:,:].clone()
         """
         x_pairs = torch.stack( 
             (
@@ -308,23 +314,28 @@ class TimeSeriesTransformer(nn.Module):
             dim=3
         )  # (B,T,N,2)
         """
-        x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N,k)
+        x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N1,k)
+        x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
+        x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.group_size, -1)
 
         # Stage 1
-        p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
-        p = F.gelu(self.pair_fc2(p))           # (B,T,N,pair_output)
+        p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N1,C1)
+        p = F.gelu(self.pair_fc2(p))           # (B,T,N1,pair_output)
         # Stage 2A: groups
-        p_groups = p.view(B, T, self.num_groups, self.group_size * self.pair_output)  # (B,T,num_groups,...)
+        p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
         a = F.gelu(self.group_fcA(p_groups))                      
         a_flat = a.view(B, T, -1)                                 
+        c = F.gelu(self.group_fcC(x_unpaired_groups))
+        c_flat = c.view(B, T, -1)
 
         # Stage 2B: threads
-        p_threads = p.view(B, T, self.num_groups, self.group_size, self.pair_output)   
+        p_threads = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size, self.pair_output)   
         p_threads = p_threads.permute(0,1,3,2,4).contiguous()           
         p_threads = p_threads.view(B, T, self.group_size, -1)            # (B,T,group_size,...)
+        p_threads = torch.cat([p_threads, x_unpaired_threads], dim=4) 
         b = F.gelu(self.group_fcB(p_threads))                         
         b_flat = b.view(B, T, -1)                                        
-        h = torch.cat([a_flat, b_flat, x_left], dim=2)        # (B,T,mlp_in)
+        h = torch.cat([a_flat, b_flat, c_flat, x_left], dim=2)        # (B,T,mlp_in)
 
         # Stage 3 MLP
         h = F.gelu(self.fc1(h))
@@ -342,7 +353,7 @@ class TimeSeriesTransformer(nn.Module):
 
         # latent dynamics 
         z = h[:, -1, :]  # (B, dim_model)
-        zskip = z
+        zskip = z.clone()
         Z = torch.zeros(z.size(0), rollout, z.size(1))
         for r in range(rollout):
             u = u_seq[:, r, :] # (B, dim_u)
@@ -352,11 +363,11 @@ class TimeSeriesTransformer(nn.Module):
             z = F.gelu(self.fc4(z))
             z = F.gelu(self.fc5(z))
             z = z + zskip # skip connection
-            zskip = z
-            Z[:, r, :] = z
+            zskip = z.clone()
+            Z[:, r, :] = z.clone()
 
         # Output head --------------------------------------------------------------------
-        R = torch.arange(rollout).float().unsqueeze(0).unsqueeze(2) + 1 # (1, rollout, 1)
+        R = torch.arange(rollout).float().unsqueeze(0).unsqueeze(2) + 1 # (1, rollout, 1) why is this needed when rollout uses skip connections?
         y = F.gelu(self.fco1(Z))
         #y = F.gelu(self.fco2(y))
         #y = F.gelu(self.fco3(y))
@@ -366,7 +377,8 @@ class TimeSeriesTransformer(nn.Module):
         yFreq = self.fcoFreq(y) * R
         yCos = xCos_skip*torch.cos(yFreq) - xSin_skip*torch.sin(yFreq) # reconstruct cosine with predicted freq and skip connection
         ySin = xSin_skip*torch.cos(yFreq) + xCos_skip*torch.sin(yFreq) # reconstruct sine with predicted freq and skip connection
-        out = torch.cat([yAmp, yCos, ySin], dim=2) # (B, rollout, ...)
+        yUnpaired = self.fcoUnpaired(y)*R + xUnpaired_skip # predict unpaired features with skip connection
+        out = torch.cat([yAmp, yCos, ySin, yUnpaired], dim=2) # (B, rollout, ...)
         return out
 
 
@@ -405,7 +417,7 @@ class TimeSeriesConvTransformer(nn.Module):
         self.tuple_size = tuple_size
         self.num_pairs = num_groups * group_size  
         self.used_for_pairing = self.num_pairs * tuple_size
-        self.leftover_dim = dim_in - self.used_for_pairing
+        leftover_dim = dim_in - self.used_for_pairing
         self.pair_output = 8
 
         # Stage 1: pairwise linear 
@@ -416,7 +428,7 @@ class TimeSeriesConvTransformer(nn.Module):
         self.group_fcA = nn.Linear(group_size * self.pair_output, C2)
         self.group_fcB = nn.Linear(num_groups * self.pair_output, C2)
         # MLP input = 56 + 56 + leftover(3) = 115
-        mlp_in = (num_groups * C2) + (group_size * C2) + self.leftover_dim
+        mlp_in = (num_groups * C2) + (group_size * C2) + leftover_dim
 
         # stage 3A: time-only processing to get to len_model
         self.time_conv1 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K1)
