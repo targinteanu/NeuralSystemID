@@ -1,67 +1,78 @@
-% load data
-PDdataAll = ns2timetable('/Users/torenarginteanu/Desktop/Data_PD/PD25N008/baseline/baseline001.ns2');
-srate = PDdataAll.Properties.SampleRate;
-if isnan(srate)
-    srate = 1/median(seconds(diff(PDdataAll.Time)));
+%% obtain segmented, artifact-free data 
+
+% file selection
+[fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Artifact-Free Data File');
+load(fullfile(fp,fn));
+[~,fn,fe] = fileparts(fn);
+ArtRemoveDone = contains(fn, '_ArtifactRemoveOffline');
+if ArtRemoveDone
+    fnOrig = split(fn, '_ArtifactRemoveOffline'); fnOrig = fnOrig{1};
+    fpOrig = fp;
+    while ~exist(fullfile(fpOrig,[fnOrig,fe]), 'file')
+        fpOrig = fileparts(fpOrig); % try one folder out
+    end
+    load(fullfile(fpOrig,[fnOrig,fe]));
 end
 
+%% data processing
+
 % clean baseline selection 
-%{
-PDdata1 = PDdataAll(257001:362001,:);
-PDdata2 = PDdataAll(467001:542001,:);
-PDdata = PDdata1;
-%}
-%%{
-%t1 = datetime(2025,6,26,16,34,0); 
-%t2 = datetime(2025,6,26,16,39,40);
-t1 = datetime(2025,6,19,15,13,0);
-t2 = datetime(2025,6,19,15,27,0);
-t1.TimeZone = PDdataAll.Time(1).TimeZone; 
-t2.TimeZone = PDdataAll.Time(1).TimeZone; 
-PDdata = PDdataAll( (PDdataAll.Time >= t1) & (PDdataAll.Time <= t2), : );
-%}
-%PDdata = PDdataAll;
+PDdata = tblsBaseline{1};
+srate = PDdata.Properties.SampleRate;
+if isnan(srate)
+    srate = 1/median(seconds(diff(PDdata.Time)));
+end
 
 % channel selection
-PDdata = PDdata(:,[1:63,65]);
-ref_channel = width(PDdata); % STN (blackrock copy)
+channames = num2str((1:63)');
+channames(channames==' ') = '0';
+channames = "LS"+string(channames);
+channames = channames';
+for ch = channames
+    if ~sum(strcmp(PDdata.Properties.VariableNames, ch))
+        % fill missing channel with nan
+        PDdata.(ch) = nan(height(PDdata),1);
+    end
+end
+PDdata = PDdata(:,channames); % reorder
 
 % common avg ECoG reref 
-PDdata{:,:} = PDdata{:,:} - mean(PDdata{:,1:63}, 2);
+PDdata{:,:} = PDdata{:,:} - mean(PDdata{:,1:63}, 2, 'omitnan');
 
 % signal processing 
-thetaPower = bandpower(PDdata.Variables, srate, [4,9]);
+%thetaPowerCortex = bandpower(PDdata.Variables, srate, [4,9]);
+%thetaPowerCortex(isoutlier(sqrt(thetaPowerCortex))) = nan;
 filtwts = fir1(1024, [4, 9]./(srate/2));
-PDdata = FilterTimetable(@(b,x) filtfilt(b,1,x), filtwts, PDdata);
+%PDdata = FilterTimetable(@(b,x) filtfilt(b,1,x), filtwts, PDdata);
+for ch = 1:width(PDdata)
+    disp(['Filtering channel ',num2str(ch),' of ',num2str(width(PDdata))])
+    x = PDdata{:,ch};
+    if sum(~isnan(x))
+        PDdata{:,ch} = filtfilt(filtwts,1,x);
+    end
+end
 PDdata = PDdata(:,1:63);
-PD_Phase_Data = instPhaseFreqTbl(PDdata);
+%PD_Phase_Data = instPhaseFreqTbl(PDdata);
 PD_Channel_Names = PDdata.Properties.VariableNames;
 
 ElecTbl = table('RowNames',PD_Channel_Names(1:63)); % cortical only
 
-%% windowed theta power 
+% windowed theta power 
 % Calculate windowed theta power
 windowSize = 1000; % samples 
-thetaPowerWindowed = movmean(envelope(PDdata.Variables).^2, windowSize);
+thetaPowerWindowed = PDdata.Variables.^2;
+for ch = 1:width(PDdata)
+    disp(['Calculating power: channel ',num2str(ch),' of ',num2str(width(PDdata))])
+    x = thetaPowerWindowed(:,ch);
+    if sum(~isnan(x))
+        thetaPowerWindowed(:,ch) = movmean(envelope(x.^2), windowSize);
+    end
+end
+%thetaPowerWindowed = movmean(envelope(PDdata.Variables).^2, windowSize);
 thetaPowerWindowed = thetaPowerWindowed(round(windowSize/2):windowSize:end, :);
 thetaPowerWindowed = median(thetaPowerWindowed);
 ElecTbl.ThetaPowerWindowed = thetaPowerWindowed';
 thetaPowerWindowed(isoutlier(sqrt(thetaPowerWindowed))) = nan;
-
-%% phase locking 
-%{
-PLV_VectorMatrix = compute_PLV_VectorMatrix(PD_Phase_Data); %Get the PLV vector matrix for every channel (64x64)
-PLV_Average = getAveragePLV(PLV_VectorMatrix); %Get the Average PLV for every channel (64x1)
-PLV_Relative_ref = getPLV_wrt_Ref(PLV_VectorMatrix, ref_channel); %Get PLV relative to ref channel (64x1)
-plot_PLV_Relative(PD_Phase_Data,PLV_Relative_ref, ref_channel, PD_Channel_Names);  
-    %Plot a 21x3 grid - color corresponds to PLV wrt ref channel, # corresponds to avg. phase difference wrt ref channel
-PLV_Relative_ref = PLV_Relative_ref([1:(ref_channel-1), (ref_channel+1):end]); % remove ref channel 
-PLV_CortexCortex_matrix = PLV_VectorMatrix([1:(ref_channel-1), (ref_channel+1):end], [1:(ref_channel-1), (ref_channel+1):end]);
-PLV_Average_Cortex = getAveragePLV(PLV_CortexCortex_matrix);
-%}
-thetaPowerCortex = thetaPower([1:(ref_channel-1), (ref_channel+1):end]);
-%ElecTbl.ThetaPower = thetaPowerCortex';
-thetaPowerCortex(isoutlier(sqrt(thetaPowerCortex))) = nan;
 
 %%
 %{
@@ -76,49 +87,55 @@ G(:) = log10(thetaPowerWindowed);
 imagesc(G); colorbar;
 title('median windowed envelope')
 %}
-thetaPowerCortex = thetaPowerWindowed;
-thetaPowerCortexOrig = thetaPowerCortex;
+thetaPowerOrig = thetaPowerWindowed;
 
-%% mesh plots 
+%% obtain imaging data
 ft_defaults
 [ftver, ftpath] = ft_version;
 
-lat = 'left';
+% specify laterality 
+lat = questdlg('Specify Electrode Laterality:', 'Laterality', ...
+    'left','right','Cancel','Cancel');
+if ~(strcmp(lat,'left')|strcmp(lat,'right'))
+    error('Laterality must be specified.')
+end
 
-% patient specific acpc coords
+% specify file(s)
+[fnElec, fpElec] = uigetfile('*_elec_acpc_f*.mat');
+subjID = split(fnElec, '_elec_acpc'); subjID = subjID{1};
+fnElecMNI = [subjID,'_elec_mni_frv.mat'];
 
-fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N008/Imaging/PD25N008_elec_acpc_fr.mat';
-fileElec = load(fileElec).elec_acpc_fr;
-fileMesh = ['/Users/torenarginteanu/Desktop/Data_PD/PD25N008/Imaging/',lat(1),'h.pial.T1'];
-fileMesh = ft_read_headshape(fileMesh);
+% look for imaging files 
+fpPialT1 = fpElec;
+fnPialT1 = fullfile(fpPialT1,[lat(1),'h.pial.T1']);
+if ~exist(fnPialT1, 'file')
+    fpPialT1 = fullfile(fpElec,'freesurfer','surf');
+    fnPialT1 = fullfile(fpPialT1,[lat(1),'h.pial.T1']);
+end
 
-ElecTbl.acpcX = fileElec.chanpos(:,1); 
-ElecTbl.acpcY = fileElec.chanpos(:,2); 
-ElecTbl.acpcZ = fileElec.chanpos(:,3); 
+% load files
+elecACPC = load(fullfile(fpElec, fnElec)).elec_acpc_fr;
+elecMNI = load(fullfile(fpElec, fnElecMNI)).elec_mni_frv;
+meshACPC = ft_read_headshape(fnPialT1);
+meshMNI = load([ftpath,filesep,'template/anatomy/surface_pial_',lat,'.mat']).mesh;
 
-for ch = 1:length(thetaPowerCortex)
-    if isnan(thetaPowerCortex(ch))
-        dr = fileElec.chanpos(ch,:) - fileElec.chanpos;
+%% patient specific acpc coords
+
+ElecTbl.acpcX = elecACPC.chanpos(:,1); 
+ElecTbl.acpcY = elecACPC.chanpos(:,2); 
+ElecTbl.acpcZ = elecACPC.chanpos(:,3); 
+
+for ch = 1:length(thetaPowerWindowed)
+    if isnan(thetaPowerWindowed(ch))
+        dr = elecACPC.chanpos(ch,:) - elecACPC.chanpos;
         dl = rms(dr,2);
-        thetaPowerCortex(ch) = mean(thetaPowerCortexOrig./dl', 'omitnan');
+        thetaPowerWindowed(ch) = mean(thetaPowerOrig./dl', 'omitnan');
     end
 end
 
-%{
-figure; 
-load_ACPC_FR_mesh(fileElec, fileMesh, ...
-    PLV_Relative_ref);
-title('Cortex-STN PLV')
-
-figure; 
-load_ACPC_FR_mesh(fileElec, fileMesh, ...
-    PLV_Average_Cortex);
-title('Cortex-Cortex Average PLV')
-%}
-
 figACPC = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
-ThetaPowerInterp = load_ACPC_FR_mesh(fileElec, fileMesh, ...
-    thetaPowerCortex, 'acpc');
+ThetaPowerInterp = load_ACPC_FR_mesh(elecACPC, meshACPC, ...
+    thetaPowerWindowed, 'acpc');
 title('Theta Power, individual ACPC')
 
 camlight;
@@ -131,19 +148,13 @@ camlight headlight;
 
 %% freesurfer mni coords 
 
-%fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Imaging/PD25N009_elec_fsavg_frs.mat';
-%fileElec = load(fileElec).elec_fsavg_frs;
-fileElec = '/Users/torenarginteanu/Desktop/Data_PD/PD25N008/Imaging/PD25N008_elec_mni_frv.mat';
-fileElec = load(fileElec).elec_mni_frv;
-fileMesh = load([ftpath,filesep,'template/anatomy/surface_pial_',lat,'.mat']).mesh;
-
-ElecTbl.mniX = fileElec.chanpos(:,1); 
-ElecTbl.mniY = fileElec.chanpos(:,2); 
-ElecTbl.mniZ = fileElec.chanpos(:,3); 
+ElecTbl.mniX = elecMNI.chanpos(:,1); 
+ElecTbl.mniY = elecMNI.chanpos(:,2); 
+ElecTbl.mniZ = elecMNI.chanpos(:,3); 
 
 figMNI = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
-ThetaPowerInterp = load_ACPC_FR_mesh(fileElec, fileMesh, ...
-    thetaPowerCortex, 'mni');
+ThetaPowerInterp = load_ACPC_FR_mesh(elecMNI, meshMNI, ...
+    thetaPowerWindowed, 'mni');
 title('Theta Power, MNI space / template brain')
 
 camlight;
@@ -155,29 +166,14 @@ end
 camlight headlight;
 
 %% saving 
-writetable(ElecTbl, 'BrainHeatmapCoords.xlsx');
-saveas(figACPC, 'BrainHeatmapACPC', 'fig');
-saveas(figMNI, 'BrainHeatmapMNI', 'fig');
-saveas(figMNI, 'BrainHeatmapMNI', 'png');
-saveas(figACPC, 'BrainHeatmapACPC', 'png');
-
-%%
-%{
-min_val = min(PLV_Average);
-max_val = max(PLV_Average);
-PLV_Average_Normalized = (PLV_Average - min_val) / (max_val - min_val);
-PLV_Average_Normalized(PLV_Average_Normalized >= 1) = 0.999;
-
-load_ACPC_FR_mesh('SubjectPD22N009_elec_acpc_fr.mat', 'PD22N009\PD22N009\freesurfer\surf\lh.pial', PLV_Average_Normalized);
-
-central_channel = 34;
-
-best_neighbor = getBestNeighborByPLV(PLV_VectorMatrix, central_channel);
-
-comparison_channels = [best_neighbor, 12,14,33,35,54,55,56];
-
-compareRosePlots(PD_Phase_Data, central_channel, comparison_channels);
-%}
+doSave = questdlg('Save?');
+if strcmp(doSave, 'Yes')
+writetable(ElecTbl, fullfile(fpElec,'BrainHeatmapCoords.xlsx'));
+saveas(figACPC, fullfile(fpElec,'BrainHeatmapACPC'), 'fig');
+saveas(figMNI, fullfile(fpElec,'BrainHeatmapMNI'), 'fig');
+saveas(figMNI, fullfile(fpElec,'BrainHeatmapMNI'), 'png');
+saveas(figACPC, fullfile(fpElec,'BrainHeatmapACPC'), 'png');
+end
 
 %% helper functions 
 
@@ -257,218 +253,4 @@ function [interp_source, srcpltcfg] = ...
     end
     %}
 
-end
-
-
-function PLV_Relative_Vector = getPLV_wrt_Ref(PLV_VectorMatrix, ref_channel)
-    % Extracts PLV of all channels with respect to the reference channel
-    % Inputs:
-    %   - PLV_VectorMatrix: NxN PLV matrix
-    %   - ref_channel: reference channel index (scalar)
-    % Output:
-    %   - PLV_Relative_Vector: Nx1 vector of PLV values relative to ref_channel
-
-    PLV_Relative_Vector = abs(PLV_VectorMatrix(:, ref_channel)); % take absolute value in case of complex numbers
-    PLV_Relative_Vector(ref_channel) = NaN; % ignore self-PLV (you could also set to 0 if you want)
-end
-
-
-
-function PLV_VectorMatrix = compute_PLV_VectorMatrix(phase_data)
-    
-    numChannels = width(phase_data);
-    PLV_vector_matrix = zeros(numChannels, numChannels);
-    for ch1 = 1:numChannels
-        for ch2 = ch1+1:numChannels
-            phase_diff = phase_data{:,ch1} - phase_data{:,ch2};
-            PLV_vector_matrix(ch1, ch2) = mean(exp(1j * phase_diff));
-            PLV_vector_matrix(ch2, ch1) = conj(PLV_vector_matrix(ch1, ch2));
-        end
-    end
-
-    PLV_VectorMatrix = PLV_vector_matrix;
-end
-
-
-function PLV_Average = getAveragePLV(vector_matrix)
-    PLV_Average = mean(abs(vector_matrix), 2);
-end
-
-
-function plot_PLV_Relative(phase_data, PLV_relative_vector, ref_channel, channelNames)
-    numChannels = width(phase_data);
-    avg_phase_diff = zeros(numChannels, 1);
-
-    for ch = 1:numChannels
-        phase_diff = angle(exp(1j * (phase_data{:,ch} - phase_data{:,ref_channel}))); % circular diff
-        avg_phase_diff(ch) = mean(phase_diff); % Mean circular phase difference
-    end
-    
-    % Best neighbor determination (from PLV vector)
-    PLV_copy = PLV_relative_vector;
-    PLV_copy(ref_channel) = -1; % exclude self-comparison
-    [max_plv, best_neighbor_ch] = max(PLV_copy);
-    best_neighbor_phase_diff = avg_phase_diff(best_neighbor_ch);
-    
-    % Display results
-    fprintf('Best neighbor of channel %d is channel %d\n', ref_channel, best_neighbor_ch);
-    fprintf('Highest PLV: %.3f\n', max_plv);
-    fprintf('Phase difference with channel %d: %.4f radians\n', ref_channel, best_neighbor_phase_diff);
-    
-    % --- Plot ---
-    figure; hold on;
-    cmap = parula(256);
-
-    % Normalize PLV for color mapping
-    plv_norm = PLV_relative_vector;
-    plv_norm(isnan(plv_norm)) = 0; % Replace NaN with 0 for plotting
-    plv_norm = plv_norm / max(plv_norm); % Normalize to [0,1]
-
-    % Layout for plotting
-    grid_width = 3;
-    grid_height = 21;
-    num_channels = grid_width * grid_height;
-    electrode_positions = cell(num_channels, 1);
-    channel_num = 1;
-    for x = 0:grid_width-1
-        for y = 0:grid_height-1
-            electrode_positions{channel_num} = [x, y];
-            channel_num = channel_num + 1;
-        end
-    end
-        
-       % === Plot filled boxes and text FIRST ===
-    for i = 1:length(electrode_positions)
-        x_i = electrode_positions{i}(1);
-        y_i = electrode_positions{i}(2);
-    
-        if i == ref_channel
-            rectangle('Position', [x_i, y_i, 1, 1], ...
-                      'FaceColor', 'r', 'EdgeColor', 'k'); % green fill for ref
-        else
-            color_idx = round(plv_norm(i) * 255) + 1;
-            color_idx = min(max(color_idx, 1), 256);
-    
-            rectangle('Position', [x_i, y_i, 1, 1], ...
-                      'FaceColor', cmap(color_idx, :), 'EdgeColor', 'k');
-        end
-    
-        % Add channel name and phase value
-        chan_name = string(channelNames{i});
-        phase_val = avg_phase_diff(i) *180/pi; % degrees
-    
-        text(x_i + 0.5, y_i + 0.65, chan_name, ...
-            'HorizontalAlignment', 'center', ...
-            'VerticalAlignment', 'middle', ...
-            'FontSize', 7, 'FontWeight', 'bold', 'Color', 'k');
-    
-        text(x_i + 0.5, y_i + 0.35, [num2str(phase_val,3),'\circ'], ...
-            'HorizontalAlignment', 'center', ...
-            'VerticalAlignment', 'middle', ...
-            'FontSize', 6, 'FontWeight', 'normal', 'Color', 'k');
-    end
-
-    % === Now separately highlight reference and best neighbor ON TOP ===
-    % Draw bright green border for reference channel
-    %{
-    x_ref = electrode_positions{ref_channel}(1);
-    y_ref = electrode_positions{ref_channel}(2);
-    rectangle('Position', [x_ref, y_ref, 1, 1], ...
-              'EdgeColor', 'r', 'LineWidth', 1, 'LineStyle', '-');
-    %}
-    
-    % Draw red border for best neighbor
-    x_best = electrode_positions{best_neighbor_ch}(1);
-    y_best = electrode_positions{best_neighbor_ch}(2);
-    rectangle('Position', [x_best, y_best, 1, 1], ...
-              'EdgeColor', [0 0.8 0], 'LineWidth', 2, 'LineStyle', '-');
-
-    % --- Plot final settings ---
-    axis equal; xlim([0, grid_width]); ylim([0, grid_height]);
-    set(gca, 'XTick', [], 'YTick', []);
-    xlabel(''); ylabel('');
-    title(sprintf('Avg Phase Diff (vs Ch %d) + PLV Heatmap', ref_channel));
-    set(gca, 'YDir', 'normal');
-
-    colormap(cmap);
-    cbar = colorbar;
-    ylabel(cbar, sprintf('PLV with Channel %d', ref_channel));
-
-    hold off;
-end
-
-
-function best_neighbor = getBestNeighborByPLV(PLV_VectorMatrix, ref_channel)
-% Returns the best neighbor (highest PLV) for a given reference channel
-%
-% Inputs:
-%   PLV_VectorMatrix - NxN PLV matrix (complex or real)
-%   ref_channel - scalar index of the reference channel
-%
-% Output:
-%   best_neighbor - index of the best neighbor channel (highest PLV with ref_channel)
-
-    plv_vector = abs(PLV_VectorMatrix(:, ref_channel)); % Take abs to handle complex numbers
-    plv_vector(ref_channel) = -Inf; % Exclude self (don't pick self-PLV)
-    [~, best_neighbor] = max(plv_vector); % Find max
-end
-
-
-
-
-function compareRosePlots(phaseData, ref_channel, comparison_channels)
-% Compare reference channel to others and plot rose histograms with 95% CI and ±1 STD shading
-
-    figure;
-    numComparisons = numel(comparison_channels);
-
-    % --- Decide layout ---
-    if numComparisons <= 4
-        nRows = 1;
-        nCols = numComparisons;
-    else
-        nRows = 2;
-        nCols = ceil(numComparisons / 2);
-    end
-
-    for idx = 1:numComparisons
-        comp_ch = comparison_channels(idx);
-
-        ref_phase = angle(exp(1j * phaseData{ref_channel}));
-        comp_phase = angle(exp(1j * phaseData{comp_ch}));
-
-        phase_diff = angle(exp(1j * (comp_phase - ref_phase)));
-    
-        [mu, ul, ll] = circ_mean(phase_diff, [], 2);   % Mean, upper, lower 95% CI
-        [~, sigma] = circ_std(phase_diff, [], [], 2);  % Circular standard deviation
-
-        % --- Plot ---
-        subplot(nRows, nCols, idx);
-
-        % Rose histogram
-        h = polarhistogram(phase_diff, 75, 'Normalization', 'probability');
-        max_r = max(h.Values); 
-        rlim([0 max_r * 1.1]);
-        hold on;
-
-        % --- Shaded ±1 STD Cone ---
-        theta_fill = linspace(mu - sigma, mu + sigma, 100);
-        r_fill = ones(size(theta_fill)) * max_r * 0.8;
-        polarplot(theta_fill, r_fill, 'Color', [0.6 0.8 1], 'LineWidth', 6);
-
-        % --- Mean Direction ---
-        polarplot([mu mu], [0 max_r], 'r-', 'LineWidth', 2);
-
-        % --- 95% Confidence Interval Lines ---
-        polarplot([ul ul], [0 max_r * 0.8], '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-        polarplot([ll ll], [0 max_r * 0.8], '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-
-        % --- Title ---
-        title({
-            sprintf('Reference %d vs Neighbor %d', ref_channel, comp_ch), ...
-            sprintf('\\mu = %.3f rad', mu), ...
-            sprintf('\\sigma = %.3f rad', sigma)
-            }, 'FontSize', 10);
-
-    end
 end
