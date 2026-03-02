@@ -246,12 +246,13 @@ for chname = channelNameTrig
     end
 end
 tbls = tbls(~isnan(SampleRates)); SampleRates = SampleRates(~isnan(SampleRates));
+if ~isempty(trigtbl)
 
 % group triggers by time 
 trigboundtime = 10; % sec (defines a burst of triggers)
 trigtime = trigtbl.Time; % all trigger types!
 trigwinds = groupbytime(trigtime, trigboundtime, timeBegin);
-trigstart = trigwinds(:,1); trigend = trigwinds(:,2);
+trigStart = trigwinds(:,1); trigEnd = trigwinds(:,2);
 
 % describe triggers 
 trignames = repmat("", height(trigwinds),1);
@@ -268,6 +269,11 @@ end
 
 for SFi = 1:width(tbls)
     tbls{SFi}.Properties.Events = [tbls{SFi}.Properties.Events; trigtbl];
+end
+
+else
+    trigStart = []; trigEnd = []; trigwinds = [];
+    trignames = [];
 end
 
 clear NStbl t trig lbl trigname trigtbl_ trignames_ trigname_ itrig
@@ -331,8 +337,8 @@ clear disctype discevt inan evtbl timetol inantime
 % canditate periods in between triggers, etc
 candwinds = [];
 boundtime = seconds(.4); % sec 
-trigend_ = [timeBegin; trigend];
-trigstart_ = [trigstart; timeEnd];
+trigend_ = [timeBegin; trigEnd];
+trigstart_ = [trigStart; timeEnd];
 for itrig = 1:length(trigstart_)
     t1 = trigend_(itrig)+boundtime; t2 = trigstart_(itrig)-boundtime;
     disci = (discont > t1) & (discont < t2);
