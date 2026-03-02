@@ -103,12 +103,20 @@ end
 %% loop through table list 
 
 tblsListOut = cell(size(tblsList));
-EPlistOut = cell(size(tblsListOut));
+figsEPOut = cell(size(tblsListOut));
+figsAdaptOut = cell(size(tblsListOut));
+figsAvgArt = cell(size(tblsListOut));
+figsExampleChans = cell(size(tblsListOut));
+figsExampleArt = cell(size(tblsListOut));
 
 for Li = 1:height(tblsList)
     tbls = tblsList{Li};
     tblsOut = cell(height(tbls),1);
-    EPout = cell(size(tblsOut));
+    figEPout = cell(size(tblsOut));
+    figAdaptOut = cell(size(tblsOut));
+    figAvgArt = cell(size(tblsOut));
+    figExampleChans = cell(size(tblsOut));
+    figExampleArt = cell(size(tblsOut));
     for Ti = 1:height(tbls)
         dta = tbls{Ti,1}; % only process the "main table"
         dta = dta(:, chanlistsel);
@@ -130,7 +138,7 @@ for Li = 1:height(tblsList)
         end
         gname = evlbl(selidx);
         selrow = strcmp(evtbl.EventLabels, gname);
-        [trigDelay, ~, EPout{Ti}] = DetectEventDelay(dta,[],selrow,[],channelNameRec);
+        [trigDelay, ~, figEPout{Ti}] = DetectEventDelay(dta,[],selrow,[],channelNameRec);
         pause(.001); drawnow; pause(.001);
         trigDelay = inputdlg('Triggers are delayed by (s):', ...
             'Apply trigger delay', 1, {num2str(trigDelay)});
@@ -161,7 +169,7 @@ stepsize = .5; % learn rate for gradient descent
 W0 = preTrainWtsLMS(g,dta,N,4,false); % "optimal" LMS weights 
 
 % Kalman filter with no adaptive state estimate 
-dtaArtRem = AdaptKalmanAuton(g,dta,[],0,A,stepsize,Qcov,N,W0,true,false,true);
+[dtaArtRem, figAdaptOut{Ti}] = AdaptKalmanAuton(g,dta,[],0,A,stepsize,Qcov,N,W0,true,false,true);
 
 else % manually replace noise inds with model
     dtaProj = projLTIauton(A, dta, g);
@@ -227,7 +235,7 @@ for chnmst = channelNameStim
         end
     end
 end
-figExampleChans = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+figExampleChans{Ti} = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
 for ch = 1:length(chandispname)
     ax(ch) = subplot(H+1,1,ch);
     plot(dta, chandispname(ch)); grid on; hold on; 
@@ -240,7 +248,7 @@ linkaxes(ax, 'x');
 pause(.001); drawnow; pause(.001);
 
 %% show overlapping artifact
-figExampleArts = figure; 
+figExampleArt{Ti} = figure; 
 for ch = 1:H
 ax2(ch) = subplot(H,1,ch);
 hold on; grid on;
@@ -272,7 +280,7 @@ for itype = 1:size(tracetypes,2)
 end
 showtraceinds = [tracebest(1:NumTraceToShow,:); tracebest((end-NumTraceToShow+1):end,:)];
 showtraceinds = showtraceinds(:); showtraceinds = unique(showtraceinds);
-figAvgArt = figure; 
+figAvgArt{Ti} = figure; 
 for ch = 1:H
 ax3(ch) = subplot(H,1,ch);
 yavg = artavg(:,chandisp(ch),1,1); xavg = artavg(:,chandisp(ch),1,2);
@@ -306,7 +314,11 @@ tblsOut{Ti,1} = dtaArtRem;
 
     end
     tblsListOut{Li} = tblsOut;
-    EPlistOut{Li} = EPout;
+    figsEPOut{Li} = figEPout;
+    figsAdaptOut{Li} = figAdaptOut;
+    figsAvgArt{Li} = figAvgArt;
+    figsExampleChans{Li} = figExampleChans;
+    figsExampleArt{Li} = figExampleArt;
 end
 
 %% saving 
@@ -332,23 +344,27 @@ svname = fullfile(fp,svname);
 save(svname, '-struct', 'svstruct', "-v7.3");
 
 % save figures 
-saveasmultiple(figAvgArt, svname+" - Average Artifact");
-saveasmultiple(figExampleChans, svname+" - Example Channels");
-nfig = 1;
-for EPi = 1:length(EPlistOut)
-    EPout = EPlistOut{EPi};
-    for EPj = 1:length(EPout)
-        saveasmultiple(EPout{EPj}, svname+" - stim response ("+num2str(nfig)+")");
-        nfig = nfig+1;
-    end
-end
-saveasmultiple(figExampleArts, svname+" - Example Artifacts");
+saveasmultiple(figsAvgArt, svname+" - Average Artifact");
+saveasmultiple(figsExampleChans, svname+" - Example Channels");
+saveasmultiple(figsEPOut, svname+" - stim response");
+saveasmultiple(figsAdaptOut, svname+" - Adaptive");
+saveasmultiple(figsExampleArt, svname+" - Example Artifacts");
 
-function saveasmultiple(fig, filename)
-if isvalid(fig)
-saveas(fig, filename, 'fig'); % original matlab figure
-saveas(fig, filename, 'png'); % preview
-else
-    warning('figure handle not valid; may have been closed.')
+function saveasmultiple(figslist, filename)
+nfig = 0;
+for l = 1:length(figslist)
+    for f = 1:length(figslist{l})
+        fig = figslist{l}{f};
+        nfig = nfig+1;
+        if ~isempty(fig)
+            if isvalid(fig)
+                fnn = filename+" ("+num2str(nfig)+")";
+                saveas(fig, fnn, 'fig'); % original matlab figure
+                saveas(fig, fnn, 'png'); % preview
+            else
+                warning('figure handle not valid; may have been closed.')
+            end
+        end
+    end
 end
 end

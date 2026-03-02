@@ -1,4 +1,4 @@
-function dtaPred = AdaptKalmanAuton(noiseRef, dtaTbl, Am, KA, A0, stepsize, Q, N, w0, ...
+function [dtaPred, figout] = AdaptKalmanAuton(noiseRef, dtaTbl, Am, KA, A0, stepsize, Q, N, w0, ...
     nLMS, dLMS, showfit)
 % Adaptive LTV sys ID plus artifact removal with Kalman filter 
 % TO DO: replace RR with N and have QQ calculated using the output of a LMS
@@ -97,8 +97,9 @@ ObsNoise = nan(N, width(dtaTbl), 256);
     % dim 3: # examples to track 
 ObsNoiseP = 1; % next index of dim 3
 
+figout = [];
 if showfit 
-    figure('Units','Normalized','Position',[.1 .1 .8 .8]); 
+    figout = figure('Units','Normalized','Position',[.1 .1 .8 .8]); 
     subplot(2,2,1); 
     imgL = imagesc(A0); colorbar; 
     title('Disc A LSQ fit');
