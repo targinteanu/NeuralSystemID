@@ -7,7 +7,11 @@ load(fullfile(fp,fn));
 ArtRemoveDone = contains(fn, '_ArtifactRemoveOffline');
 if ArtRemoveDone
     fnOrig = split(fn, '_ArtifactRemoveOffline'); fnOrig = fnOrig{1};
-    load(fullfile(fp,[fnOrig,fe]));
+    fpOrig = fp;
+    while ~exist(fullfile(fpOrig,[fnOrig,fe]), 'file')
+        fpOrig = fileparts(fpOrig); % try one folder out
+    end
+    load(fullfile(fpOrig,[fnOrig,fe]));
 end
 
 %% select channels of interest 
