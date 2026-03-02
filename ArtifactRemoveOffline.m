@@ -156,7 +156,7 @@ methodsel = strcmpi(methodsel, 'Adaptive');
 if methodsel % adaptive using LMS + Kalman
 
 % LMS setup and pretraining 
-N = 50; % filter # taps
+N = 32; % filter # taps
 stepsize = .5; % learn rate for gradient descent 
 W0 = preTrainWtsLMS(g,dta,N,4,false); % "optimal" LMS weights 
 
@@ -198,7 +198,7 @@ artdifmax = max(artdif,[],1); % most pos val each trial
 artdifavg = mean(artdif,1,'omitnan'); 
 artimbal = (artdifrsq - artdifavg)./(artdifrsq+eps); % polarity imbalance each trial
 
-% assess noise level by channel 
+%% assess noise level by channel 
 SNRupper = mag2db(rms(dta.Variables)./(rms(dta.Variables)-rms(dtaBL.Variables)));
 [~,bestSNRupper] = sort(SNRupper);
 SNRlower = nan(size(SNRupper));
@@ -239,7 +239,7 @@ linkaxes(ax, 'x');
 
 pause(.001); drawnow; pause(.001);
 
-% show overlapping artifact
+%% show overlapping artifact
 figExampleArts = figure; 
 for ch = 1:H
 ax2(ch) = subplot(H,1,ch);
