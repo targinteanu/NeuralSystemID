@@ -155,7 +155,7 @@ for Li = 1:height(tblsList)
                 g(gi) = 1;
             end
         end
-        clear gi gti gtidiff selmade selidx selrow
+        clear gi gti gtidiff selmade selidx
 
 methodsel = questdlg('How should artifact removal be performed on this section?', ...
     'method selection', 'Adaptive', 'Manual', 'Adaptive');
