@@ -24,12 +24,17 @@ end
 % handle empty args 
 if isempty(Am)
     Am = -eye(width(dtaTbl));
+elseif numel(Am) == 1
+    Am = Am*eye(width(dtaTbl));
 end
 if isempty(KA)
     KA = lyap(Am',eye(size(Am)));
+elseif numel(KA) == 1
+    %KA = lyap(Am',KA*eye(size(Am)));
+    KA = KA*eye(size(Am));
 end
 if isempty(A0)
-    A0 = eye(width(dtaTbl));
+    A0 = eye(width(dtaTbl)); % discrete
 end
 if isempty(w0)
     w0 = zeros(N,width(dtaTbl));
@@ -37,7 +42,7 @@ end
 
 Th = seconds(dtaTbl.Properties.TimeStep);
 if isnan(Th)
-    Th = mean(seconds(diff(dtaTbl.Time)));
+    Th = median(seconds(diff(dtaTbl.Time)));
 end
 
 %% check for stability 
@@ -66,14 +71,15 @@ Y = table2array(dtaTbl)';
 Xest = nan(size(Y));
 noiseRef = [mode(noiseRef)*ones(1,N-1), noiseRef']; % pad
 
-% Kalman setup
+% AID / Kalman setup
 y = Y(:,1); 
-A = A0;
+AmInv = Am^-1;
+Ahat_d = A0;
 xest = y; 
 Xest(:,1) = xest;
-[Ad,Bd0] = c2d(Am,eye(size(Am)),Th);
-Ac0 = d2c(A,zeros(size(A,1),1),Th);
-Ac = Ac0;
+A_d = expm(Am*Th);
+Beta_d = Ahat_d - A_d;
+M = Th*AmInv*(A_d-eye(size(A_d)));
 n = N;
 %Q = cov(Y(:,1:N)'); 
 P = Q; R = Q; % default/starting assumption
@@ -84,7 +90,7 @@ Gprev = zeros(1,N);
 Eprev = zeros(1,height(Y));
 LMSdata = nan(size(dtaTbl));
 
-% track observer noise 
+% track observer noise - NOT USED
 ObsNoise = nan(N, width(dtaTbl), 256);
     % dim 1: tap
     % dim 2: data channels 
@@ -94,18 +100,17 @@ ObsNoiseP = 1; % next index of dim 3
 if showfit 
     figure('Units','Normalized','Position',[.1 .1 .8 .8]); 
     subplot(2,2,1); 
-    imgL = imagesc(Ac); colorbar; 
-    title('Cont A LSQ fit');
-    cmin = min(Ac(:)); cmax = max(Ac(:)); cdiff = cmax-cmin; 
+    imgL = imagesc(A0); colorbar; 
+    title('Disc A LSQ fit');
+    cmin = min(A0(:)); cmax = max(A0(:)); cdiff = cmax-cmin; 
     if cdiff == 0
         cdiff = .01;
     end
     cmin = cmin - .05*cdiff; cmax = cmax + .05*cdiff;
     imgL.Parent.CLim = [cmin, cmax];
-    %Ac = zeros(size(Ac)); % reset 
     subplot(2,2,2); 
-    img = imagesc(Ac, [cmin,cmax]); colorbar;
-    ttxt = title('Cont A Adapt: 0%');
+    img = imagesc(A0, [cmin,cmax]); colorbar;
+    ttxt = title('Disc A Adapt: 0%');
     subplot(2,2,3); 
     wplot = stem(w); grid on; 
     title('LMS online weights'); xlabel('tap'); ylabel('weight');
@@ -156,15 +161,14 @@ for t = 2:width(Y)
     LMSdata(t,:) = noiseLMS;
 
     % adapt update state equation 
-    dA = -KA*(xest-y)*y';
+    dAhat = -KA*(xest-y)*y';
+    delBeta_d = M*dAhat;
     if n > N
-        Ac = Ac + dA*Th; 
+        Beta_d = Beta_d + delBeta_d; 
         % update A matrix only when no noise. 
         % CONSIDER: replace this crude rule with a Kalman-like gain based on noise?
     end
-    %[Ad,Bd] = c2d(Am,Ac-Am,Th);
-    Bd = Bd0*(Ac-Am);
-    Ad2 = expm(Ac*Th);
+    Ahat_d = Beta_d + A_d;
 
     % observer noise 
     %{
@@ -180,10 +184,8 @@ for t = 2:width(Y)
     R = diag(noiseLMS.^2);
 
     % Kalman predict 
-    %Ppri = Ad*P*Ad' + Bd*(y*y')*Bd' + Q;
-    %xpri = Ad*xest + Bd*y;
-    Ppri = Ad2*P*Ad2' + Q;
-    xpri = Ad2*xest;
+    Ppri = Ahat_d*P*Ahat_d' + Q;
+    xpri = Ahat_d*xest;
 
     % Kalman update     
     K = Ppri * (Ppri + R)^-1;
@@ -199,19 +201,19 @@ for t = 2:width(Y)
         prog_curr = 100*t/width(Y); 
         if prog_curr - prog_prev > prog_updTick
             prog_prev = prog_curr;
-            [cmin,chg_min] = min([cmin, min(Ac(:))]); chg_min = chg_min-1;
-            [cmax,chg_max] = max([cmax, max(Ac(:))]); chg_max = chg_max-1;
-            img.CData = Ac;
+            [cmin,chg_min] = min([cmin, min(Ahat_d(:))]); chg_min = chg_min-1;
+            [cmax,chg_max] = max([cmax, max(Ahat_d(:))]); chg_max = chg_max-1;
+            img.CData = Ahat_d;
             if chg_max | chg_min
                 img.Parent.CLim = [cmin, cmax];
                 imgL.Parent.CLim = [cmin, cmax];
             end
-            ttxt.String = ['Cont A Estimate: ',num2str(prog_curr,3),'%'];
+            ttxt.String = ['Disc A Estimate: ',num2str(prog_curr,3),'%'];
             for ch = 1:width(dtaTbl)
                 wplot(ch).YData = w(:,ch);
                 LMSdataplot(ch).YData = LMSdata(:,ch);
             end
-            drawnow;
+            pause(1e-9); drawnow; pause(1e-9); 
         end
     end
 
