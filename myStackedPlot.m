@@ -60,7 +60,7 @@ for c = 1:N
             end
             di = find(d==' '); % comma instead?
             if ~isempty(di)
-                d = [d(1:di),'...'];
+                d = [d(1:di(1)),'...'];
             end
         end
         if ~isempty(IsOutlier)
