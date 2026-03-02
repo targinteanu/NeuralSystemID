@@ -72,11 +72,11 @@ toc
 adaptTstEval
 
 %% LMS filter artifact removal 
-N = 20; % filter # taps
+N = 32; % filter # taps
 
 dta59 = dta(:,chnum_to_plot);
-g = diff(double(Tr))'; g = g.*(g > 1e4); 
-g = [g((nDelay+1):end); false(nDelay,1)]; % start nDelay samples earlier
+g = diff(double(Tr))'; g = double(g > 1e4); 
+g = [g((nDelay+1):end); zeros(nDelay,1)]; % start nDelay samples earlier
 
 % find the optimal weights 
 ind_stim_str = find(Tr_thr); 
@@ -91,10 +91,11 @@ w0d = preTrainWtsLMS(g_noise_train,dta_noise_train,N,2,true);
 dta59 = dta59(1000000:end,:);
 g = g((1000000-1):end);
 dtaLMS  = filterLMS(g,dta59,1,N,w0,100,false,true);
-dtaLMSd = filterLMS(g,dta59,.5,N,w0d,100,true,true);
+dtaLMSd = filterLMS(g,dta59,.9,N,w0d,100,true,true);
 
 %% Kalman filter 
 
+%{
 % characterize process noise waveform 
 noise_ind = find(Tr_thr); 
 noise_ind_new = diff(noise_ind) > 2;
@@ -115,7 +116,7 @@ end
 title('artifacts')
 
 % evaluate measurement noise (co)variance 
-N = 19; % samples 
+%N = 19; % samples 
 Rt = tbl.Time(1:N);
 RR = nan(width(dta),length(noise_tbls),N);
 for m = 1:length(noise_tbls)
@@ -141,10 +142,11 @@ end
 plot(Rt,ravg'+sqrt(squeeze(Rcov(chnum_to_plot,chnum_to_plot,:))), ...
     ':b', 'LineWidth',1);
 rmse(Rvar(:), Rstd(:).^2)
+%}
 
 % run filter on data 
-g = [0, diff(double(Tr))]'; g = g.*(g > 1e4);
-g = [g((nDelay+1):end); false(nDelay,1)]; % start nDelay samples earlier
+g = [0, diff(double(Tr))]'; g = double(g > 1e4);
+g = [g((nDelay+1):end); zeros(nDelay,1)]; % start nDelay samples earlier
 dtaKal = AdaptKalmanAuton(g(1e6:end),dta(1e6:end,:),Am,KA,A,1,Qcov,N,[],true,false,true);
 
 %% plot chan 59
