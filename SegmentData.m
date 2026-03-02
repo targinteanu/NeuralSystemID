@@ -676,6 +676,8 @@ comMisc = "Segment any miscellaneous time periods, or close this window to cance
     usrconfirm(trngMisc, comMisc, MainTable, tbls, hAXs, [1,1,0]);
 
 %% save all
+doSave = questdlg('Save?');
+if strcmp(doSave, 'Yes')
 disp('Saving segmented data...')
 
 thisfilever = getFileVersion(thisfilename);
@@ -718,6 +720,7 @@ if toshowas(2)
 end
 
 disp('...Done!')
+end
 
 %% helpers 
 
