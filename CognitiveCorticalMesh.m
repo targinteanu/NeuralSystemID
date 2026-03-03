@@ -70,13 +70,14 @@ for ch = 1:width(PDdata)
 end
 %thetaPowerWindowed = movmean(envelope(PDdata.Variables).^2, windowSize);
 thetaPowerWindowed = thetaPowerWindowed(round(windowSize/2):windowSize:end, :);
-thetaPowerWindowed = log10((thetaPowerWindowed)); % log scale 
+thetaPowerWindowed = 10*log10((thetaPowerWindowed)); % decibel (dB) scale 
 thetaPowerWindowed(isoutlier(thetaPowerWindowed)) = nan;
 thetaPowerWindowed = median(thetaPowerWindowed, 'omitnan');
 ElecTbl.ThetaPowerWindowed = thetaPowerWindowed';
 OLthresh = thetaPowerWindowed > median(thetaPowerWindowed, 'omitnan');
 OLthresh = thetaPowerWindowed(OLthresh); 
 io = isoutlier(OLthresh); OLthresh = min(OLthresh(io));
+disp(['Removing ',num2str(sum(io)),' outlier channels.'])
 if isempty(OLthresh) || isnan(OLthresh)
     OLthresh = inf;
 end
@@ -243,6 +244,11 @@ function [interp_source, srcpltcfg] = ...
     lighting gouraud;
     %camlight;
     %view([150, 5]);
+
+    fig = gcf; 
+    fig.Children(2).FontSize = 16; % colorbar 
+    fig.Children(2).Label.String = 'Power (dB)';
+    fig.Children(2).Label.FontSize = 18;
 
     % === Step 6: Normal color map (pure parula) ===
     colormap(parula);   % NO special red added
