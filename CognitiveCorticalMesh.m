@@ -76,7 +76,7 @@ thetaPowerWindowed = median(thetaPowerWindowed, 'omitnan');
 ElecTbl.ThetaPowerWindowed = thetaPowerWindowed';
 OLthresh = thetaPowerWindowed > median(thetaPowerWindowed, 'omitnan');
 OLthresh = thetaPowerWindowed(OLthresh); 
-io = isoutlier(OLthresh); OLthresh = min(OLthresh(io));
+io = isoutlier(OLthresh, 'mean'); OLthresh = min(OLthresh(io));
 disp(['Removing ',num2str(sum(io)),' outlier channels.'])
 if isempty(OLthresh) || isnan(OLthresh)
     OLthresh = inf;
