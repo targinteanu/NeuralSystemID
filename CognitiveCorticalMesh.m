@@ -57,7 +57,7 @@ PD_Channel_Names = PDdata.Properties.VariableNames;
 
 ElecTbl = table('RowNames',PD_Channel_Names(1:63)); % cortical only
 
-% windowed theta power 
+%% windowed theta power 
 % Calculate windowed theta power
 windowSize = 1000; % samples 
 thetaPowerWindowed = PDdata.Variables.^2;
@@ -70,9 +70,17 @@ for ch = 1:width(PDdata)
 end
 %thetaPowerWindowed = movmean(envelope(PDdata.Variables).^2, windowSize);
 thetaPowerWindowed = thetaPowerWindowed(round(windowSize/2):windowSize:end, :);
-thetaPowerWindowed = median(thetaPowerWindowed);
+thetaPowerWindowed = log10((thetaPowerWindowed)); % log scale 
+thetaPowerWindowed(isoutlier(thetaPowerWindowed)) = nan;
+thetaPowerWindowed = median(thetaPowerWindowed, 'omitnan');
 ElecTbl.ThetaPowerWindowed = thetaPowerWindowed';
-thetaPowerWindowed(isoutlier(sqrt(thetaPowerWindowed))) = nan;
+OLthresh = thetaPowerWindowed > median(thetaPowerWindowed, 'omitnan');
+OLthresh = thetaPowerWindowed(OLthresh); 
+io = isoutlier(OLthresh); OLthresh = min(OLthresh(io));
+if isempty(OLthresh) || isnan(OLthresh)
+    OLthresh = inf;
+end
+thetaPowerWindowed(thetaPowerWindowed >= OLthresh) = nan;
 
 %%
 %{
@@ -133,10 +141,10 @@ for ch = 1:length(thetaPowerWindowed)
     end
 end
 
-figACPC = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+figACPC = figure('Units','normalized', 'Position',[.05,.05,.65,.9]); 
 ThetaPowerInterp = load_ACPC_FR_mesh(elecACPC, meshACPC, ...
-    thetaPowerWindowed, 'acpc');
-title('Theta Power, individual ACPC')
+    thetaPowerWindowed, 'acpc', isnan(thetaPowerOrig));
+title('Theta Power, individual ACPC', 'FontSize',20)
 
 camlight;
 if lat(1)=='r'
@@ -152,10 +160,10 @@ ElecTbl.mniX = elecMNI.chanpos(:,1);
 ElecTbl.mniY = elecMNI.chanpos(:,2); 
 ElecTbl.mniZ = elecMNI.chanpos(:,3); 
 
-figMNI = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
+figMNI = figure('Units','normalized', 'Position',[.3,.05,.65,.9]); 
 ThetaPowerInterp = load_ACPC_FR_mesh(elecMNI, meshMNI, ...
-    thetaPowerWindowed, 'mni');
-title('Theta Power, MNI space / template brain')
+    thetaPowerWindowed, 'mni', isnan(thetaPowerOrig));
+title('Theta Power, MNI space / template brain', 'FontSize',20)
 
 camlight;
 if lat(1)=='r'
@@ -178,8 +186,11 @@ end
 %% helper functions 
 
 function [interp_source, srcpltcfg] = ...
-    load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data, coordsys)
+    load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data, coordsys, markmissing)
     sphereradius = 3;
+    if nargin < 5
+        markmissing = false(size(elec_acpc_fr.chanpos,1),1);
+    end
 
     % === Step 1: Load Electrode Positions and Mesh ===
     %elec_acpc_fr = load(acpc_path).elec_acpc_fr;
@@ -226,8 +237,8 @@ function [interp_source, srcpltcfg] = ...
 
     %view([-55 10]);
     ax = gca;
-    ax.Children(2).FaceColor = [.8 .8 .8];
-    ax.Children(2).FaceAlpha = .6;
+    ax.Children(2).FaceColor = [.8 .8 .8]; % brain mesh
+    ax.Children(2).FaceAlpha = .6; % brain mesh
     material shiny;
     lighting gouraud;
     %camlight;
@@ -240,7 +251,15 @@ function [interp_source, srcpltcfg] = ...
     % Plot normal electrodes
     elec_plot_colors = data_clean;   % Use interpolated data (0–1)
     %ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
-    ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', 'red', 'edgecolor', 'black');
+    ft_plot_sens(elec_acpc_fr, 'elecsize', 15, 'facecolor', 'red', 'edgecolor', 'black');
+
+    % indicate electrodes with missing/omitted data 
+    hold on;
+    plot3(...
+        elec_acpc_fr.chanpos(markmissing,1), ...
+        elec_acpc_fr.chanpos(markmissing,2), ...
+        elec_acpc_fr.chanpos(markmissing,3)+.1, ...
+        'xk', 'MarkerSize',15, 'LineWidth',3);
 
     %{
     % === Step 8: Overlay reference electrodes manually ===
