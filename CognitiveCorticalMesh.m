@@ -137,8 +137,9 @@ ElecTbl.acpcZ = elecACPC.chanpos(:,3);
 for ch = 1:length(thetaPowerWindowed)
     if isnan(thetaPowerWindowed(ch))
         dr = elecACPC.chanpos(ch,:) - elecACPC.chanpos;
-        dl = rms(dr,2);
-        thetaPowerWindowed(ch) = mean(thetaPowerOrig./dl', 'omitnan');
+        dl = rms(dr,2); L = 1./dl';
+        L = L([1:(ch-1), (ch+1):end]); theta = thetaPowerOrig([1:(ch-1), (ch+1):end]);
+        thetaPowerWindowed(ch) = sum(theta.*L, 'omitnan')/sum(L, 'omitnan');
     end
 end
 
