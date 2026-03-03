@@ -90,9 +90,16 @@ Th = seconds(Th); % seconds
 Fs = testData.Properties.SampleRate;
 Th = 1/Fs; % seconds
 %}
-Th = seconds(trainData.Properties.TimeStep);
-if isnan(Th)
-    Th = median(seconds(diff(trainData.Time)));
+if isempty(trainData)
+    Th = seconds(testData.Properties.TimeStep);
+    if isnan(Th)
+        Th = median(seconds(diff(testData.Time)));
+    end
+else
+    Th = seconds(trainData.Properties.TimeStep);
+    if isnan(Th)
+        Th = median(seconds(diff(trainData.Time)));
+    end
 end
 
 %% starting estimate of discrete A 
