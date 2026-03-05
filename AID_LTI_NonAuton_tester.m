@@ -13,9 +13,9 @@ figure; impulse(mysysc);
 % state space 
 Ts = .001; % seconds
 mySSc = ss(mysysc);
-mySSd = c2d(mySSc, Ts);
-Ac = mySSc.A; Ad = mySSd.A;
-Bc = mySSc.B; Bd = mySSd.B;
+Ac = mySSc.A; 
+Bc = (2*rand(size(Ac,1),1)-1) * max(abs(Ac(:)));
+[Ad,Bd] = c2d(Ac,Bc, Ts);
 
 % randomize an input signal 
 t = 0:Ts:10; % time vector for simulation
@@ -29,7 +29,7 @@ for ti = 2:length(t)
     x = Ad*x + Bd*u(ti-1); % state update 
     X(:,ti) = x + 0.1*randn(size(x)); % measurement noise
 end
-figure; 
+figure; clear ax;
 ax(1) = subplot(2,1,1);
 plot(t, X); grid on; % plot the output response
 xlabel('Time (s)');
@@ -37,6 +37,7 @@ ylabel('States');
 title('Response of the Autonomous System');
 ax(2) = subplot(2,1,2); 
 plot(t, u); grid on; ylabel('Input'); xlabel('Time (s)');
+linkaxes(ax, 'x');
 
 % choose channel(s) to display 
 Xdiff = X - mean(X); Xdiff = rms(Xdiff, 2); % diff from mean
@@ -64,16 +65,16 @@ end
 
 % AID 
     % define params 
-    KA = (1e-13)*eye(n);
-    KB = (1e-13)*eye(n);
+    KA = (1e-8)*eye(n);
+    KB = (1e-4)*eye(n);
     Am = (-1e2)*eye(n);
     %Q = (1e-3)*eye(n); 
     Q = cov(X');
     P = lyap(Am', Q);
 Xtbl = array2timetable(X', "RowTimes",seconds(t));
 chandispname = Xtbl.Properties.VariableNames{chandispind};
-[~,Xtbl_AID,~,AIDeval,~,Ad_AID] = AID_LTI_auton([],Xtbl,Am,KA*P,[],...
-    chandispname);
+%[~,Xtbl_AID,~,AIDeval,~,Ad_AID] = AID_LTI_auton([],Xtbl,Am,KA*P,[],...
+%    chandispname);
 
 % compare A matrices
 figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
@@ -82,8 +83,8 @@ subplot(2,3,1); imagesc([Ad,Bd]); colorbar; title('Actual');
 subplot(2,3,4); imagesc([Ad_lsq,Bd_lsq]); colorbar; title('Least Sq. Est.');
 subplot(2,3,2); imagesc(mean([Ad_win,Bd_win],3)); colorbar; title('Windowed L.Sq. Est.');
 subplot(2,3,5); imagesc(std([Ad_win,Bd_win],[],3)); colorbar; title('Windowed S.D.');
-subplot(2,3,3); imagesc(Ad_AID(:,:,end)); colorbar; title('Adaptive Final');
-subplot(2,3,6); imagesc(std(Ad_AID,[],3)); colorbar; title('Adaptive S.D.');
+%subplot(2,3,3); imagesc(Ad_AID(:,:,end)); colorbar; title('Adaptive Final');
+%subplot(2,3,6); imagesc(std(Ad_AID,[],3)); colorbar; title('Adaptive S.D.');
 
 %% AID continuous 
 
@@ -105,13 +106,14 @@ subplot(1,3,2); imagesc([Ac_ode(:,:,end),Bc_ode(:,:,end)]); colorbar; title('Fin
 subplot(1,3,3); imagesc(std([Ac_ode,Bc_ode],[],3)); colorbar; title('Adaptive S.D.');
 
 % compare X values 
-figure; 
-subplot(2,1,1); 
+figure; clear ax;
+ax(1) = subplot(2,1,1); 
 plot(t, X(chandispind,:)); hold on; grid on; plot(ODEt, X_ode(chandispind,:));
 legend('Actual', 'Estimate'); ylabel(chandispname); xlabel('Time (sec)');
 x_ode = interp1(ODEt, X_ode(chandispind,:), t, 'linear', 'extrap');
-subplot(2,1,2); semilogy(t, (X(chandispind,:)-x_ode).^2); grid on; 
+ax(2) = subplot(2,1,2); semilogy(t, (X(chandispind,:)-x_ode).^2); grid on; 
 title('Squared Error');
+linkaxes(ax, 'x');
 
 
 function dy_dt = contODEdyn(ti, yi, t, X, u, Am, KA, KB, P)
