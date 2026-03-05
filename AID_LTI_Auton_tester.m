@@ -59,7 +59,7 @@ end
     P = lyap(Am', Q);
 Xtbl = array2timetable(X', "RowTimes",seconds(t));
 chandispname = Xtbl.Properties.VariableNames{chandispind};
-[~,Xtbl_AID,~,AIDeval,~,Ad_AID] = AID_LTI_auton([],Xtbl,Am,KA,[],...
+[~,Xtbl_AID,~,AIDeval,~,Ad_AID] = AID_LTI_auton([],Xtbl,Am,KA*P,[],...
     chandispname);
 
 % compare A matrices
