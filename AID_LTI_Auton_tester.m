@@ -5,7 +5,7 @@ numpoles = 8;
 mysysc = tf(1);
 for p = 1:numpoles
     freq = 2*pi*50*rand; 
-    damp = rand-0.9; 
+    damp = rand-0.99; 
     mysysc = mysysc * tf(freq, [1, -2*damp, damp^2 + freq^2]);
 end
 figure; impulse(mysysc); 
@@ -25,10 +25,14 @@ for ti = 2:length(t)
     x = Ad*x; % state update 
     X(:,ti) = x + 0.1*randn(size(x)); % measurement noise
 end
-plot(t, X); % plot the output response
+figure; plot(t, X); grid on; % plot the output response
 xlabel('Time (s)');
 ylabel('States');
 title('Response of the Autonomous System');
+
+% choose channel(s) to display 
+Xdiff = X - mean(X); Xdiff = rms(Xdiff, 2); % diff from mean
+[~,chandispind] = min(Xdiff); % most average channel
 
 %% ID discrete 
 
@@ -49,12 +53,14 @@ end
 
 % AID 
     % define params 
-    KA = (1e-4)*eye(n);
-    Am = (-1e3)*eye(n);
-    Q = -eye(n); 
+    KA = (1e-3)*eye(n);
+    Am = (-1e2)*eye(n);
+    Q = (-1e-3)*eye(n); 
     P = lyap(Am', Q);
 Xtbl = array2timetable(X', "RowTimes",seconds(t));
-[~,Xtbl_AID,~,AIDeval,~,Ad_AID] = AID_LTI_auton([],Xtbl,Am,KA,[],true);
+chandispname = Xtbl.Properties.VariableNames{chandispind};
+[~,Xtbl_AID,~,AIDeval,~,Ad_AID] = AID_LTI_auton([],Xtbl,Am,KA,[],...
+    chandispname);
 
 % compare A matrices
 figure('Units','normalized', 'Position',[.05,.05,.9,.9]);
@@ -69,11 +75,12 @@ subplot(2,3,6); imagesc(std(Ad_AID,[],3)); colorbar; title('Adaptive S.D.');
 %% AID continuous 
 
 y0 = zeros(n+n^2,1);
-[ODEt, ODEy] = ode45(@contODEdyn,t,y0);
+[ODEt, ODEy] = ode45(@(ti,yi) contODEdyn(ti,yi,t,X,Am,KA,P), t, y0);
+ODEt = ODEt'; ODEy = ODEy';
 
 % unstack 
 X_ode = ODEy(1:n,:); bstack_ode = ODEy((n+1):end,:);
-Ac_ode = zeros(size(Ac),length(ODEt));
+Ac_ode = zeros([size(Ac),length(ODEt)]);
 Ac_ode(:) = bstack_ode(:); % "beta"
 Ac_ode = Ac_ode + Am; % "Ahat"
 
@@ -83,12 +90,22 @@ subplot(1,3,1); imagesc(Ac); colorbar; title('Actual');
 subplot(1,3,2); imagesc(Ac_ode(:,:,end)); colorbar; title('Final Est');
 subplot(1,3,3); imagesc(std(Ac_ode,[],3)); colorbar; title('Adaptive S.D.');
 
+% compare X values 
+figure; 
+subplot(2,1,1); 
+plot(t, X(chandispind,:)); hold on; grid on; plot(ODEt, X_ode(chandispind,:));
+legend('Actual', 'Estimate'); ylabel(chandispname); xlabel('Time (sec)');
+x_ode = interp1(ODEt, X_ode(chandispind,:), t, 'linear', 'extrap');
+subplot(2,1,2); semilogy(t, (X(chandispind,:)-x_ode).^2); grid on; 
+title('Squared Error');
 
-function dy_dt = contODEdyn(ti, yi)
+
+function dy_dt = contODEdyn(ti, yi, t, X, Am, KA, P)
 
 % find true values of x at time ti
 [~,i] = min(abs(t-ti));
 xtrue = X(:,i);
+n = size(X,1);
 
 % unstack y -> xhat, beta
 xhat = yi(1:n); bstack = yi((n+1):end);
