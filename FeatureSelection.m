@@ -275,6 +275,7 @@ for Ti = 1:height(alltbls)
         Xabs = log((Xabs.^2+eps)./(Xref.^2+eps));
         Xabs1 = Xabs(:,1:featsplit); Xhilb1 = Xhilb(:,1:featsplit); % get mag and phase 
         varnames1 = varnames(1:featsplit); varnames2 = varnames((featsplit+1):end);
+        vardescs1 = vardescs(1:featsplit); vardescs2 = vardescs((featsplit+1):end);
         Xabs2 = Xabs(:,(featsplit+1):end); % get mag only 
         Xabs2 = movmean(Xabs2, featsmooth);
         TTmaph{Tj} = [...
@@ -290,7 +291,7 @@ for Ti = 1:height(alltbls)
         TTmaph{Tj}.Properties.VariableUnits = [varunits, ...
             repmat("radians",1, width( Xhilb ))];
         %}
-        TTmaph{Tj}.Properties.VariableDescriptions = [vardescs, vardescs, vardescs];
+        TTmaph{Tj}.Properties.VariableDescriptions = [vardescs1, vardescs1, vardescs1, vardescs2];
         %TTmaph{Tj} = [TTmaph{Tj}, TTpink];
         TTmaph{Tj}.Properties.Description = Tfilt.Properties.Description;
         TTmaph{Tj}.Properties.Events = Tfilt.Properties.Events;
