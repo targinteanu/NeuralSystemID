@@ -10,6 +10,7 @@ from csv2numpy import prepTimeSeqData
 hzn = .05 # EVALUATION sample time, s
 groupsize=15
 numgroups=5
+numgroupsunpaired=2
 fc = np.array([4,10,27,70]) # freq band center freqs
 netfile = ""
 dt_target = 0.01 # model sample time, s
@@ -47,7 +48,7 @@ YbRaw = YbRaw[:,-1,:]
 # -----------------------------------------------------------------------------------------------
 
 # define mdl struct ====================================================================
-model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups, tuple_size=3, numGrpUnpaired=2)
+model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups, tuple_size=3, numGrpUnpaired=numgroupsunpaired)
 if netfile:
     model.load_state_dict(torch.load(netfile))
 else:
@@ -169,8 +170,11 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     """
     Ysim_grouped = unprocess(Ysim, feature_correction)
     Ytrue_grouped = unprocess(Ytrue, feature_correction)
-    Ysim_grouped = Ysim_grouped.reshape(-1, numgroups, groupsize)
-    Ytrue_grouped = Ytrue_grouped.reshape(-1, numgroups, groupsize)
+    N = numgroups-numgroupsunpaired
+    Ysim_grouped = Ysim_grouped[:, :N*groupsize]
+    Ytrue_grouped = Ytrue_grouped[:, :N*groupsize]
+    Ysim_grouped = Ysim_grouped.reshape(-1, N, groupsize)
+    Ytrue_grouped = Ytrue_grouped.reshape(-1, N, groupsize)
     Ysim_recon = np.sum(Ysim_grouped, axis=-2)
     if Ytrue_recon is None:
         Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
