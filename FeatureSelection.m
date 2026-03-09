@@ -537,7 +537,7 @@ for H = 1:height(svtbls)
     SvIfo = ['Channel Name', TT.Properties.VariableNames; ...
              'Unit', TT.Properties.VariableUnits; ...
              'Description', TT.Properties.VariableDescriptions]';
-    if contains(selfeatname, "MagPhase")
+    if contains(selfeatname(W), "MagPhase")
         Xref_ = nan(1, width(TT));
         Xref_(1:length(Xref)) = Xref; 
         SvIfoRef = arrayfun(@num2str, Xref_, 'UniformOutput', false);
