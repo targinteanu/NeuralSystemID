@@ -232,7 +232,7 @@ class TimeSeriesTransformer(nn.Module):
         self.tuple_size = tuple_size
         self.num_pairs = (num_groups - numGrpUnpaired) * group_size  
         used_for_pairing = self.num_pairs * tuple_size
-        leftover_dim = dim_in - used_for_pairing
+        leftover_dim = dim_in - used_for_pairing - (numGrpUnpaired * group_size)
         self.pair_output = 8
 
         # Stage 1: pairwise linear 
@@ -241,7 +241,7 @@ class TimeSeriesTransformer(nn.Module):
 
         # Stage 2: linear over flattened group
         self.group_fcA = nn.Linear(group_size * self.pair_output, 32)
-        self.group_fcC = nn.Linear(group_size * numGrpUnpaired, 16)
+        self.group_fcC = nn.Linear(group_size, 16)
         self.group_fcB = nn.Linear((num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired, 16)
         mlp_in = ((num_groups-numGrpUnpaired) * 32) + (group_size * 16) + (numGrpUnpaired * 16) + leftover_dim
 
@@ -288,6 +288,8 @@ class TimeSeriesTransformer(nn.Module):
     def forward(self, x, u_seq):
         """
         x: (B, T, dim_in)
+        B) "Threads" = within channels, across freq bands 
+        A) "Groups" = within freq bands, across channels
         """
         if x.ndim != 3:
             raise ValueError(f"Expected input ndim=3, got {x.ndim}")
@@ -332,10 +334,10 @@ class TimeSeriesTransformer(nn.Module):
         p_threads = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size, self.pair_output)   
         p_threads = p_threads.permute(0,1,3,2,4).contiguous()           
         p_threads = p_threads.view(B, T, self.group_size, -1)            # (B,T,group_size,...)
-        p_threads = torch.cat([p_threads, x_unpaired_threads], dim=4) 
+        p_threads = torch.cat([p_threads, x_unpaired_threads], dim=-1) 
         b = F.gelu(self.group_fcB(p_threads))                         
-        b_flat = b.view(B, T, -1)                                        
-        h = torch.cat([a_flat, b_flat, c_flat, x_left], dim=2)        # (B,T,mlp_in)
+        b_flat = b.view(B, T, -1)         
+        h = torch.cat([a_flat, b_flat, c_flat, x_left], dim=-1)        # (B,T,mlp_in)
 
         # Stage 3 MLP
         h = F.gelu(self.fc1(h))

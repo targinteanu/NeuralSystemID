@@ -7,12 +7,12 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .015 # EVALUATION sample time, s
-groupsize=16
+hzn = .05 # EVALUATION sample time, s
+groupsize=15
 numgroups=5
 fc = np.array([4,10,27,70]) # freq band center freqs
-netfile = "neural_network_pytorch_e791b73783febcc0e11d6f538b5d3097a179b23c.pth"
-dt_target = 0.005 # model sample time, s
+netfile = ""
+dt_target = 0.01 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 filtorder = 201
@@ -28,7 +28,7 @@ Yb = torch.tensor(Yb, dtype=torch.float32)
 Us = torch.tensor(Us, dtype=torch.float32)
 Ub = torch.tensor(Ub, dtype=torch.float32)
 
-filtwts = firwin(filtorder, [2, 99], pass_zero=False, fs=1/dt_target)
+filtwts = firwin(filtorder, [2, 49], pass_zero=False, fs=1/dt_target)
 print(YsRaw.shape)
 print(YbRaw.shape)
 YsRaw = filtfilt(filtwts, 1, YsRaw, axis=0)
@@ -47,8 +47,16 @@ YbRaw = YbRaw[:,-1,:]
 # -----------------------------------------------------------------------------------------------
 
 # define mdl struct ====================================================================
-model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups, tuple_size=3)
-model.load_state_dict(torch.load(netfile))
+model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups, tuple_size=3, numGrpUnpaired=2)
+if netfile:
+    model.load_state_dict(torch.load(netfile))
+else:
+    # bias the model frequency prediction to the center of each band 
+    fcenter = torch.tensor([4,10,27], dtype=torch.float32)
+    fbias = fcenter.repeat_interleave(groupsize)
+    fbias = fbias*dt_target*2*math.pi # scale by model sample time and 2pi to convert to radians
+    with torch.no_grad():
+        model.fcoFreq.bias.copy_(fbias)
 
 # simulations -----------------------------------------------------------------------------------
 
