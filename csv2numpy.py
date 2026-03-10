@@ -271,11 +271,16 @@ def prepTimeSeqData(
         BLstd = np.std(baseline_data_raw, axis=0)
         BLisout = np.abs(baseline_data_raw - BLmean) > (threshsd * BLstd)
         BLisnoise = np.sum(BLisout, axis=1) > (threshprop * baseline_data_raw.shape[1])
+        threshsd = 4 # standard deviations 
+        threshprop = .9 # proportion of features
         isout = np.abs(data_raw - BLmean) > (threshsd * BLstd)
         isnoise = np.sum(isout, axis=1) > (threshprop * data_raw.shape[1])
     else:
         BLisnoise = np.zeros(baseline_data_raw.shape[0], dtype=bool)
         isnoise = np.zeros(data_raw.shape[0], dtype=bool)
+
+    print("Baseline outliers:", np.sum(BLisnoise), "of", len(BLisnoise))
+    print("Data outliers:", np.sum(isnoise), "of", len(isnoise))
 
     # ------------------------
     # Load processed data
