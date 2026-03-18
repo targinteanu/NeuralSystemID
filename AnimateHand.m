@@ -88,6 +88,8 @@ for j = 2:size(Fd,1)
     end
 end
 Ftheta(2,1,:) = nan; % thumb lacks final joint 
+Ftheta(1,:,:) = nan; % no real movement m wrt wrist 
+Ftheta(end,2:end,:) = nan; % final joint not independent
 
 FD = FF(end,:,:,:) - FF(1,:,:,:); % finger displacement 
 FD = squeeze(FD);
