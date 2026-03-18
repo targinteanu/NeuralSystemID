@@ -29,7 +29,7 @@ PP = nan([1,1,size(P)]); PP(:) = P(:);
 PP = repmat(PP, [1,5,1,1]);
 FF = [WW; PP; FF];
 
-figure; 
+myfig = figure; 
 
 for f = 1:5
     Fp(f) = plot3(FF(:,f,1,1), FF(:,f,2,1), FF(:,f,3,1), '-o');
@@ -42,15 +42,27 @@ xlim([min(x), max(x)]);
 ylim([min(y), max(y)]);
 zlim([min(z), max(z)]);
 xlabel('x'); ylabel('y'); zlabel('z');
+mytitle = title(['Time: 0 of ',num2str(t(end)),' seconds.']);
 
+dtskip = 0;
 for ti = 2:size(FF,4)
-    pause(dt(ti));
-    for f = 1:5
-        Fp(f).XData = FF(:,f,1,ti);
-        Fp(f).YData = FF(:,f,2,ti);
-        Fp(f).ZData = FF(:,f,3,ti);
+    dti = dt(ti) - dtskip; 
+    dti = min(1,dti); dti = max(0,dti);
+    pause(dti);
+    startTic = tic;
+    if isvalid(myfig)
+        mytitle.String = ['Time: ', num2str(t(ti)), ' of ', num2str(t(end)), ' seconds.'];
+        for f = 1:5
+            Fp(f).XData = FF(:,f,1,ti);
+            Fp(f).YData = FF(:,f,2,ti);
+            Fp(f).ZData = FF(:,f,3,ti);
+        end
+        drawnow; 
+    else
+        warning('Stopping animation due to closed figure.')
+        break
     end
-    drawnow; 
+    dtskip = toc(startTic);
 end
 
 end
