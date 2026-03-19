@@ -91,8 +91,9 @@ for j = 2:size(Fd,1)
         for ti = 1:size(Fd,4)
             dp = squeeze(Fd(j,f,:,ti))' * squeeze(Fd(j-1,f,:,ti));
             costheta = dp / (Fl(j,f) * Fl(j-1,f));
-            costheta = max(-1, costheta); costheta = min(1, costheta);
-            Ftheta(j-1,f,ti) = acos(costheta); 
+            %costheta = max(-1, costheta); costheta = min(1, costheta);
+            %Ftheta(j-1,f,ti) = acos(costheta); 
+            Ftheta(j-1,f,ti) = costheta;
         end
     end
 end
@@ -107,7 +108,7 @@ Ptheta = nan(3,size(Pd,3));
 for ti = 1:size(Pd,3)
     xp = cross(squeeze(Pd(1,:,ti)), squeeze(Pd(2,:,ti))); % palm normal
     [Ptheta(1,ti), Ptheta(2,ti)] = cart2sph(xp(1),xp(2),xp(3));
-    Ptheta(3,ti) = pi/2 - cart2sph(Pd(1,1,ti),Pd(1,2,ti),Pd(1,3,ti));
+    Ptheta(3,ti) = cos( cart2sph(Pd(1,1,ti),Pd(1,2,ti),Pd(1,3,ti)) );
 end
 
 FD = FF(end,:,:,:) - FF(1,:,:,:); % finger displacement 
@@ -124,7 +125,8 @@ for f = 1:size(FD,1)
         dp = squeeze(FD(f,:,ti)) * FD3(:,ti);
         costheta = dp / (FL(f,ti) * FL3(ti)); 
         %costheta = max(-1, min(1, costheta)); 
-        Fphi(f, ti) = acos(costheta); 
+        %Fphi(f, ti) = acos(costheta); 
+        Fphi(f, ti) = costheta;
     end
 end
 
