@@ -31,6 +31,9 @@ PP = repmat(PP, [1,5,1,1]);
 %FF = [WW; PP; FF];
 FF = [WW; FF] - PP; % place palm at origin
 
+%% outlier detection 
+% throw out data where hand jumps impossibly 
+
 %% animate 
 
 myfig = figure; 
@@ -91,6 +94,16 @@ Ftheta(2,1,:) = nan; % thumb lacks final joint
 Ftheta(1,:,:) = nan; % no real movement m wrt wrist 
 Ftheta(end,2:end,:) = nan; % final joint not independent
 
+% wrist flexion/extension, pron/supination, deviation
+Pd = [Fd(2,3,:,:); FF(3,2,:,:)-FF(3,3,:,:)]; % middle mcp and index-middle knuckle disp
+Pd = squeeze(Pd);
+Ptheta = nan(3,size(Pd,3));
+for ti = 1:size(Pd,3)
+    xp = cross(squeeze(Pd(1,:,ti)), squeeze(Pd(2,:,ti))); % palm normal
+    [Ptheta(1,ti), Ptheta(2,ti)] = cart2sph(xp(1),xp(2),xp(3));
+    Ptheta(3,ti) = cart2sph(Pd(1,1,ti),Pd(1,2,ti),Pd(1,3,ti));
+end
+
 FD = FF(end,:,:,:) - FF(1,:,:,:); % finger displacement 
 FD = squeeze(FD);
 FL = squeeze(sqrt(sum(FD.^2,3))); % finger length
@@ -110,7 +123,7 @@ for f = 1:size(FD,1)
 end
 
 %% plot 
-Fthetaphi = [reshape(Ftheta, [size(Ftheta,1)*size(Ftheta,2),size(Ftheta,3)]); Fphi];
+Fthetaphi = [reshape(Ftheta, [size(Ftheta,1)*size(Ftheta,2),size(Ftheta,3)]); Fphi; Ptheta];
 Fthetaphi = Fthetaphi';
 Fthetaphi = Fthetaphi(:, any(~isnan(Fthetaphi))); 
 Fthetaphi = Fthetaphi(dt>0,:); tthetaphi = t(dt>0);
