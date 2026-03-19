@@ -34,6 +34,12 @@ FF = [WW; FF] - PP; % place palm at origin
 %% outlier detection 
 % throw out data where hand jumps impossibly 
 
+dFF = diff(FF,1,4);
+dFl = sqrt(sum(dFF.^2,3));
+dFl = squeeze(dFl);
+dT = nan(1,1,size(dFl,3)); dT(:) = dt(2:end);
+dFl = dFl./dT; % mm/s
+
 %% animate 
 
 myfig = figure; 
