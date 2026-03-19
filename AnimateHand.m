@@ -101,23 +101,23 @@ Ptheta = nan(3,size(Pd,3));
 for ti = 1:size(Pd,3)
     xp = cross(squeeze(Pd(1,:,ti)), squeeze(Pd(2,:,ti))); % palm normal
     [Ptheta(1,ti), Ptheta(2,ti)] = cart2sph(xp(1),xp(2),xp(3));
-    Ptheta(3,ti) = cart2sph(Pd(1,1,ti),Pd(1,2,ti),Pd(1,3,ti));
+    Ptheta(3,ti) = pi/2 - cart2sph(Pd(1,1,ti),Pd(1,2,ti),Pd(1,3,ti));
 end
 
 FD = FF(end,:,:,:) - FF(1,:,:,:); % finger displacement 
 FD = squeeze(FD);
-FL = squeeze(sqrt(sum(FD.^2,3))); % finger length
-FL = median(FL,2);
+FL = squeeze(sqrt(sum(FD.^2,2))); 
+%FL = median(FL,2);
 FD3 = squeeze(FD(3,:,:)); FD = FD([1,2,4,5],:,:); 
-FL3 = FL(3); FL = FL([1,2,4,5]);
+FL3 = FL(3,:); FL = FL([1,2,4,5],:);
 
 % digital absuction/adduction; thenar flexion/extension
 Fphi = nan(size(FD,1),size(FD,3));
 for f = 1:size(FD,1)
     for ti = 1:size(FD,3)
         dp = squeeze(FD(f,:,ti)) * FD3(:,ti);
-        costheta = dp / (FL(f) * FL3); % calculate cosine of angle
-        costheta = max(-1, min(1, costheta)); % clamp value for acos
+        costheta = dp / (FL(f,ti) * FL3(ti)); 
+        %costheta = max(-1, min(1, costheta)); 
         Fphi(f, ti) = acos(costheta); 
     end
 end
