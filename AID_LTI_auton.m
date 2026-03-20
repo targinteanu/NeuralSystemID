@@ -190,13 +190,17 @@ testPred{:,:} = xtest_est_t';
 
 if showfit
     figure; 
-    ax(1) = subplot(2,1,1);
+    ax(1) = subplot(3,1,1);
     plot(testData, chandisp); 
     grid on; hold on;
     plot(testPred, chandisp);
     legend('Actual', 'Estimate');
     title('Test Data');
-    ax(2) = subplot(2,1,2);
+    ax(2) = subplot(3,1,2); 
+    plot(testData.Time, testPred.Variables - testData.Variables);
+    grid on; 
+    ylabel('Error'); legend(testData.Properties.VariableNames)
+    ax(3) = subplot(3,1,3);
     semilogy(testData.Time, (testPred.(chandisp)-testData.(chandisp)).^2);
     grid on;
     title('Squared Error');
@@ -263,13 +267,17 @@ trainPred{:,:} = xtrain_est_t';
 
 if showfit
     figure; 
-    ax(1) = subplot(2,1,1);
+    ax(1) = subplot(3,1,1);
     plot(trainData, chandisp); 
     grid on; hold on;
     plot(trainPred, chandisp);
     legend('Actual', 'Estimate');
     title('Train Data');
-    ax(2) = subplot(2,1,2);
+    ax(2) = subplot(3,1,2); 
+    plot(trainData.Time, trainPred.Variables - trainData.Variables);
+    grid on; 
+    ylabel('Error'); legend(trainData.Properties.VariableNames)
+    ax(3) = subplot(3,1,3);
     semilogy(trainData.Time, (trainPred.(chandisp)-trainData.(chandisp)).^2);
     grid on;
     title('Squared Error');
