@@ -53,11 +53,12 @@ end
 
 % AID 
     % define params 
-    KA = (1e-7)*eye(n);
-    Am = (-1e1)*eye(n);
+    KA = (1e-12)*eye(n);
+    %Am = (-1e1)*eye(n);
+    Am = -(1e-3)*diag(rms(X'));
     %Q = (1e-3)*eye(n); 
-    %Q = cov(X'); 
-    Q = diag(std(X'));
+    Q = cov(X'); 
+    %Q = diag(std(X'));
     P = lyap(Am', Q^-1);
 Xtbl = array2timetable(X', "RowTimes",seconds(t));
 chandispname = Xtbl.Properties.VariableNames{chandispind};
