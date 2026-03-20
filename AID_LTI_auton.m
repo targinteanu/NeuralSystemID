@@ -80,6 +80,23 @@ if showfit & isempty(chandisp)
     end
 end
 
+%% starting estimate of discrete A 
+if isempty(trainData)
+    % no starting knowledge 
+    A0 = eye(width(testData)); % discrete 
+else
+    if istimetable(trainData)
+        Xtrain = table2array(trainData);
+        X1 = Xtrain(1:(end-1),:); X2 = Xtrain(2:end,:);
+        Xtrain = Xtrain';
+        A0 = (X1\X2)';
+    else
+        % A0 value has been input instead of training data 
+        A0 = trainData; 
+        trainData = [];
+    end
+end
+
 %% sample rate 
 %{
 Time = testData.Time; 
@@ -100,17 +117,6 @@ else
     if isnan(Th)
         Th = median(seconds(diff(trainData.Time)));
     end
-end
-
-%% starting estimate of discrete A 
-if isempty(trainData)
-    % no starting knowledge 
-    A0 = eye(width(testData)); % discrete 
-else
-    Xtrain = table2array(trainData); 
-    X1 = Xtrain(1:(end-1),:); X2 = Xtrain(2:end,:); 
-    Xtrain = Xtrain';
-    A0 = (X1\X2)';
 end
 
 %% run "test" data

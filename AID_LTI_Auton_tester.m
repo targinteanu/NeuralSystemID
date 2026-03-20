@@ -53,16 +53,22 @@ end
 
 % AID 
     % define params 
-    KA = (1e-12)*eye(n);
+    KA = (1e-5)*eye(n);
     %Am = (-1e1)*eye(n);
-    Am = -(1e-3)*diag(rms(X'));
+    Am = -(1e-1)*diag(rms(X'));
     %Q = (1e-3)*eye(n); 
     Q = cov(X'); 
     %Q = diag(std(X'));
     P = lyap(Am', Q^-1);
 Xtbl = array2timetable(X', "RowTimes",seconds(t));
 chandispname = Xtbl.Properties.VariableNames{chandispind};
-[~,Xtbl_AID,~,AIDeval,~,Ad_AID] = AID_LTI_auton([],Xtbl,Am,KA*P,[],...
+A0 = [];
+for trn = 1:100
+[~,~,~,~,~,Ad_AID] = AID_LTI_auton(A0,Xtbl,Am,KA*P,[],...
+    false);
+A0 = Ad_AID(:,:,end);
+end
+[~,Xtbl_AID,~,AIDeval,~,Ad_AID] = AID_LTI_auton(A0,Xtbl,Am,KA*P,[],...
     chandispname);
 
 % compare A matrices
@@ -72,7 +78,8 @@ subplot(2,3,1); imagesc(Ad); colorbar; title('Actual');
 subplot(2,3,4); imagesc(Ad_lsq); colorbar; title('Least Sq. Est.');
 subplot(2,3,2); imagesc(mean(Ad_win,3)); colorbar; title('Windowed L.Sq. Est.');
 subplot(2,3,5); imagesc(std(Ad_win,[],3)); colorbar; title('Windowed S.D.');
-subplot(2,3,3); imagesc(Ad_AID(:,:,end)); colorbar; title('Adaptive Final');
+%subplot(2,3,3); imagesc(Ad_AID(:,:,end)); colorbar; title('Adaptive Final');
+subplot(2,3,3); imagesc(mean(Ad_AID,3)); colorbar; title('Adaptive Final');
 subplot(2,3,6); imagesc(std(Ad_AID,[],3)); colorbar; title('Adaptive S.D.');
 
 %% AID continuous 
