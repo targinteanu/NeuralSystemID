@@ -53,11 +53,12 @@ end
 
 % AID 
     % define params 
-    KA = (1e-13)*eye(n);
-    Am = (-1e2)*eye(n);
+    KA = (1e-7)*eye(n);
+    Am = (-1e1)*eye(n);
     %Q = (1e-3)*eye(n); 
-    Q = cov(X');
-    P = lyap(Am', Q);
+    %Q = cov(X'); 
+    Q = diag(std(X'));
+    P = lyap(Am', Q^-1);
 Xtbl = array2timetable(X', "RowTimes",seconds(t));
 chandispname = Xtbl.Properties.VariableNames{chandispind};
 [~,Xtbl_AID,~,AIDeval,~,Ad_AID] = AID_LTI_auton([],Xtbl,Am,KA*P,[],...
