@@ -12,8 +12,10 @@ qFactor = 35;
 [n120b, n120a] = iirnotch(120/(SampleRate/2), (120/(SampleRate/2))/qFactor);
 
 xB = filtfilt(BPFbeta,1,x); 
-xGlo = filtfilt(n60b,n60a,x); xGlo = filtfilt(BPFglo,1,xGlo);
-xGhi = filtfilt(n120b,n120a,x); xGhi = filtfilt(BPFghi,1,xGhi); 
+x = filtfilt(n60b,n60a,x);
+xGlo = filtfilt(BPFglo,1,x);
+x = filtfilt(n120b,n120a,x); 
+xGhi = filtfilt(BPFghi,1,x); 
 
 %% time-frequency 
 
