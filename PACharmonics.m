@@ -19,12 +19,23 @@ xGhi = filtfilt(BPFghi,1,x);
 
 %% time-frequency 
 
+% spectrum/ogram
 [S,fS,tS] = spectrogram(x, 1*SampleRate,[],[], SampleRate);
 S = abs(S); % magnitude 
 S = 20*log10(S); % power (dB)
-%[p,f] = periodogram(x,[],[],SampleRate,'power');
-[p,f] = pwelch(x,[],[],[],SampleRate,'power');
-p = 10*log10(p); % power (dB)
+[p,f] = periodogram(x,[],[],SampleRate,'psd');
+%[p,f] = pwelch(x,[],[],[],SampleRate,'psd');
+p = 20*log10(p); % power (dB)
+
+% pink noise correct 
+F = [log10(f), ones(size(f))];
+pinkcoef = F(2:end,:)\p(2:end,:);
+pinkP = F*pinkcoef;
+p = p-pinkP; 
+FS = [log10(fS), ones(size(fS))];
+pinkcoefS = FS(2:end,:)\mean(S(2:end,:),2);
+pinkPS = FS*pinkcoefS;
+S = S-pinkPS;
 
 figure; sgtitle(channelName);
 
