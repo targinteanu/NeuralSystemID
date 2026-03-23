@@ -35,6 +35,9 @@ if ArtRemoveDone
 else
     chanselidx = 1;
 end
+if isempty(chandesc)
+    chandesc = "";
+end
 [chanselidx,chanselmade] = listdlg("ListString",chanlist+": "+chandesc,...
     "SelectionMode","multiple", "PromptString","Select channels to INCLUDE", ...
     "ListSize",[500,300], "InitialValue",chanselidx);
