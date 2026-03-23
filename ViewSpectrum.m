@@ -14,6 +14,17 @@ if ArtRemoveDone
     load(fullfile(fpOrig,[fnOrig,fe]));
 end
 
+% display details 
+if exist('channelNameRec', 'var')
+    disp("Recorded from channel(s): "); disp(channelNameRec);
+end
+if exist('channelNameStim', 'var')
+    disp("Stimulus on channel(s): "); disp(channelNameStim);
+end
+if exist('channelNameTrig', 'var')
+    disp("Trigger on channel(s): "); disp(channelNameTrig);
+end
+
 %% select channels of interest 
 dtaBL = tblsBaseline{1,1};
 dtaBL.Properties.Description = 'Baseline';
