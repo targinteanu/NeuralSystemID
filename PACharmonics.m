@@ -1,11 +1,12 @@
 ViewSpectrum
 %%
-t = dtaBL.Time; x = dtaBL.(channelNameRec);
+channelName = channelNameRec(1);
+t = dtaBL.Time; x = dtaBL.(channelName);
 t = seconds(t-t(1));
 
-BPFbeta = buildFIRBPF(SampleRate, 13,30, 2, 201);
-BPFglo = buildFIRBPF(SampleRate, 30,70, 2, 201);
-BPFghi = buildFIRBPF(SampleRate, 70,150, 2, 201);
+BPFbeta = buildFIRBPF(SampleRate, 20,40, 2, 201);
+BPFglo = buildFIRBPF(SampleRate, 40,80, 2, 201);
+BPFghi = buildFIRBPF(SampleRate, 80,160, 2, 201);
 qFactor = 35;
 [n60b, n60a] = iirnotch(60/(SampleRate/2), (60/(SampleRate/2))/qFactor);
 [n120b, n120a] = iirnotch(120/(SampleRate/2), (120/(SampleRate/2))/qFactor);
@@ -16,14 +17,14 @@ xGhi = filtfilt(n120b,n120a,x); xGhi = filtfilt(BPFghi,1,xGhi);
 
 %% time-frequency 
 
-[S,fS,tS] = spectrogram(x, [],[],[], SampleRate);
+[S,fS,tS] = spectrogram(x, 1*SampleRate,[],[], SampleRate);
 S = abs(S); % magnitude 
 S = 20*log10(S); % power (dB)
 %[p,f] = periodogram(x,[],[],SampleRate,'power');
 [p,f] = pwelch(x,[],[],[],SampleRate,'power');
 p = 10*log10(p); % power (dB)
 
-figure; sgtitle(channelNameRec);
+figure; sgtitle(channelName);
 
 ax(1,1) = subplot(2,2,1);
 imagesc(tS, fS, S); %colorbar; 
@@ -44,5 +45,23 @@ xlabel('time (s)');
 
 linkaxes(ax(1,:), 'y'); 
 linkaxes(ax(:,1), 'x');
+
+%% harmonic analysis 
+
+nbin = 10;
+betabinedge = linspace(20,40,nbin);
+globinedge = 2*betabinedge; ghibinedge = 2*globinedge;
+betabincent = .5*(betabinedge(2:end) + betabinedge(1:(end-1)));
+globincent = .5*(globinedge(2:end) + globinedge(1:(end-1)));
+ghibincent = .5*(ghibinedge(2:end) + ghibinedge(1:(end-1)));
+betabinind = discretize(fS', betabinedge); 
+globinind = discretize(fS', globinedge); 
+ghibinind = discretize(fS', ghibinedge); 
+Sbeta = S(betabinind,:); Sglo = S(globinind,:); Sghi = S(ghibinind,:);
+
+figure; 
+plot(Sbeta(:), Sglo(:), 'v'); hold on; grid on; plot(Sbeta(:), Sghi(:), '^');
+xlabel('\beta power'); ylabel('\gamma power'); legend('lo\gamma', 'hi\gamma');
+title(channelName+" Harmonic Analysis");
 
 %% amp-phase 
