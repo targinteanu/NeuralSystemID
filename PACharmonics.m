@@ -19,7 +19,6 @@ xGhi = filtfilt(n120b,n120a,x); xGhi = filtfilt(BPFghi,1,xGhi);
 [S,fS,tS] = spectrogram(x, [],[],[], SampleRate);
 S = abs(S); % magnitude 
 S = 20*log10(S); % power (dB)
-S = flipud(S); % low f at bottom 
 %[p,f] = periodogram(x,[],[],SampleRate,'power');
 [p,f] = pwelch(x,[],[],[],SampleRate,'power');
 p = 10*log10(p); % power (dB)
@@ -27,9 +26,9 @@ p = 10*log10(p); % power (dB)
 figure; sgtitle(channelNameRec);
 
 ax(1,1) = subplot(2,2,1);
-imagesc(S); colorbar; 
+imagesc(tS, fS, S); %colorbar; 
+ax(1,1).YDir = 'normal'; % low f at bottom
 ylabel('freq');
-yticklabels(fS(fliplr(yticks))); xticklabels(tS(xticks));
 
 ax(1,2) = subplot(2,2,2);
 plot(p,f); grid on;
@@ -43,7 +42,7 @@ ylabel('filtered');
 legend('\beta', 'lo\gamma', 'hi\gamma', 'Raw');
 xlabel('time (s)');
 
-%linkaxes(ax(1,:), 'y'); 
-%linkaxes(ax(:,1), 'x');
+linkaxes(ax(1,:), 'y'); 
+linkaxes(ax(:,1), 'x');
 
 %% amp-phase 
