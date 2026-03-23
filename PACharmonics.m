@@ -1,6 +1,6 @@
 ViewSpectrum
-%%
 channelName = channelNameRec(1);
+%%
 t = dtaBL.Time; x = dtaBL.(channelName);
 t = seconds(t-t(1));
 
@@ -48,16 +48,15 @@ linkaxes(ax(:,1), 'x');
 
 %% harmonic analysis 
 
-nbin = 10;
-betabinedge = linspace(20,40,nbin);
-globinedge = 2*betabinedge; ghibinedge = 2*globinedge;
-betabincent = .5*(betabinedge(2:end) + betabinedge(1:(end-1)));
-globincent = .5*(globinedge(2:end) + globinedge(1:(end-1)));
-ghibincent = .5*(ghibinedge(2:end) + ghibinedge(1:(end-1)));
-betabinind = discretize(fS', betabinedge); 
-globinind = discretize(fS', globinedge); 
-ghibinind = discretize(fS', ghibinedge); 
-Sbeta = S(betabinind,:); Sglo = S(globinind,:); Sghi = S(ghibinind,:);
+h = 2; % harmonic (2=octave)
+fSbetaInd = (fS >= 20)&(fS < 40);
+fSbeta = fS(fSbetaInd); fSglo = h*fSbeta; fSghi = h*fSglo;
+fSgloInd = nan(size(fSbeta)); fSghiInd = fSgloInd;
+for fi = 1:length(fSgloInd)
+    [~,fSgloInd(fi)] = min(abs(fS - fSglo(fi)));
+    [~,fSghiInd(fi)] = min(abs(fS - fSghi(fi)));
+end
+Sbeta = S(fSbetaInd,:); Sglo = S(fSgloInd,:); Sghi = S(fSghiInd,:);
 
 figure; 
 plot(Sbeta(:), Sglo(:), 'v'); hold on; grid on; plot(Sbeta(:), Sghi(:), '^');
@@ -65,3 +64,5 @@ xlabel('\beta power'); ylabel('\gamma power'); legend('lo\gamma', 'hi\gamma');
 title(channelName+" Harmonic Analysis");
 
 %% amp-phase 
+calcPAC(xB, xGlo, 18, true); hold on;
+calcPAC(xB, xGhi, 18, gca());
