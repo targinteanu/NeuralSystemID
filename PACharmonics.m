@@ -4,9 +4,9 @@ channelName = channelNameRec(1);
 t = dtaBL.Time; x = dtaBL.(channelName);
 t = seconds(t-t(1));
 
-BPFbeta = buildFIRBPF(SampleRate, 20,40, 2, 201);
-BPFglo = buildFIRBPF(SampleRate, 40,80, 2, 201);
-BPFghi = buildFIRBPF(SampleRate, 80,160, 2, 201);
+BPFbeta = buildFIRBPF(SampleRate, 13,30,  2, 201);
+BPFglo  = buildFIRBPF(SampleRate, 30,70,  2, 201);
+BPFghi  = buildFIRBPF(SampleRate, 70,150, 2, 201);
 qFactor = 35;
 [n60b, n60a] = iirnotch(60/(SampleRate/2), (60/(SampleRate/2))/qFactor);
 [n120b, n120a] = iirnotch(120/(SampleRate/2), (120/(SampleRate/2))/qFactor);
@@ -61,19 +61,20 @@ linkaxes(ax(:,1), 'x');
 
 %% harmonic analysis 
 
-h = 2; % harmonic (2=octave)
-fSbetaInd = (fS >= 20)&(fS < 40);
-fSbeta = fS(fSbetaInd); fSglo = h*fSbeta; fSghi = h*fSglo;
-fSgloInd = nan(size(fSbeta)); fSghiInd = fSgloInd;
-for fi = 1:length(fSgloInd)
-    [~,fSgloInd(fi)] = min(abs(fS - fSglo(fi)));
-    [~,fSghiInd(fi)] = min(abs(fS - fSghi(fi)));
-end
-Sbeta = S(fSbetaInd,:); Sglo = S(fSgloInd,:); Sghi = S(fSghiInd,:);
+fSbetaInd = (fS >= 13)&(fS < 30);
+fSgloInd  = (fS >= 30)&(fS < 70); 
+fSghiInd  = (fS >= 70)&(fS < 150); 
+[maxSbeta,maxfSbetaInd] = max(S(fSbetaInd,:));
+[maxSglo,maxfSgloInd] = max(S(fSgloInd,:));
+[maxSghi,maxfSghiInd] = max(S(fSghiInd,:));
+maxfSbeta = fS(fSbetaInd); maxfSbeta = maxfSbeta(maxfSbetaInd);
+maxfSglo = fS(fSgloInd); maxfSglo = maxfSglo(maxfSgloInd);
+maxfSghi = fS(fSghiInd); maxfSghi = maxfSghi(maxfSghiInd);
 
 figure; 
-plot(Sbeta(:), Sglo(:), 'v'); hold on; grid on; plot(Sbeta(:), Sghi(:), '^');
-xlabel('\beta power'); ylabel('\gamma power'); legend('lo\gamma', 'hi\gamma');
+plot(maxfSbeta, maxfSglo, 'v'); hold on; grid on; plot(maxfSbeta, maxfSghi, '^');
+xlabel('\beta peak freq (Hz)'); ylabel('\gamma peak freq (Hz)'); 
+legend('lo\gamma', 'hi\gamma');
 title(channelName+" Harmonic Analysis");
 
 %% amp-phase 
