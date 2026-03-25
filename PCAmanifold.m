@@ -31,7 +31,10 @@ end
 OLmask = false(H,1); % replace with mask of outlier samples to ignore 
 
 % run PCA 
-[coeff,score,latent,tsquared,explained,mu] = pca(X(~OLmask,:));
+[coeff,sc,latent,t2,explained,mu] = pca(X(~OLmask,:));
+% replace outliers
+score = (X-mu)*coeff;  
+tsquared = nan(H,1); tsquared(~OLmask) = t2;
 
 % if cutoff specified, treat it as a threshold for cumulative explained
 Expl = cumsum(explained);
