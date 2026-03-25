@@ -1,4 +1,4 @@
-function [FF, t] = AnimateHand(deviceData)
+function [FF, t, Tthetaphi] = AnimateHand(deviceData)
 %% translate struct to matrix of raw finger pos
 
 t = deviceData.time; dt = [0,diff(t)];
@@ -32,7 +32,7 @@ PP = repmat(PP, [1,5,1,1]);
 FF = [WW; FF] - PP; % place palm at origin
 
 %% outlier detection 
-% throw out data where hand jumps impossibly 
+% throw out data where hand jumps impossibly (not implemented)
 
 dFF = diff(FF,1,4);
 dFl = sqrt(sum(dFF.^2,3));
@@ -86,6 +86,7 @@ Fl = median(Fl,3);
 
 % digital flexion/extension; thenar abduction/adduction
 Ftheta = nan(size(Fd,1)-1, size(Fd,2), size(Fd,3));
+FthetaName = ("d"+string(1:size(Ftheta,2))) + ("j"+string(1:size(Ftheta,1))') + "FlEx";
 for j = 2:size(Fd,1)
     for f = 1:size(Fd,2)
         for ti = 1:size(Fd,4)
@@ -105,6 +106,7 @@ Ftheta(end,2:end,:) = nan; % final joint not independent
 Pd = [Fd(2,3,:,:); FF(3,2,:,:)-FF(3,3,:,:)]; % middle mcp and index-middle knuckle disp
 Pd = squeeze(Pd);
 Ptheta = nan(3,size(Pd,3));
+PthetaName = "Wr" + ["PrSu";"FlEx";"Dev"];
 for ti = 1:size(Pd,3)
     xp = cross(squeeze(Pd(1,:,ti)), squeeze(Pd(2,:,ti))); % palm normal
     [Ptheta(1,ti), Ptheta(2,ti)] = cart2sph(xp(1),xp(2),xp(3));
@@ -120,6 +122,7 @@ FL3 = FL(3,:); FL = FL([1,2,4,5],:);
 
 % digital absuction/adduction; thenar flexion/extension
 Fphi = nan(size(FD,1),size(FD,3));
+FphiName = "d" + string([1;2;4;5]) + "AbAd";
 for f = 1:size(FD,1)
     for ti = 1:size(FD,3)
         dp = squeeze(FD(f,:,ti)) * FD3(:,ti);
@@ -132,13 +135,18 @@ end
 
 %% plot 
 Fthetaphi = [reshape(Ftheta, [size(Ftheta,1)*size(Ftheta,2),size(Ftheta,3)]); Fphi; Ptheta];
-Fthetaphi = Fthetaphi';
+names = [reshape(FthetaName, [size(FthetaName,1)*size(FthetaName,2),1]); FphiName; PthetaName];
+Fthetaphi = Fthetaphi'; names = names';
+names = names(:, any(~isnan(Fthetaphi))); 
 Fthetaphi = Fthetaphi(:, any(~isnan(Fthetaphi))); 
 Fthetaphi = Fthetaphi(dt>0,:); tthetaphi = t(dt>0);
+Tthetaphi = array2timetable(Fthetaphi,"VariableNames",names,"RowTimes",tthetaphi);
 Ts = min(dt(dt>0)); % resample time 
 treg = tthetaphi(1):Ts:tthetaphi(end);
 Freg = interp1(tthetaphi,Fthetaphi,treg);
 figure; plot(treg, Freg); grid on; xlabel('time (s)'); ylabel('angle (rad)');
+legend(names);
 figure; pwelch(Freg,[],[],[],1/Ts,'power'); 
+legend(names);
 
 end
