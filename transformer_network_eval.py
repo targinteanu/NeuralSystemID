@@ -7,12 +7,12 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .02 # EVALUATION sample time, s
+hzn = .1 # EVALUATION sample time, s
 groupsize=15
 numgroups=5
 numgroupsunpaired=2
 fc = np.array([4,10,27,60,90]) # freq band center freqs
-netfile = "neural_network_pytorch_574259a598db91291cbea59a3d72b242abcdd6b7(4).pth"
+netfile = "neural_network_pytorch_574259a598db91291cbea59a3d72b242abcdd6b7(8).pth"
 dt_target = 0.01 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -21,7 +21,7 @@ filtorder = 201
 # Prepare the Data ---------------------------------------------------------------------
 
 fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw, Us, Ub = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e8)
+    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e7)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
@@ -38,12 +38,6 @@ print(YsRaw.shape)
 print(YbRaw.shape)
 #YsRaw = torch.tensor(YsRaw, dtype=torch.float32)
 #YbRaw = torch.tensor(YbRaw, dtype=torch.float32)
-
-# for output, only consider the final step of the horizon for evaluation, since that's the hardest to predict and most relevant for control applications.
-Ys = Ys[:,-1,:]
-Yb = Yb[:,-1,:]
-YsRaw = YsRaw[:,-1,:]
-YbRaw = YbRaw[:,-1,:]
 
 # -----------------------------------------------------------------------------------------------
 
@@ -74,6 +68,50 @@ def unprocess(Y, featcorrection):
     #Yreal = Ymag * Ycos
     return Yreal
 
+def run_examplesim(U, X, Y, Ytrue_recon=None):
+
+    Ysim = []
+    model.eval()
+    print("example simulations...")
+    for i in range(Y.shape[0]):
+        xi = X[i,:,:].reshape(1,-1,X.shape[-1])
+        # using rollout: 
+        ui = U[i,:,:].reshape(1,-1,U.shape[-1])
+        with torch.no_grad():
+            yi = model(xi, ui)
+        Ysim.append(yi[0,:,:])
+    Ysim = np.array(Ysim)
+    Ytrue = Y.numpy()
+    print("Ysim shape :", Ysim.shape)
+    print("Ytrue shape:", Ytrue.shape)
+
+    maxNdisp = 8
+    example_indices = np.arange(0, X.shape[-1], groupsize)
+    example_indices = np.concatenate((
+        example_indices[:(numgroups-numgroups)], 
+        example_indices[-numgroupsunpaired:], 
+        example_indices[2*(numgroups-numgroups):-numgroupsunpaired]), 
+        axis=0)
+    example_indices = example_indices[:maxNdisp]
+
+     # Create a single figure with vertically stacked subplots
+    fig, axes = plt.subplots(len(example_indices)+1, 1, sharex=True, figsize=(10, 8))
+    for ax, idx in zip(axes, example_indices):
+        ax.plot(Ytrue[:,:, idx].flatten(), label="True")
+        ax.plot(Ysim[:,:, idx].flatten(), label="Simulated", alpha=0.7)
+        ax.set_ylabel("Feature Value")
+        ax.set_title(f"Feature: {feature_names[idx]}")
+        ax.legend()
+        ax.grid(axis='both')
+    # plot stim channel (last channel)
+    axes[-1].plot(U[:,-1,-1])
+    axes[-1].set_title("Stimulus Input")
+    axes[-1].set_ylabel("Count")
+    axes[-1].grid(axis='both')
+    axes[-1].set_xlabel("Sample")  # Set x-label only on the last subplot
+    plt.tight_layout()
+    plt.show()
+
 def run_simulation(U, X, Y, Ytrue_recon=None):
 
     Ysim = []
@@ -82,11 +120,10 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     progcur = 0.0
     prognext = progtick
     print("Simulating...")
-    for i0 in range(len(X) - hzn_len):
-        xi = X[i0, :, :].reshape(1,-1,X.shape[-1]) 
+    for i0 in range(len(X)):
+        xi = X[i0,:,:].reshape(1,-1,X.shape[-1]) 
         # using rollout: 
-        ui = U[i0:i0+hzn_len,0:1,:] # use rollout
-        ui = ui.permute(1,0,2)
+        ui = U[i0,:,:].reshape(1,-1,U.shape[-1])
         with torch.no_grad():
             yi = model(xi, ui)
         """
@@ -110,7 +147,7 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
 
     # overall 
     Ysim = np.array(Ysim)
-    Ytrue = Y[hzn_len:, :].numpy()
+    Ytrue = Y.numpy()
     print("Ysim shape :", Ysim.shape)
     print("Ytrue shape:", Ytrue.shape)
     mse = np.mean((Ysim - Ytrue)**2, axis=0) / (np.mean((Ytrue)**2, axis=0) + np.finfo(float).eps)
@@ -179,7 +216,7 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     if Ytrue_recon is None:
         Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
     else:
-        Ytrue_recon = Ytrue_recon[hzn_len:, :]
+        Ytrue_recon = Ytrue_recon
     mse_recon = np.mean((Ysim_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
     rho_recon = np.array([ np.corrcoef(Ysim_recon[:,i], Ytrue_recon[:,i])[0,1] for i in range(Ytrue_recon.shape[1]) ])
 
@@ -217,6 +254,20 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     axes[-1].set_xlabel("Time Sample")  # Set x-label only on the last subplot
     plt.tight_layout()
     plt.show()
+
+print("Example sim on baseline data...")
+examplesel = np.linspace(0,Xb.shape[1]-1,12).astype(int)
+run_examplesim(Ub[examplesel], Xb[examplesel], Yb[examplesel], YbRaw[examplesel])
+
+print("Example sim on stimulated data...")
+examplesel = np.linspace(0,Xs.shape[1]-1,12).astype(int)
+run_examplesim(Us[examplesel], Xs[examplesel], Ys[examplesel], YsRaw[examplesel])
+
+# for output, only consider the final step of the horizon for evaluation, since that's the hardest to predict and most relevant for control applications.
+Ys = Ys[:,-1,:]
+Yb = Yb[:,-1,:]
+YsRaw = YsRaw[:,-1,:]
+YbRaw = YbRaw[:,-1,:]
 
 print("Evaluating baseline data...")
 run_simulation(Ub, Xb, Yb, YbRaw)
