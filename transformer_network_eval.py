@@ -7,7 +7,7 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .1 # EVALUATION sample time, s
+hzn = 1 # EVALUATION sample time, s
 groupsize=15
 numgroups=5
 numgroupsunpaired=2
@@ -21,7 +21,7 @@ filtorder = 201
 # Prepare the Data ---------------------------------------------------------------------
 
 fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw, Us, Ub = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e7)
+    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e8)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
@@ -57,10 +57,10 @@ else:
 
 # recover filtered signal from processed features 
 def unprocess(Y, featcorrection):
-    numGrpIgnored = 2 # last two groups will not be used
-    Ymag = Y[:, :(numgroups-numGrpIgnored)*groupsize]
-    Ycos = Y[:, (numgroups*groupsize):((2*numgroups-numGrpIgnored)*groupsize)]
-    Ysin = Y[:, ((2*numgroups-numGrpIgnored)*groupsize):]
+    numGrpIgnored = numgroupsunpaired # last two groups will not be used
+    Ymag = Y[..., :(numgroups-numGrpIgnored)*groupsize]
+    Ycos = Y[..., (numgroups*groupsize):((2*numgroups-numGrpIgnored)*groupsize)]
+    Ysin = Y[..., ((2*numgroups-numGrpIgnored)*groupsize):]
     Ymag = np.sqrt(np.exp(Ymag)) * featcorrection[:(numgroups-numGrpIgnored)*groupsize]
     #Ytan = Ysin / (Ycos + np.finfo(float).eps)
     Yphase = np.arctan2(Ysin, Ycos)
@@ -70,6 +70,7 @@ def unprocess(Y, featcorrection):
 
 def run_examplesim(U, X, Y, Ytrue_recon=None):
 
+    # run simulations 
     Ysim = []
     model.eval()
     print("example simulations...")
@@ -85,6 +86,7 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
     print("Ysim shape :", Ysim.shape)
     print("Ytrue shape:", Ytrue.shape)
 
+    # choose features to display
     maxNdisp = 8
     example_indices = np.arange(0, X.shape[-1], groupsize)
     example_indices = np.concatenate((
@@ -94,7 +96,7 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
         axis=0)
     example_indices = example_indices[:maxNdisp]
 
-     # Create a single figure with vertically stacked subplots
+     # feature plots 
     fig, axes = plt.subplots(len(example_indices)+1, 1, sharex=True, figsize=(10, 8))
     for ax, idx in zip(axes, example_indices):
         ax.plot(Ytrue[:,:, idx].flatten(), label="True")
@@ -103,12 +105,47 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
         ax.set_title(f"Feature: {feature_names[idx]}")
         ax.legend()
         ax.grid(axis='both')
-    # plot stim channel (last channel)
-    axes[-1].plot(U[:,-1,-1])
+    # plot stim input
+    axes[-1].plot(U[:,:,-1].flatten())
     axes[-1].set_title("Stimulus Input")
     axes[-1].set_ylabel("Count")
     axes[-1].grid(axis='both')
     axes[-1].set_xlabel("Sample")  # Set x-label only on the last subplot
+    plt.tight_layout()
+    plt.show()
+
+    # channel data reconstruction
+    Ysim_grouped = unprocess(Ysim, feature_correction)
+    Ytrue_grouped = unprocess(Ytrue, feature_correction)
+    N = numgroups-numgroupsunpaired
+    Ysim_grouped = Ysim_grouped[..., :N*groupsize]
+    Ytrue_grouped = Ytrue_grouped[..., :N*groupsize]
+    Ysim_grouped = Ysim_grouped.reshape(Ysim.shape[0], -1, N, groupsize)
+    Ytrue_grouped = Ytrue_grouped.reshape(Ytrue.shape[0], -1, N, groupsize)
+    Ysim_recon = np.sum(Ysim_grouped, axis=-2)
+    if Ytrue_recon is None:
+        Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
+    else:
+        Ytrue_recon = Ytrue_recon
+    example_indices = np.arange(maxNdisp)
+    print("Ysim shape :", Ysim_recon.shape)
+    print("Ytrue shape:", Ytrue_recon.shape)
+
+    # channel plots
+    fig, axes = plt.subplots(len(example_indices)+1, 1, sharex=True, figsize=(10, 8))
+    for ax, idx in zip(axes, example_indices):
+        ax.plot(Ytrue_recon[:,:, idx].flatten(), label="True")
+        ax.plot(Ysim_recon[:,:, idx].flatten(), label="Simulated", alpha=0.7)
+        ax.set_ylabel("Channel Value")
+        ax.set_title(f"Channel: {idx}")
+        ax.legend()
+        ax.grid(axis='both')
+    # plot stim input
+    axes[-1].plot(U[:,:,-1].flatten())
+    axes[-1].set_title("Stimulus Input")
+    axes[-1].set_ylabel("Count")
+    axes[-1].grid(axis='both')
+    axes[-1].set_xlabel("Time Sample")  # Set x-label only on the last subplot
     plt.tight_layout()
     plt.show()
 
@@ -182,7 +219,7 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
         ax.set_title(f"Feature: {feature_names[idx]} (MSE: {mse[idx]:.4f}; corr: {rho[idx]:.4f})")
         ax.legend()
         ax.grid(axis='both')
-    # plot stim channel (last channel)
+    # plot stim input
     axes[-1].plot(U[:,-1,-1])
     axes[-1].set_title("Stimulus Input")
     axes[-1].set_ylabel("Count")
@@ -246,7 +283,7 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
         ax.set_title(f"Channel: {idx} (MSE: {mse_recon[idx]:.4f}; corr: {rho_recon[idx]:.4f})")
         ax.legend()
         ax.grid(axis='both')
-    # plot stim channel (last channel)
+    # plot stim input
     axes[-1].plot(U[:,-1,-1])
     axes[-1].set_title("Stimulus Input")
     axes[-1].set_ylabel("Count")
