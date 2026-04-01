@@ -16,6 +16,7 @@ def prepTimeData(
     maxNumel = 2**30, # max number of elements in X
     drawFromStart = True, # pull samples from beginning vs end
     omitOutliers = True,
+    filepath = "",
 ):
     """
     Prepare input-output data from CSV files for model training.
@@ -23,6 +24,17 @@ def prepTimeData(
     and output data "Y" into shape (num_pairs, num_outputs).
     Should be equivalent to prepTimeSeqData with seq_len=1.
     """
+
+    if ("drive" in filepath) or ("MyDrive" in filepath):
+        from google.colab import drive
+        drive.mount('/content/drive')
+    
+    infofile = filepath + infofile
+    datarawfile = filepath + datarawfile
+    baselinedatarawfile = filepath + baselinedatarawfile
+    datafile = filepath + datafile
+    baselinedatafile = filepath + baselinedatafile
+    eventsfile = filepath + eventsfile
 
     # ------------------------
     # Load info
@@ -215,12 +227,24 @@ def prepTimeSeqData(
     maxNumel = 2**30, # max number of elements in X
     drawFromStart = True, # pull samples from beginning vs end
     omitOutliers = True,
+    filepath = "",
 ):
     """
     Prepare time-sequence data from CSV files for model training.
     Loads input data "X" into shape (num_pairs, seq_len, num_features)
     and output data "Y" into shape (num_pairs, num_outputs).
     """
+
+    if ("drive" in filepath) or ("MyDrive" in filepath):
+        from google.colab import drive
+        drive.mount('/content/drive')
+    
+    infofile = filepath + infofile
+    datarawfile = filepath + datarawfile
+    baselinedatarawfile = filepath + baselinedatarawfile
+    datafile = filepath + datafile
+    baselinedatafile = filepath + baselinedatafile
+    eventsfile = filepath + eventsfile
 
     # ------------------------
     # Load info
