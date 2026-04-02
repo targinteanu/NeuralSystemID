@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, ConcatDataset, Dataset
-from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
+#from sklearn.model_selection import train_test_split
+#import matplotlib.pyplot as plt
 from myPytorchModels import TimeSeriesTransformer
 from myPytorchModelTrainer import trainDynsysModel
 from csv2numpy import prepTimeSeqData
@@ -164,6 +164,7 @@ model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, 
 #train_losses = trainloss1 + trainloss2
 #val_losses = valloss1 + valloss2
 
+"""
 # After loop: plot train/val loss to inspect convergence
 plt.plot(train_losses, label='train_loss')
 plt.plot(val_losses, label='val_loss')
@@ -171,6 +172,7 @@ plt.xlabel('Epoch')
 plt.ylabel('MSE')
 plt.legend()
 plt.show()
+"""
 
 # %%
 # Step 4A: full training on baseline data 
@@ -183,6 +185,7 @@ print("Batches/epoch:", steps_per_epoch)
 
 model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, train_loader, test_loader, num_epochs=100, allow_early_stopping=True)
 
+"""
 # After loop: plot train/val loss to inspect convergence
 plt.plot(train_losses, label='train_loss')
 plt.plot(val_losses, label='val_loss')
@@ -190,6 +193,7 @@ plt.xlabel('Epoch')
 plt.ylabel('MSE')
 plt.legend()
 plt.show()
+"""
 
 # %%
 # load or save model
@@ -230,6 +234,7 @@ MSE_per_feat_null = np.mean((Y_test_np - Y_null_test_np) ** 2, axis=0)
 feats = np.arange(1, Y.shape[-1]+1)
 barwid = .35
 
+"""
 plt.figure(figsize=(15,5))
 plt.bar(feats - barwid, var_per_feat, width=barwid, label='Output Variance')
 plt.bar(feats, MSE_per_feat_null, width=barwid, label='Null MSE')
@@ -240,6 +245,7 @@ plt.ylabel('Value')
 plt.title('Output Feature Variance vs Test MSE')
 plt.legend()
 plt.show()
+"""
 
 MSE_per_feat = MSE_per_feat / (np.mean(Y_test1_np**2, axis=0) + np.finfo(float).eps)
 MSE_per_feat_null = MSE_per_feat_null / (np.mean(Y_test_np**2, axis=0) + np.finfo(float).eps)
@@ -303,6 +309,7 @@ iToPlot = [iMSE[:2], iMSE[-2:], iVAR[:2], iVAR[-2:], iLRN[:2], iLRN[-2:]]
 iToPlot = list(set([i for sublist in iToPlot for i in sublist]))
 iToPlot = [i-1 for i in iToPlot]  # adjust for zero indexing
 
+"""
 plt.figure(figsize=(15,20))
 iPlot = 1
 for i in iToPlot:
@@ -324,6 +331,7 @@ for i in iToPlot:
     iPlot += 1
 plt.tight_layout()
 plt.show()
+"""
 
 # %%
 # Step 4B: full training on main data 
@@ -336,6 +344,7 @@ print("Batches/epoch:", steps_per_epoch)
 
 model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, train_loader_s, test_loader_s, num_epochs=100, allow_early_stopping=True)
 
+"""
 # After loop: plot train/val loss to inspect convergence
 plt.plot(train_losses, label='train_loss')
 plt.plot(val_losses, label='val_loss')
@@ -343,6 +352,7 @@ plt.xlabel('Epoch')
 plt.ylabel('MSE')
 plt.legend()
 plt.show()
+"""
 
 # %%
 # Step 5B: Evaluate the Model on Test Data
@@ -378,6 +388,7 @@ MSE_per_feat_null = np.mean((Y_test_np - Y_null_test_np) ** 2, axis=0)
 feats = np.arange(1, Ys.shape[-1]+1)
 barwid = .35
 
+"""
 plt.figure(figsize=(15,5))
 plt.bar(feats - barwid, var_per_feat, width=barwid, label='Output Variance')
 plt.bar(feats, MSE_per_feat_null, width=barwid, label='Null MSE')
@@ -388,6 +399,7 @@ plt.ylabel('Value')
 plt.title('Output Feature Variance vs Test MSE')
 plt.legend()
 plt.show()
+"""
 
 MSE_per_feat = MSE_per_feat / (np.mean(Y_test1_np**2, axis=0) + np.finfo(float).eps)
 MSE_per_feat_null = MSE_per_feat_null / (np.mean(Y_test_np**2, axis=0) + np.finfo(float).eps)
@@ -450,6 +462,7 @@ iLRN = np.argsort(MSE_per_feat / var_per_feat)
 iToPlot = [iMSE[:2], iMSE[-2:], iVAR[:2], iVAR[-2:], iLRN[:2], iLRN[-2:]]
 iToPlot = list(set([i for sublist in iToPlot for i in sublist]))
 
+"""
 plt.figure(figsize=(15,20))
 iPlot = 1
 for i in iToPlot:
@@ -477,6 +490,7 @@ plt.title('Stim Input')
 
 plt.tight_layout()
 plt.show()
+"""
 
 # %%
 torch.save(model.state_dict(), "neural_network_pytorch.pth")
