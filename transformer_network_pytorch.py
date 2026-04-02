@@ -90,9 +90,10 @@ print(f"train loader size: {len(train_loader)}, train loader_s size: {len(train_
 print(f"test loader size: {len(test_loader)}, test loader_s size: {len(test_loader_s)}")
 
 # %%
-hzn_len = 16 # samples
-big_dataset_train = ConcatDataset([train_dataset, train_dataset_s])
-big_dataset_test = ConcatDataset([test_dataset, test_dataset_s])
+hzn_len = 2 # samples
+train_loaderlist = [train_loader, train_loader_s]
+test_loaderlist = [test_loader, test_loader_s]
+# TO DO: think about organizing this as dict instead of list/tuple 
 
 while hzn_len <= 16:
 
@@ -120,24 +121,25 @@ while hzn_len <= 16:
     Ysh_test = Ysh[train_N_s:]
     Ush_test = Ush[train_N_s:]
 
-    # Create TensorDatasets
+    # Create TensorDatasets and loaders
     train_dataset_h = TensorDataset(Xh_train, Yh_train, Uh_train)
     test_dataset_h = TensorDataset(Xh_test, Yh_test, Uh_test)
     train_dataset_sh = TensorDataset(Xsh_train, Ysh_train, Ush_train)
     test_dataset_sh = TensorDataset(Xsh_test, Ysh_test, Ush_test)
+    train_loader_h = DataLoader(train_dataset_h, batch_size, shuffle=True)
+    test_loader_h = DataLoader(test_dataset_h, batch_size, shuffle=False)
+    train_loader_sh = DataLoader(train_dataset_sh, batch_size, shuffle=True)
+    test_loader_sh = DataLoader(test_dataset_sh, batch_size, shuffle=False)
 
-    # concat into big datasets 
-    big_dataset_train = ConcatDataset([big_dataset_train, train_dataset_h, train_dataset_sh])
-    big_dataset_test = ConcatDataset([big_dataset_test, test_dataset_h, test_dataset_sh])
+    # concat into loader lists 
+    train_loaderlist.extend([train_loader_h, train_loader_sh])
+    test_loaderlist.extend([test_loader_h, test_loader_sh])
 
     hzn_len *= 2
 
-# create dataloaders
-big_loader_train = DataLoader(big_dataset_train, batch_size, shuffle=True)
-big_loader_test = DataLoader(big_dataset_test, batch_size, shuffle=False)
-
-print(f"big train dataset size: {len(big_dataset_train)}, big test dataset size: {len(big_dataset_test)}")
-print(f"big train loader size: {len(big_loader_train)}, big test loader size: {len(big_loader_test)}")
+train_loaderlist = tuple(train_loaderlist)
+test_loaderlist = tuple(test_loaderlist)
+print(f"train loader list size: {len(train_loaderlist)}, test loader list size: {len(test_loaderlist)}")
 
 # %%
 total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -160,7 +162,7 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 #model, trainloss1, valloss1 = trainDynsysModel(model, optimizer, criterion, train_loader, test_loader, num_epochs=5, allow_early_stopping=False)
 #model, trainloss2, valloss2 = trainDynsysModel(model, optimizer, criterion, train_loader_s, test_loader_s, num_epochs=5, allow_early_stopping=False)
-model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, big_loader_train, big_loader_test, num_epochs=10, allow_early_stopping=False)
+model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, train_loaderlist, test_loaderlist, num_epochs=10, allow_early_stopping=False)
 #train_losses = trainloss1 + trainloss2
 #val_losses = valloss1 + valloss2
 
