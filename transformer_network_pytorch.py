@@ -20,7 +20,7 @@ hzn_len = 1 # samples
 
 fs, feature_names, feature_correction, Xs, Ys, X, Y, _, _, _, _, Us, U = prepTimeSeqData(
     seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
-    filepath="/content/drive/MyDrive/Colab Notebooks/data/PD24N002/")
+    filepath="")
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Us = torch.tensor(Us, dtype=torch.float32)
@@ -98,7 +98,7 @@ while hzn_len <= 16:
 
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
         seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
-        filepath="/content/drive/MyDrive/Colab Notebooks/data/PD24N002/")
+        filepath="")
     Xsh = torch.tensor(Xsh, dtype=torch.float32)
     Ysh = torch.tensor(Ysh, dtype=torch.float32)
     Ush = torch.tensor(Ush, dtype=torch.float32)
