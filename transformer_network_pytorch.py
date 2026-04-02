@@ -90,7 +90,7 @@ print(f"train loader size: {len(train_loader)}, train loader_s size: {len(train_
 print(f"test loader size: {len(test_loader)}, test loader_s size: {len(test_loader_s)}")
 
 # %%
-hzn_len = 2 # samples
+hzn_len = 16 # samples
 big_dataset_train = ConcatDataset([train_dataset, train_dataset_s])
 big_dataset_test = ConcatDataset([test_dataset, test_dataset_s])
 
