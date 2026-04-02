@@ -16,7 +16,7 @@ from csv2numpy import prepTimeSeqData
 
 seq_len = 64  # sequence length
 mdl_Ts = 0.01  # model sample time, s
-hzn_len = 1 # samples
+hzn_len = 16 # samples
 
 fs, feature_names, feature_correction, Xs, Ys, X, Y, _, _, _, _, Us, U = prepTimeSeqData(
     seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
@@ -90,12 +90,12 @@ print(f"train loader size: {len(train_loader)}, train loader_s size: {len(train_
 print(f"test loader size: {len(test_loader)}, test loader_s size: {len(test_loader_s)}")
 
 # %%
-hzn_len = 2 # samples
+hzn_len = 1 # samples
 train_loaderlist = [train_loader, train_loader_s]
 test_loaderlist = [test_loader, test_loader_s]
 # TO DO: think about organizing this as dict instead of list/tuple 
 
-while hzn_len <= 16:
+while hzn_len <= 8:
 
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
         seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
