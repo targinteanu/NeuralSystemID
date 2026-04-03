@@ -79,15 +79,20 @@ test_dataset_s = TensorDataset(Xs_test, Ys_test, Us_test)
 # Create DataLoaders for batching
 train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size, shuffle=False)
-all_loader = DataLoader(TensorDataset(X, Y, U), shuffle=False)
+#all_loader = DataLoader(TensorDataset(X, Y, U), shuffle=False)
 train_loader_s = DataLoader(train_dataset_s, batch_size, shuffle=True)
 test_loader_s = DataLoader(test_dataset_s, batch_size, shuffle=False)
-all_loader_s = DataLoader(TensorDataset(Xs, Ys, Us), shuffle=False)
+#all_loader_s = DataLoader(TensorDataset(Xs, Ys, Us), shuffle=False)
 
 print(f"train dataset size: {len(train_dataset)}, train dataset_s size: {len(train_dataset_s)}")
 print(f"test dataset size: {len(test_dataset)}, test dataset_s size: {len(test_dataset_s)}")
 print(f"train loader size: {len(train_loader)}, train loader_s size: {len(train_loader_s)}")
 print(f"test loader size: {len(test_loader)}, test loader_s size: {len(test_loader_s)}")
+
+# datasets no longer used once we have loaders, so we can delete to free memory
+del train_dataset, test_dataset, train_dataset_s, test_dataset_s
+del X_train, Y_train, U_train, X_test, Y_test, U_test, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
+del X, Y, U, Xs, Ys, Us
 
 # %%
 # Step 4: Train the Model
