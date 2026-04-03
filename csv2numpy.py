@@ -49,9 +49,10 @@ def prepTimeData(
     # ------------------------
     # Load raw data
     # ------------------------
-    baseline_df = pd.read_csv(baselinedatarawfile)
+    baseline_df = pd.read_csv(baselinedatarawfile, dtype=np.float32)
     baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
     baseline_data_raw = baseline_df.iloc[:, 1:].values           # data columns
+    del baseline_df  # free memory
 
     if drawFromStart:
         iBLend = min(baseline_data_raw.shape[0], maxPairs)
@@ -62,9 +63,10 @@ def prepTimeData(
         baseline_time = baseline_time[iBLstart:]
         baseline_data_raw = baseline_data_raw[iBLstart:, :]
 
-    df = pd.read_csv(datarawfile)
+    df = pd.read_csv(datarawfile, dtype=np.float32)
     time = df.iloc[:, 0].values            # time column (seconds)
     data_raw = df.iloc[:, 1:].values           # data columns
+    del df  # free memory
 
     if drawFromStart:
         iEnd = min(data_raw.shape[0], maxPairs)
@@ -94,9 +96,10 @@ def prepTimeData(
     # ------------------------
     # Load processed data
     # ------------------------
-    baseline_df = pd.read_csv(baselinedatafile)
+    baseline_df = pd.read_csv(baselinedatafile, dtype=np.float32)
     baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
     baseline_data = baseline_df.iloc[:, 1:].values           # data columns
+    del baseline_df  # free memory
 
     if drawFromStart:
         baseline_time = baseline_time[:iBLend]
@@ -105,9 +108,10 @@ def prepTimeData(
         baseline_time = baseline_time[iBLstart:]
         baseline_data = baseline_data[iBLstart:, :]
 
-    df = pd.read_csv(datafile)
+    df = pd.read_csv(datafile, dtype=np.float32)
     time = df.iloc[:, 0].values            # time column (seconds)
     data = df.iloc[:, 1:].values           # data columns
+    del df  # free memory
 
     if drawFromStart:
         time = time[:iEnd]
@@ -122,6 +126,7 @@ def prepTimeData(
     events_df = pd.read_csv(eventsfile)
     event_times = events_df.iloc[:, 0].values  # assume first column is event time in seconds
     event_times = np.sort(event_times)         # ensure sorted
+    del events_df  # free memory
 
     # ------------------------
     # Compute event count for each row
@@ -259,9 +264,10 @@ def prepTimeSeqData(
     # ------------------------
     # Load raw data
     # ------------------------
-    baseline_df = pd.read_csv(baselinedatarawfile)
+    baseline_df = pd.read_csv(baselinedatarawfile, dtype=np.float32)
     baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
     baseline_data_raw = baseline_df.iloc[:, 1:].values           # data columns
+    del baseline_df  # free memory
 
     if drawFromStart:
         iBLend = min(baseline_data_raw.shape[0], maxPairs)
@@ -272,9 +278,10 @@ def prepTimeSeqData(
         baseline_time = baseline_time[iBLstart:]
         baseline_data_raw = baseline_data_raw[iBLstart:, :]
 
-    df = pd.read_csv(datarawfile)
+    df = pd.read_csv(datarawfile, dtype=np.float32)
     time = df.iloc[:, 0].values            # time column (seconds)
     data_raw = df.iloc[:, 1:].values           # data columns
+    del df  # free memory
 
     if drawFromStart:
         iEnd = min(data_raw.shape[0], maxPairs)
@@ -309,9 +316,10 @@ def prepTimeSeqData(
     # ------------------------
     # Load processed data
     # ------------------------
-    baseline_df = pd.read_csv(baselinedatafile)
+    baseline_df = pd.read_csv(baselinedatafile, dtype=np.float32)
     baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
     baseline_data = baseline_df.iloc[:, 1:].values           # data columns
+    del baseline_df  # free memory
 
     if drawFromStart:
         baseline_time = baseline_time[:iBLend]
@@ -320,9 +328,10 @@ def prepTimeSeqData(
         baseline_time = baseline_time[iBLstart:]
         baseline_data = baseline_data[iBLstart:, :]
 
-    df = pd.read_csv(datafile)
+    df = pd.read_csv(datafile, dtype=np.float32)
     time = df.iloc[:, 0].values            # time column (seconds)
     data = df.iloc[:, 1:].values           # data columns
+    del df  # free memory
 
     if drawFromStart:
         time = time[:iEnd]
@@ -337,6 +346,7 @@ def prepTimeSeqData(
     events_df = pd.read_csv(eventsfile)
     event_times = events_df.iloc[:, 0].values  # assume first column is event time in seconds
     event_times = np.sort(event_times)         # ensure sorted
+    del events_df  # free memory
 
     # ------------------------
     # Compute event count for each row
