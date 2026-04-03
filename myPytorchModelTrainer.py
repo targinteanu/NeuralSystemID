@@ -13,6 +13,11 @@ def trainDynsysModel(
         allow_early_stopping = True,
 ):
     
+    # determine GPU or CPU device: 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
+    model.to(device)
+    
     # make a variable to store the best model
     best_model = model.state_dict()
     
@@ -37,6 +42,7 @@ def trainDynsysModel(
             model.train()
             running_loss = 0.0
             for X_batch, Y_batch, U_batch in train_loader:
+                X_batch, Y_batch, U_batch = X_batch.to(device), Y_batch.to(device), U_batch.to(device)
                 with autocast(device_type='cuda' if torch.cuda.is_available() else 'cpu'):
                     # Forward pass
                     Y_pred = model(X_batch, U_batch)
@@ -55,6 +61,7 @@ def trainDynsysModel(
             val_running = 0.0
             with torch.no_grad():
                 for X_val, Y_val, U_val in test_loader:   # use test_loader or a separate val_loader
+                    X_val, Y_val, U_val = X_val.to(device), Y_val.to(device), U_val.to(device)
                     with autocast(device_type='cuda' if torch.cuda.is_available() else 'cpu'):
                         Y_val_pred = model(X_val, U_val)
                         l = criterion(Y_val_pred, Y_val)
