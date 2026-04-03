@@ -113,6 +113,7 @@ val_losses.extend(vl)
 # del train_dataset_s, test_dataset_s, train_loader_s, test_loader_s, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
 
 # now the loop
+hzn_len = 1
 while hzn_len <= 8:
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
         seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
