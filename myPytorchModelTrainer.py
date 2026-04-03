@@ -1,5 +1,6 @@
 import torch
 import copy
+from torch.amp import GradScaler, autocast
 
 def trainDynsysModel(
         model, 
@@ -20,6 +21,7 @@ def trainDynsysModel(
     no_improve = 0
     train_losses = []
     val_losses = []
+    scaler = GradScaler()
 
     if not isinstance(TrainLoader, tuple):
         # TO DO: think about organizing this as dict instead of list/tuple 
@@ -35,13 +37,15 @@ def trainDynsysModel(
             model.train()
             running_loss = 0.0
             for X_batch, Y_batch, U_batch in train_loader:
-                # Forward pass
-                Y_pred = model(X_batch, U_batch)
-                loss = criterion(Y_pred, Y_batch)
+                with autocast(device_type='cuda' if torch.cuda.is_available() else 'cpu'):
+                    # Forward pass
+                    Y_pred = model(X_batch, U_batch)
+                    loss = criterion(Y_pred, Y_batch)
                 # Backward pass and optimization
                 optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
                 running_loss += loss.item() * X_batch.size(0)
             epoch_train_loss = running_loss / train_size
             train_losses.append(epoch_train_loss)
@@ -51,8 +55,9 @@ def trainDynsysModel(
             val_running = 0.0
             with torch.no_grad():
                 for X_val, Y_val, U_val in test_loader:   # use test_loader or a separate val_loader
-                    Y_val_pred = model(X_val, U_val)
-                    l = criterion(Y_val_pred, Y_val)
+                    with autocast(device_type='cuda' if torch.cuda.is_available() else 'cpu'):
+                        Y_val_pred = model(X_val, U_val)
+                        l = criterion(Y_val_pred, Y_val)
                     val_running += l.item() * X_val.size(0)
             epoch_val_loss = val_running / len(test_loader.dataset)
             val_losses.append(epoch_val_loss)

@@ -34,7 +34,7 @@ num_feat = len(feature_names)
 # Initialize the Model, Loss Function, and Optimizer
 
 test_size=0.5
-batch_size = 32
+batch_size = 16
 
 groupsize = 15
 
@@ -90,13 +90,24 @@ print(f"train loader size: {len(train_loader)}, train loader_s size: {len(train_
 print(f"test loader size: {len(test_loader)}, test loader_s size: {len(test_loader_s)}")
 
 # %%
-hzn_len = 1 # samples
-train_loaderlist = [train_loader, train_loader_s]
-test_loaderlist = [test_loader, test_loader_s]
-# TO DO: think about organizing this as dict instead of list/tuple 
+# Step 4: Train the Model
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
+# start by performing a few epochs on each set 
+
+train_losses = []
+val_losses = []
+
+# train on initial
+model, tl, vl = trainDynsysModel(model, optimizer, criterion, [train_loader, train_loader_s], [test_loader, test_loader_s], num_epochs=5, allow_early_stopping=False)
+train_losses.extend(tl)
+val_losses.extend(vl)
+
+# del the _s loaders to free memory
+del train_dataset_s, test_dataset_s, train_loader_s, test_loader_s, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
+
+# now the loop
 while hzn_len <= 8:
-
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
         seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
         filepath="")
@@ -131,40 +142,16 @@ while hzn_len <= 8:
     train_loader_sh = DataLoader(train_dataset_sh, batch_size, shuffle=True)
     test_loader_sh = DataLoader(test_dataset_sh, batch_size, shuffle=False)
 
-    # concat into loader lists 
-    train_loaderlist.extend([train_loader_h, train_loader_sh])
-    test_loaderlist.extend([test_loader_h, test_loader_sh])
+    # train
+    model, tl, vl = trainDynsysModel(model, optimizer, criterion, [train_loader_h, train_loader_sh], [test_loader_h, test_loader_sh], num_epochs=5, allow_early_stopping=False)
+    train_losses.extend(tl)
+    val_losses.extend(vl)
+
+    # del to free memory
+    del Xsh, Ysh, Ush, Xh, Yh, Uh, Xh_train, Yh_train, Uh_train, Xh_test, Yh_test, Uh_test, Xsh_train, Ysh_train, Ush_train, Xsh_test, Ysh_test, Ush_test
+    del train_dataset_h, test_dataset_h, train_dataset_sh, test_dataset_sh, train_loader_h, test_loader_h, train_loader_sh, test_loader_sh
 
     hzn_len *= 2
-
-train_loaderlist = tuple(train_loaderlist)
-test_loaderlist = tuple(test_loaderlist)
-print(f"train loader list size: {len(train_loaderlist)}, test loader list size: {len(test_loaderlist)}")
-
-# %%
-total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-print("Total learnable parameters:", total_params)
-print("Training data shape:", X_train.shape)
-print("Training data size:", X_train.numel())
-
-# %%
-# data baseline characteristics as reference for loss 
-mean_y = Y_train[:,-1,:].mean(dim=0)
-std_y = Y_train[:,-1,:].std(dim=0)
-var_y = std_y ** 2
-var_per_feat = np.var(Y_train.numpy()[:,-1,:], axis=0)  # redundant?
-
-# %%
-# Step 4: Train the Model
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-# start by performing a few epochs on each set 
-
-#model, trainloss1, valloss1 = trainDynsysModel(model, optimizer, criterion, train_loader, test_loader, num_epochs=5, allow_early_stopping=False)
-#model, trainloss2, valloss2 = trainDynsysModel(model, optimizer, criterion, train_loader_s, test_loader_s, num_epochs=5, allow_early_stopping=False)
-model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, train_loaderlist, test_loaderlist, num_epochs=10, allow_early_stopping=False)
-#train_losses = trainloss1 + trainloss2
-#val_losses = valloss1 + valloss2
 
 """
 # After loop: plot train/val loss to inspect convergence
