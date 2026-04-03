@@ -21,12 +21,12 @@ hzn_len = 16 # samples
 fs, feature_names, feature_correction, Xs, Ys, X, Y, _, _, _, _, Us, U = prepTimeSeqData(
     seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
     filepath="")
-Xs = torch.tensor(Xs, dtype=torch.float32)
-Ys = torch.tensor(Ys, dtype=torch.float32)
-Us = torch.tensor(Us, dtype=torch.float32)
-X = torch.tensor(X, dtype=torch.float32)
-Y = torch.tensor(Y, dtype=torch.float32)
-U = torch.tensor(U, dtype=torch.float32)
+Xs = torch.from_numpy(Xs).float()
+Ys = torch.from_numpy(Ys).float()
+Us = torch.from_numpy(Us).float()
+X = torch.from_numpy(X).float()
+Y = torch.from_numpy(Y).float()
+U = torch.from_numpy(U).float()
 
 num_feat = len(feature_names)
 
@@ -100,12 +100,12 @@ while hzn_len <= 8:
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
         seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
         filepath="")
-    Xsh = torch.tensor(Xsh, dtype=torch.float32)
-    Ysh = torch.tensor(Ysh, dtype=torch.float32)
-    Ush = torch.tensor(Ush, dtype=torch.float32)
-    Xh = torch.tensor(Xh, dtype=torch.float32)
-    Yh = torch.tensor(Yh, dtype=torch.float32)
-    Uh = torch.tensor(Uh, dtype=torch.float32)
+    Xsh = torch.from_numpy(Xsh).float()
+    Ysh = torch.from_numpy(Ysh).float()
+    Ush = torch.from_numpy(Ush).float()
+    Xh = torch.from_numpy(Xh).float()
+    Yh = torch.from_numpy(Yh).float()
+    Uh = torch.from_numpy(Uh).float()
 
     Xh_train = Xh[:train_N]
     Yh_train = Yh[:train_N]
