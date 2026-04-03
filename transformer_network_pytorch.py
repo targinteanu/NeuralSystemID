@@ -99,7 +99,7 @@ train_losses = []
 val_losses = []
 
 # train on initial
-model, tl, vl = trainDynsysModel(model, optimizer, criterion, [train_loader, train_loader_s], [test_loader, test_loader_s], num_epochs=5, allow_early_stopping=False)
+model, tl, vl = trainDynsysModel(model, optimizer, criterion, (train_loader, train_loader_s), (test_loader, test_loader_s), num_epochs=5, allow_early_stopping=False)
 train_losses.extend(tl)
 val_losses.extend(vl)
 
@@ -143,7 +143,7 @@ while hzn_len <= 8:
     test_loader_sh = DataLoader(test_dataset_sh, batch_size, shuffle=False)
 
     # train
-    model, tl, vl = trainDynsysModel(model, optimizer, criterion, [train_loader_h, train_loader_sh], [test_loader_h, test_loader_sh], num_epochs=5, allow_early_stopping=False)
+    model, tl, vl = trainDynsysModel(model, optimizer, criterion, (train_loader_h, train_loader_sh), (test_loader_h, test_loader_sh), num_epochs=5, allow_early_stopping=False)
     train_losses.extend(tl)
     val_losses.extend(vl)
 
