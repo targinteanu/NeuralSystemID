@@ -98,13 +98,14 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 train_losses = []
 val_losses = []
 
+"""
 # train on initial
 model, tl, vl = trainDynsysModel(model, optimizer, criterion, (train_loader, train_loader_s), (test_loader, test_loader_s), num_epochs=5, allow_early_stopping=False)
 train_losses.extend(tl)
 val_losses.extend(vl)
-
+"""
 # del the _s loaders to free memory
-del train_dataset_s, test_dataset_s, train_loader_s, test_loader_s, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
+# del train_dataset_s, test_dataset_s, train_loader_s, test_loader_s, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
 
 # now the loop
 while hzn_len <= 8:
@@ -191,7 +192,7 @@ plt.show()
 
 # %%
 # Step 5A: Evaluate the Model on Test Data
-
+"""
 Y_pred = []
 Y_test1 = []
 
@@ -222,7 +223,7 @@ MSE_per_feat = np.mean((Y_test1_np - Y_pred_np) ** 2, axis=0)
 MSE_per_feat_null = np.mean((Y_test_np - Y_null_test_np) ** 2, axis=0)
 feats = np.arange(1, Y.shape[-1]+1)
 barwid = .35
-
+"""
 """
 plt.figure(figsize=(15,5))
 plt.bar(feats - barwid, var_per_feat, width=barwid, label='Output Variance')
@@ -235,11 +236,12 @@ plt.title('Output Feature Variance vs Test MSE')
 plt.legend()
 plt.show()
 """
-
+"""
 MSE_per_feat = MSE_per_feat / (np.mean(Y_test1_np**2, axis=0) + np.finfo(float).eps)
 MSE_per_feat_null = MSE_per_feat_null / (np.mean(Y_test_np**2, axis=0) + np.finfo(float).eps)
-
+"""
 # %%
+"""
 X_all_np = X.numpy()
 Y_all_np = Y[:,-1,:].numpy()
 U_all_np = U.numpy()
@@ -261,8 +263,9 @@ with torch.no_grad():
 Y_pred_all_np = np.array(Y_all_pred)
 Y_pred_all_np = Y_pred_all_np.reshape(-1, num_feat)
 print("Y_pred_all_np shape:", Y_pred_all_np.shape)
-
+"""
 # %%
+"""
 X_all = Xs
 Y_all = Ys
 U_all = Us
@@ -287,17 +290,17 @@ while i0+simdur < plotdomain[1]:
 Ysim = np.concatenate(Ysim, axis=0)
 print("Ysim shape:", Ysim.shape)
 plotxval = np.arange(len(Ysim)) + plotdomain[0]
-
+"""
 # %%
 # show several examples 
-
+"""
 iMSE = np.argsort(MSE_per_feat)
 iVAR = np.argsort(var_per_feat)
 iLRN = np.argsort(MSE_per_feat / (var_per_feat + np.finfo(float).eps))
 iToPlot = [iMSE[:2], iMSE[-2:], iVAR[:2], iVAR[-2:], iLRN[:2], iLRN[-2:]]
 iToPlot = list(set([i for sublist in iToPlot for i in sublist]))
 iToPlot = [i-1 for i in iToPlot]  # adjust for zero indexing
-
+"""
 """
 plt.figure(figsize=(15,20))
 iPlot = 1
@@ -345,7 +348,7 @@ plt.show()
 
 # %%
 # Step 5B: Evaluate the Model on Test Data
-
+"""
 Y_pred = []
 Y_test1 = []
 
@@ -376,7 +379,7 @@ MSE_per_feat = np.mean((Y_test1_np - Y_pred_np) ** 2, axis=0)
 MSE_per_feat_null = np.mean((Y_test_np - Y_null_test_np) ** 2, axis=0)
 feats = np.arange(1, Ys.shape[-1]+1)
 barwid = .35
-
+"""
 """
 plt.figure(figsize=(15,5))
 plt.bar(feats - barwid, var_per_feat, width=barwid, label='Output Variance')
@@ -389,11 +392,12 @@ plt.title('Output Feature Variance vs Test MSE')
 plt.legend()
 plt.show()
 """
-
+"""
 MSE_per_feat = MSE_per_feat / (np.mean(Y_test1_np**2, axis=0) + np.finfo(float).eps)
 MSE_per_feat_null = MSE_per_feat_null / (np.mean(Y_test_np**2, axis=0) + np.finfo(float).eps)
-
+"""
 # %%
+"""
 X_all_np = Xs.numpy()
 Y_all_np = Ys[:,-1,:].numpy()
 U_all_np = Us.numpy()
@@ -415,8 +419,9 @@ with torch.no_grad():
 Y_pred_all_np = np.array(Y_all_pred)
 Y_pred_all_np = Y_pred_all_np.reshape(-1, num_feat)
 print("Y_pred_all_np shape:", Y_pred_all_np.shape)
-
+"""
 # %%
+"""
 X_all = Xs
 Y_all = Ys
 U_all = Us
@@ -441,16 +446,16 @@ while i0+simdur < plotdomain[1]:
 Ysim = np.concatenate(Ysim, axis=0)
 plotxval = np.arange(len(Ysim)) + plotdomain[0]
 print("Ysim shape:", Ysim.shape)
-
+"""
 # %%
 # show several examples 
-
+"""
 iMSE = np.argsort(MSE_per_feat)
 iVAR = np.argsort(var_per_feat)
 iLRN = np.argsort(MSE_per_feat / var_per_feat)
 iToPlot = [iMSE[:2], iMSE[-2:], iVAR[:2], iVAR[-2:], iLRN[:2], iLRN[-2:]]
 iToPlot = list(set([i for sublist in iToPlot for i in sublist]))
-
+"""
 """
 plt.figure(figsize=(15,20))
 iPlot = 1
