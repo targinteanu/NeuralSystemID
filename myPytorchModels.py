@@ -272,8 +272,8 @@ class TimeSeriesTransformer(nn.Module):
 
         # MLP latent dynamics 
         self.fc2 = nn.Linear(dim_model + dim_u, 256)
-        self.fc3 = nn.Linear(256, 256)
-        self.fc4 = nn.Linear(256, 256)
+        #self.fc3 = nn.Linear(256, 256)
+        #self.fc4 = nn.Linear(256, 256)
         self.fc5 = nn.Linear(256, dim_model)
 
         # Output head for next-step prediction ------------------------------------------------
@@ -361,8 +361,8 @@ class TimeSeriesTransformer(nn.Module):
             u = u_seq[:, r, :] # (B, dim_u)
             z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
             z = F.gelu(self.fc2(z))
-            z = F.gelu(self.fc3(z))
-            z = F.gelu(self.fc4(z))
+            #z = F.gelu(self.fc3(z))
+            #z = F.gelu(self.fc4(z))
             z = F.gelu(self.fc5(z))
             #z = z + zskip # skip connection
             #zskip = z.clone()
