@@ -356,7 +356,7 @@ class TimeSeriesTransformer(nn.Module):
         # latent dynamics 
         z = h[:, -1, :]  # (B, dim_model)
         #zskip = z.clone()
-        Z = torch.zeros(z.size(0), rollout, z.size(1))
+        Z = torch.zeros(z.size(0), rollout, z.size(1), device=z.device) 
         for r in range(rollout):
             u = u_seq[:, r, :] # (B, dim_u)
             z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
