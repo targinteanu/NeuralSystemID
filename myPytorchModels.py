@@ -356,7 +356,8 @@ class TimeSeriesTransformer(nn.Module):
         # latent dynamics 
         z = h[:, -1, :]  # (B, dim_model)
         #zskip = z.clone()
-        Z = torch.zeros(z.size(0), rollout, z.size(1), device=z.device) 
+        #Z = torch.zeros(z.size(0), rollout, z.size(1), device=z.device) 
+        Z_list = []
         for r in range(rollout):
             u = u_seq[:, r, :] # (B, dim_u)
             z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
@@ -366,7 +367,9 @@ class TimeSeriesTransformer(nn.Module):
             z = F.gelu(self.fc5(z))
             #z = z + zskip # skip connection
             #zskip = z.clone()
-            Z[:, r, :] = z
+            #Z[:, r, :] = z
+            Z_list.append(z)
+        Z = torch.stack(Z_list, dim=1)
 
         # Output head --------------------------------------------------------------------
         #R = torch.arange(rollout).float().unsqueeze(0).unsqueeze(2) + 1 # (1, rollout, 1) why is this needed when rollout uses skip connections?
