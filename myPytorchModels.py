@@ -303,10 +303,10 @@ class TimeSeriesTransformer(nn.Module):
         x_unpaired = x[:, :, num_paired:(num_paired+num_unpaired)] # (B,T,N2)
         x_left = x[:, :, (num_paired+num_unpaired):]  # (B,T,n); may be unused
         # for skip connection at output:
-        xAmp_skip = x_used[:,-1:,:self.num_pairs].clone()
-        xCos_skip = x_used[:,-1:,self.num_pairs:2*self.num_pairs].clone()
-        xSin_skip = x_used[:,-1:,2*self.num_pairs:3*self.num_pairs].clone()
-        xUnpaired_skip = x_unpaired[:,-1:,:].clone()
+        xAmp_skip = x_used[:,-1:,:self.num_pairs]
+        xCos_skip = x_used[:,-1:,self.num_pairs:2*self.num_pairs]
+        xSin_skip = x_used[:,-1:,2*self.num_pairs:3*self.num_pairs]
+        xUnpaired_skip = x_unpaired[:,-1:,:]
         """
         x_pairs = torch.stack( 
             (
@@ -366,7 +366,7 @@ class TimeSeriesTransformer(nn.Module):
             z = F.gelu(self.fc5(z))
             #z = z + zskip # skip connection
             #zskip = z.clone()
-            Z[:, r, :] = z.clone()
+            Z[:, r, :] = z
 
         # Output head --------------------------------------------------------------------
         #R = torch.arange(rollout).float().unsqueeze(0).unsqueeze(2) + 1 # (1, rollout, 1) why is this needed when rollout uses skip connections?
