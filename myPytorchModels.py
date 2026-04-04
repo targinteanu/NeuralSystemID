@@ -369,7 +369,7 @@ class TimeSeriesTransformer(nn.Module):
             Z[:, r, :] = z.clone()
 
         # Output head --------------------------------------------------------------------
-        R = torch.arange(rollout).float().unsqueeze(0).unsqueeze(2) + 1 # (1, rollout, 1) why is this needed when rollout uses skip connections?
+        #R = torch.arange(rollout).float().unsqueeze(0).unsqueeze(2) + 1 # (1, rollout, 1) why is this needed when rollout uses skip connections?
         y = F.gelu(self.fco1(Z))
         #y = F.gelu(self.fco2(y))
         #y = F.gelu(self.fco3(y))
@@ -379,7 +379,7 @@ class TimeSeriesTransformer(nn.Module):
         yFreq = torch.cumsum(self.fcoFreq(y), dim=1)
         yCos = xCos_skip*torch.cos(yFreq) - xSin_skip*torch.sin(yFreq) # reconstruct cosine with predicted freq and skip connection
         ySin = xSin_skip*torch.cos(yFreq) + xCos_skip*torch.sin(yFreq) # reconstruct sine with predicted freq and skip connection
-        yUnpaired = self.fcoUnpaired(y)*R + xUnpaired_skip # predict unpaired features with skip connection
+        yUnpaired = self.fcoUnpaired(y) + xUnpaired_skip # predict unpaired features with skip connection
         out = torch.cat([yAmp, yCos, ySin, yUnpaired], dim=2) # (B, rollout, ...)
         return out
 
