@@ -216,7 +216,7 @@ class TimeSeriesTransformer(nn.Module):
         super().__init__()
 
         # transformer properties
-        dim_model=32
+        dim_model=64
         len_model=time_len # i.e. "T"
         num_heads=4
         num_layers=8

@@ -179,7 +179,7 @@ print("Train samples:", train_size)
 print("Batch size:", batch_size)
 print("Batches/epoch:", steps_per_epoch)
 
-model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, train_loader, test_loader, num_epochs=10, allow_early_stopping=True)
+model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, train_loader, test_loader, num_epochs=100, allow_early_stopping=True)
 
 """
 # After loop: plot train/val loss to inspect convergence
