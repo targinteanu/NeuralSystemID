@@ -7,14 +7,14 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, ConcatDataset, Dataset
 #from sklearn.model_selection import train_test_split
 #import matplotlib.pyplot as plt
-from myPytorchModels import TimeSeriesTransformer
+from myPytorchModels import TimeSeriesConvTransformer
 from myPytorchModelTrainer import trainDynsysModel
 from csv2numpy import prepTimeSeqData
 
 # %%
 # Prepare the Data ---------------------------------------------------------------------
 
-seq_len = 64  # sequence length
+seq_len = 256  # sequence length
 mdl_Ts = 0.01  # model sample time, s
 hzn_len = 16 # samples
 
@@ -38,7 +38,7 @@ batch_size = 16
 
 groupsize = 15
 
-model = TimeSeriesTransformer(dim_in=num_feat, dim_out=num_feat, time_len=seq_len, group_size=groupsize, num_groups=5, numGrpUnpaired=2, tuple_size=3)
+model = TimeSeriesConvTransformer(dim_in=num_feat, dim_out=num_feat, time_len=seq_len, group_size=groupsize, num_groups=5, numGrpUnpaired=2, tuple_size=3)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
