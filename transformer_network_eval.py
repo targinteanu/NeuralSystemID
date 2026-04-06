@@ -25,7 +25,7 @@ filtorder = 201
 device = torch.device('cpu')
 
 fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw, Us, Ub = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e7)
+    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e8)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
@@ -81,7 +81,7 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
     for i in range(Y.shape[0]):
         xi = X[i:i+1,:,:]
         ui = U[i:i+1,:,:]
-        """
+        
         # using rollout: 
         with torch.no_grad():
             yi = model(xi, ui)
@@ -95,6 +95,7 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
             # prepare next input
             xi = torch.cat([xi[0:1, 1:, :], yj], dim=1) 
             Ysim.append(yj[0,:,:])
+        """
 
     Ysim = np.array(Ysim)
     Ytrue = Y.numpy()
@@ -174,7 +175,7 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     print("Simulating...")
     for i0 in range(len(X)):
         xi = X[i0:i0+1,:,:]
-        """
+        
         # using rollout: 
         ui = U[i0:i0+1,:,:]
         with torch.no_grad():
@@ -187,6 +188,7 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
                 yi = model(xi, ui)
             # prepare next input
             xi = torch.cat([xi[0:1, 1:, :], yi], dim=1)
+        """
         
         yi = yi[:,-1,:] # only take final step of rollout for evaluation
         Ysim.append(yi.numpy().flatten())
