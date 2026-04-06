@@ -399,16 +399,16 @@ class TimeSeriesConvTransformer(nn.Module):
         super().__init__()
 
         # transformer properties
-        dim_model=32
+        dim_model=128
         len_model=64 # i.e. "T"
-        num_heads=4
-        num_layers=8
-        dim_ff=128
+        num_heads=8
+        num_layers=2
+        dim_ff=512
 
         # time conv properties
         # These should all be kept smaller than time_len
         K1 = 16
-        #K2 = 64
+        K2 = 64
         #K3 = 64
 
         # preprocessing features -------------------------------------------
@@ -436,11 +436,11 @@ class TimeSeriesConvTransformer(nn.Module):
 
         # stage 3A: time-only processing to get to len_model
         self.time_conv1 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K1)
-        #self.time_conv2 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K2)
+        self.time_conv2 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K2)
         #self.time_conv3 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K3)
         #self.time_fc = nn.Linear(time_len - K1 - K2 - K3 + 3, len_model)
-        #self.time_fc = nn.Linear(time_len - K1 - K2 + 2, len_model)
-        self.time_fc = nn.Linear(time_len - K1 + 1, len_model)
+        self.time_fc = nn.Linear(time_len - K1 - K2 + 2, len_model)
+        #self.time_fc = nn.Linear(time_len - K1 + 1, len_model)
 
         # stage 3B: feature-only processing to get to dim_model
         """
@@ -540,7 +540,7 @@ class TimeSeriesConvTransformer(nn.Module):
         # Stage 3A time processing
         h = h.permute(0,2,1) # (B, dim_model, T)
         h = F.gelu(self.time_conv1(h))
-        #h = F.gelu(self.time_conv2(h))
+        h = F.gelu(self.time_conv2(h))
         #h = F.gelu(self.time_conv3(h))
         h = F.gelu(self.time_fc(h))
         h = h.permute(0,2,1) # (B, T, dim_model)
