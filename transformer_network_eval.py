@@ -19,13 +19,37 @@ seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 filtorder = 201
 
+# train simpler model(s) for comparison ------------------------------------------------------
+
+# autoregressive model for each feature
+print("Training autoregressive model for each feature...")
+_, _, _, _, _, X, Y, _, _, _, _, _, _ = prepTimeSeqData(
+    seq_len=seq_len, hzn_len=1, dt_target=dt_target, drawFromStart=True, maxNumel=1e7)
+Mar = []
+for f in range(Y.shape[-1]):
+    x = X[:,:,f]
+    y = Y[:,0,f]
+    A = np.linalg.lstsq(x, y, rcond=None)[0]
+    Mar.append(A)
+Mar = np.stack(Mar, axis=1)
+del X, Y, A, x, y
+
+# linear regression model using all features
+print("Training linear regression model using all features...")
+_, _, _, _, _, X, Y, _, _, _, _, _, _ = prepTimeSeqData(
+    seq_len=1, hzn_len=1, dt_target=dt_target, drawFromStart=True, maxNumel=1e5)
+X = X[:,0,:]
+Y = Y[:,0,:]
+Mlin = np.linalg.lstsq(X, Y, rcond=None)[0]
+del X, Y
+
 # Prepare the Data ---------------------------------------------------------------------
 
 #device = (torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
 device = torch.device('cpu')
 
 fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw, Us, Ub = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e8)
+    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e7)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
@@ -75,7 +99,7 @@ def unprocess(Y, featcorrection):
 def run_examplesim(U, X, Y, Ytrue_recon=None):
 
     # run simulations 
-    Ysim = []
+    Ysim, Yar, Ylin = [], [], []
     model.eval()
     print("example simulations...")
     for i in range(Y.shape[0]):
@@ -96,6 +120,25 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
             xi = torch.cat([xi[0:1, 1:, :], yj], dim=1) 
             Ysim.append(yj[0,:,:])
         """
+        yyar = []
+        yylin = []
+        for j in range(hzn_len):
+            x = X[i,j,:].numpy()
+            ylin = x @ Mlin
+            yylin.append(ylin)
+            yar = []
+            for f in range(Y.shape[-1]):
+                xf = X[i,j,f].numpy()
+                yarf = xf @ Mar[:,f]
+                yar.append(yarf)
+            yyar.append(yar)
+        Yar.append(yyar)
+        Ylin.append(yylin)
+
+    Yar = np.array(Yar)
+    Ylin = np.array(Ylin)
+    print("Yar shape:", Yar.shape)
+    print("Ylin shape:", Ylin.shape)
 
     Ysim = np.array(Ysim)
     Ytrue = Y.numpy()
@@ -117,6 +160,8 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
     for ax, idx in zip(axes, example_indices):
         ax.plot(Ytrue[:,:, idx].flatten(), label="True")
         ax.plot(Ysim[:,:, idx].flatten(), label="Simulated", alpha=0.7)
+        ax.plot(Yar[:,:, idx].flatten(), label="AR Sim", alpha=0.6)
+        ax.plot(Ylin[:,:, idx].flatten(), label="Linear Sim", alpha=0.5)
         ax.set_ylabel("Feature Value")
         ax.set_title(f"Feature: {feature_names[idx]}")
         ax.legend()
