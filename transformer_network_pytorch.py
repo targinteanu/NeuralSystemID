@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, ConcatDataset, Dataset
 #from sklearn.model_selection import train_test_split
 #import matplotlib.pyplot as plt
-from myPytorchModels import TimeSeriesConv
+from myPytorchModels import TimeSeriesConvTransformer
 from myPytorchModelTrainer import trainDynsysModel
 from csv2numpy import prepTimeSeqData
 
