@@ -7,7 +7,7 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .04 # EVALUATION sample time, s
+hzn = .08 # EVALUATION sample time, s
 groupsize=15
 numgroups=5
 numgroupsunpaired=2
@@ -25,7 +25,7 @@ filtorder = 201
 device = torch.device('cpu')
 
 fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw, Us, Ub = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e8)
+    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e7)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
@@ -79,12 +79,23 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
     model.eval()
     print("example simulations...")
     for i in range(Y.shape[0]):
-        xi = X[i,:,:].reshape(1,-1,X.shape[-1])
+        xi = X[i:i+1,:,:]
+        ui = U[i:i+1,:,:]
+        """
         # using rollout: 
-        ui = U[i,:,:].reshape(1,-1,U.shape[-1])
         with torch.no_grad():
             yi = model(xi, ui)
         Ysim.append(yi[0,:,:])
+        """
+        # without using rollout:
+        for j in range(hzn_len):
+            uj = ui[:,j:j+1,:] 
+            with torch.no_grad():
+                yj = model(xi, uj)
+            # prepare next input
+            xi = torch.cat([xi[0:1, 1:, :], yj], dim=1) 
+            Ysim.append(yj[0,:,:])
+
     Ysim = np.array(Ysim)
     Ytrue = Y.numpy()
     print("Ysim shape :", Ysim.shape)
@@ -162,21 +173,21 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     prognext = progtick
     print("Simulating...")
     for i0 in range(len(X)):
-        xi = X[i0,:,:].reshape(1,-1,X.shape[-1]) 
+        xi = X[i0:i0+1,:,:]
+        """
         # using rollout: 
-        ui = U[i0,:,:].reshape(1,-1,U.shape[-1])
+        ui = U[i0:i0+1,:,:]
         with torch.no_grad():
             yi = model(xi, ui)
         """
         # without using rollout:
         for i in range(hzn_len):
-            ui = U[i0+i:i0+i+1,0:1,:] # do not use rollout
-            ui = ui.permute(1,0,2)
+            ui = U[i0:i0+1,i:i+1,:] 
             with torch.no_grad():
                 yi = model(xi, ui)
             # prepare next input
-            xi = torch.cat([xi[0, 1:, :], yi], dim=0).reshape(1,-1,X.shape[-1]) # remove line to enable rollout
-        """
+            xi = torch.cat([xi[0:1, 1:, :], yi], dim=1)
+        
         yi = yi[:,-1,:] # only take final step of rollout for evaluation
         Ysim.append(yi.numpy().flatten())
         progcur += 1.0/(len(X) - hzn_len)
