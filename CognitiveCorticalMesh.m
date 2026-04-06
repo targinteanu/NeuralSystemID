@@ -23,7 +23,7 @@ if isnan(srate)
     srate = 1/median(seconds(diff(PDdata.Time)));
 end
 
-% channel selection
+%% channel selection
 channames = num2str((1:63)');
 channames(channames==' ') = '0';
 channames = "LS"+string(channames);
@@ -73,7 +73,12 @@ thetaPowerWindowed = thetaPowerWindowed(round(windowSize/2):windowSize:end, :);
 thetaPowerWindowed = 10*log10((thetaPowerWindowed)); % decibel (dB) scale 
 thetaPowerWindowed(isoutlier(thetaPowerWindowed)) = nan;
 thetaPowerWindowed = median(thetaPowerWindowed, 'omitnan');
+
 ElecTbl.ThetaPowerWindowed = thetaPowerWindowed';
+G = zeros(21,3);
+G(:) = thetaPowerWindowed; 
+R = mean(G,2, 'omitnan');
+
 OLthresh = thetaPowerWindowed > median(thetaPowerWindowed, 'omitnan');
 OLthresh = thetaPowerWindowed(OLthresh); 
 io = isoutlier(OLthresh, 'mean'); OLthresh = min(OLthresh(io));
@@ -179,6 +184,7 @@ camlight headlight;
 doSave = questdlg('Save?');
 if strcmp(doSave, 'Yes')
 writetable(ElecTbl, fullfile(fpElec,'BrainHeatmapCoords.xlsx'));
+writematrix(R, fullfile(fpElec,'R_row_vector.xlsx'));
 saveas(figACPC, fullfile(fpElec,'BrainHeatmapACPC'), 'fig');
 saveas(figMNI, fullfile(fpElec,'BrainHeatmapMNI'), 'fig');
 saveas(figMNI, fullfile(fpElec,'BrainHeatmapMNI'), 'png');
