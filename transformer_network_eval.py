@@ -13,13 +13,16 @@ numgroups=5
 numgroupsunpaired=2
 #fc = np.array([4,10,27,60,90]) # freq band center freqs
 fc = np.array([4,10,27]) # freq band center freqs
-netfile = "neural_network_pytorch_bf256e93c9f707fc87ea4c842501c6f07ec8940a.pth"
+netfile = "neural_network_pytorch_0409b679619a4152151cba123382c576c417c4f4.pth"
 dt_target = 0.01 # model sample time, s
 seq_len = 64 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 filtorder = 201
 
 # Prepare the Data ---------------------------------------------------------------------
+
+#device = (torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
+device = torch.device('cpu')
 
 fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw, Us, Ub = prepTimeSeqData(
     seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e8)
@@ -45,7 +48,7 @@ print(YbRaw.shape)
 # define mdl struct ====================================================================
 model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups, tuple_size=3, numGrpUnpaired=numgroupsunpaired)
 if netfile:
-    model.load_state_dict(torch.load(netfile))
+    model.load_state_dict(torch.load(netfile, map_location=device))
 else:
     # bias the model frequency prediction to the center of each band 
     fcenter = torch.tensor(fc, dtype=torch.float32)
