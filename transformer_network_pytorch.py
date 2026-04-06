@@ -38,7 +38,7 @@ batch_size = 16
 
 groupsize = 15
 
-model = TimeSeriesConv(dim_in=num_feat, dim_out=num_feat, time_len=seq_len, group_size=groupsize, num_groups=5, numGrpUnpaired=2, tuple_size=3)
+model = TimeSeriesConvTransformer(dim_in=num_feat, dim_out=num_feat, time_len=seq_len, group_size=groupsize, num_groups=5, numGrpUnpaired=2, tuple_size=3)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
