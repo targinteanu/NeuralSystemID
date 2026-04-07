@@ -668,12 +668,40 @@ clear srlname srltbl_ srlnames_ srlname_ isrl istim
 
 %% segment misc 
 disp('Please label any other data to save...')
+
+% check for any named files 
+evtbl = MainTable.Properties.Events;
+evtbl = sortrows(evtbl, 'Time');
+filestr = contains(evtbl.EventLabels, "Start of File");
+fileend = contains(evtbl.EventLabels, "End of File");
+filestrtime = evtbl.Time(filestr);
+fileendtime = evtbl.Time(fileend);
+filestri = find(filestr)'; fileendi = find(fileend)';
+
+% group by time 
+comMisc = ""; trngMisc = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
+for fi = filestri
+    fei = fileeindi(fileendi > fi);
+    fei = min(fei);
+    if ~isempty(fei)
+        fstr = char(evtbl.EventLabels(fi)); % 'Start of File ...'
+        fstr = string(fstr(10:end)); % "File ..."
+        comMisc = [comMisc; fstr];
+        trngMisc = [trngMisc; evtbl.Time(fi), evtbl.Time(fei)];
+    end
+end
+comMisc = comMisc'; trngMisc = trngMisc';
+
 % user confirms 
 figure(fig1);
+if size(trngMisc,1) <= 1 
 trngMisc = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 1,2)';
 comMisc = "Segment any miscellaneous time periods, or close this window to cancel.";
+end
 [trngMisc, comMisc, tblMiscMain, tblsMisc] = ...
     usrconfirm(trngMisc, comMisc, MainTable, tbls, hAXs, [1,1,0]);
+
+clear filestr fileend filestri fileendi fi fei filestrtime fileendtime
 
 %% save all
 doSave = questdlg('Save?');
