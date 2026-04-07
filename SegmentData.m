@@ -679,9 +679,10 @@ fileendtime = evtbl.Time(fileend);
 filestri = find(filestr)'; fileendi = find(fileend)';
 
 % group by time 
-comMisc = ""; trngMisc = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
+comMisc = repmat("", 0,1);
+trngMisc = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 0,2);
 for fi = filestri
-    fei = fileeindi(fileendi > fi);
+    fei = fileendi(fileendi > fi);
     fei = min(fei);
     if ~isempty(fei)
         fstr = char(evtbl.EventLabels(fi)); % 'Start of File ...'
