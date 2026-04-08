@@ -122,16 +122,19 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
         """
         yyar = []
         yylin = []
+        Xnp = X[i,:,:].numpy()
+        x = Xnp[-1,:]
         for j in range(hzn_len):
-            x = X[i,j,:].numpy()
             ylin = x @ Mlin
             yylin.append(ylin)
+            x = ylin
             yar = []
             for f in range(Y.shape[-1]):
-                xf = X[i,j,f].numpy()
+                xf = Xnp[:,f]
                 yarf = xf @ Mar[:,f]
                 yar.append(yarf)
             yyar.append(yar)
+            Xnp = np.vstack([Xnp[1:,:], np.array(yar)])
         Yar.append(yyar)
         Ylin.append(yylin)
 
