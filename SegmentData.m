@@ -50,9 +50,17 @@ if ~isempty(lastrun)
                 tblsNames = ["Baseline", "Trig", "StimNoTrig", "Misc", "Srl"];
                 for tblsName = tblsNames
                     tbls_ = eval("tbls"+tblsName);
+                    trng_ = eval("trng"+tblsName);
                     if numel(tbls_)
+                        if size(tbls_,1) ~= size(trng_,2)
+                            warning(tblsName+" tbls and trng sizes are mismatched. ignoring")
+                            eval("com"+tblsName+"={};");
+                            eval("trng"+tblsName+"=[];");
+                        else
                         com_ = cellfun(@(T) T.Properties.Description, tbls_(:,1), 'UniformOutput',false);
-                        eval("com"+tblsName+"=com;");
+                        com_ = string(com_);
+                        eval("com"+tblsName+"=com_;");
+                        end
                     else
                         eval("com"+tblsName+"={};");
                     end
@@ -63,7 +71,7 @@ if ~isempty(lastrun)
         end
     end
 end
-clear lastrun tblsNames tblsName tbls_ com_
+clear lastrun tblsNames tblsName tbls_ com_ trng_
 
 %% get electrode data 
 disp('Reading electrode localization data...')
@@ -646,10 +654,10 @@ stimwinds = groupbytime(stimtime, stimboundtime, timeBegin);
 % user confirms 
 figure(fig1);
 if ~lastRunLoaded || ~numel(trngStimNoTrig)
-    trngStimNoTrig = stimwinds'; comStim = repmat("Presumed Stim", height(stimwinds), 1);
+    trngStimNoTrig = stimwinds'; comStimNoTrig = repmat("Presumed Stim", height(stimwinds), 1);
 end
-[trngStimNoTrig, comStim, tblStimNoTrigMain, tblsStimNoTrig] = ...
-    usrconfirm(trngStimNoTrig, comStim, MainTable, tbls, hAXs, [1,0,1]);
+[trngStimNoTrig, comStimNoTrig, tblStimNoTrigMain, tblsStimNoTrig] = ...
+    usrconfirm(trngStimNoTrig, comStimNoTrig, MainTable, tbls, hAXs, [1,0,1]);
 
 clear itrig
 
@@ -1001,7 +1009,7 @@ end
 if isempty(initnames)
     initidx = 1;
 else
-    initidxsearch = channelnames == initnames';
+    initidxsearch = chnames == initnames';
     [~,initidx] = find(initidxsearch);
     if isempty(initidx)
         initidx = 1;
