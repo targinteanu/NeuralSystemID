@@ -13,6 +13,58 @@ ElecXL = [dir([folder,filesep,'electrode_data.xls*']); ...
           ];
 thisfilename = mfilename("fullpath");
 
+%% try to load a previous run if available 
+
+% identify last run and let user select
+lastRunLoaded = false;
+lastrun = dir(folder); % all files and folders
+lastrun = lastrun(3:end); % exclude '.' and '..'
+lastrun = lastrun([lastrun.isdir]); % folders
+lastrun = lastrun(contains({lastrun.name},[pName,'_SegmentData']));
+if ~isempty(lastrun)
+    lastrunsel = listdlg(...
+        "PromptString", "Load previous session?", ...
+        "ListString", {lastrun.name}, ...
+        "SelectionMode", "single", ...
+        "ListSize", [300 300]);
+    if ~isempty(lastrunsel)
+        lastrun = lastrun(lastrunsel);
+        lastrun = fullfile(lastrun.folder, lastrun.name);
+        lastrun = dir(fullfile(lastrun,[pName,'_SegmentData*.mat']));
+        if ~isempty(lastrun)
+            if length(lastrun) > 1
+                lastrunsel = listdlg(...
+                    "PromptString", "Choose which file:", ...
+                    "ListString", {lastrun.name}, ...
+                    "SelectionMode", "single", ...
+                    "ListSize", [300 300]);
+                lastrun = lastrun(lastrunsel);
+            end
+            if ~isempty(lastrun)
+                load(fullfile(lastrun.folder, lastrun.name), ...
+                    'channelNameRec', 'channelNameStim', 'channelNameTrig', 'channelNameReject', ...
+                    'trngBaseline', 'trngTrig', 'trngStimNoTrig', 'trngMisc', 'trngSrl', ...
+                    'tblsBaseline', 'tblsTrig', 'tblsStimNoTrig', 'tblsMisc', 'tblsSrl', ...
+                    'SampleRates'); 
+                channelNameRejectPrev = string(channelNameReject);
+                tblsNames = ["Baseline", "Trig", "StimNoTrig", "Misc", "Srl"];
+                for tblsName = tblsNames
+                    tbls_ = eval("tbls"+tblsName);
+                    if numel(tbls_)
+                        com_ = cellfun(@(T) T.Properties.Description, tbls_(:,1), 'UniformOutput',false);
+                        eval("com"+tblsName+"=com;");
+                    else
+                        eval("com"+tblsName+"={};");
+                    end
+                end
+                lastRunLoaded = true;
+                disp(['Loaded previous session: ', lastrun.name]);
+            end
+        end
+    end
+end
+clear lastrun tblsNames tblsName tbls_ com_
+
 %% get electrode data 
 disp('Reading electrode localization data...')
 if isempty(ElecXL)
@@ -195,14 +247,13 @@ end
 
 %% user selects channels 
 disp('Please specify channels...')
-channelIndexRec = listdlg("PromptString","Recording Channel(s)", ...
-    "ListString",chnames, "SelectionMode","multiple"); 
-channelIndexStim = listdlg("PromptString","Stimulus Channel(s)", ...
-    "ListString",chnames, "SelectionMode","multiple"); 
-channelIndexTrig = listdlg("PromptString","Stimulus TRIGGER Channel(s)", ...
-    "ListString",chnames, "SelectionMode","multiple"); 
-channelIndexInspect = listdlg("PromptString","Inspect Channel(s)", ...
-    "ListString",chnames, "SelectionMode","multiple"); 
+if ~lastRunLoaded
+    channelNameRec=[]; channelNameStim=[]; channelNameTrig=[]; 
+end
+channelIndexRec = listdlg_chsel("Recording Channel(s)",chnames,channelNameRec);
+channelIndexStim = listdlg_chsel("Stimulus Channel(s)",chnames,channelNameStim);
+channelIndexTrig = listdlg_chsel("Stimulus TRIGGER Channel(s)",chnames,channelNameTrig);
+channelIndexInspect = listdlg_chsel("Inspect Channel(s)",chnames,[]);
 for chindlist = ["Rec", "Stim", "Trig", "Inspect"]
     eval("channelName"+chindlist+" = chnames(channelIndex"+chindlist+");");
 end
@@ -385,7 +436,9 @@ disp('Please confirm baseline condition...')
 fig1 = figure('Units','normalized', 'Position',[.05,.05,.9,.9]); 
 [~,hAXs] = myStackedPlot(MainTable, ...
     [channelNameRec, channelNameStim, channelNameInspect]);
-trngBaseline = candwinds(iwind,:);
+if ~lastRunLoaded
+    trngBaseline = candwinds(iwind,:);
+end
 
 doAgain = true;
 while doAgain
@@ -545,8 +598,7 @@ if sum(channelIndexInspect2)
 end
 
 % rejection 
-channelIndexReject = listdlg("PromptString","REJECT Channel(s)", ...
-    "ListString",chnames, "SelectionMode","multiple"); 
+channelIndexReject = listdlg_chsel("REJECT Channel(s)",chnames,channelNameRejectPrev);
 channelNameReject = [channelNameReject, chnames(channelIndexReject)];
 MainTable = removevars(MainTable, channelNameReject);
 tblBaselineMain = removevars(tblBaselineMain, channelNameReject);
@@ -558,7 +610,9 @@ tblsBaseline = cellfun(@(tbl) myRemoveVars(tbl, channelNameReject), ...
 %% user confirms marked stimulation 
 disp('Please confirm stimulation triggers...')
 figure(fig1);
-trngTrig = trigwinds'; comTrig = trignames;
+if ~lastRunLoaded || ~numel(trngTrig)
+    trngTrig = trigwinds'; comTrig = trignames;
+end
 [trngTrig, comTrig, tblTrigMain, tblsTrig] = ...
     usrconfirm(trngTrig, comTrig, MainTable, tbls, hAXs, [1,0,0]);
 
@@ -591,7 +645,9 @@ stimwinds = groupbytime(stimtime, stimboundtime, timeBegin);
 
 % user confirms 
 figure(fig1);
-trngStimNoTrig = stimwinds'; comStim = repmat("Presumed Stim", height(stimwinds), 1);
+if ~lastRunLoaded || ~numel(trngStimNoTrig)
+    trngStimNoTrig = stimwinds'; comStim = repmat("Presumed Stim", height(stimwinds), 1);
+end
 [trngStimNoTrig, comStim, tblStimNoTrigMain, tblsStimNoTrig] = ...
     usrconfirm(trngStimNoTrig, comStim, MainTable, tbls, hAXs, [1,0,1]);
 
@@ -660,7 +716,9 @@ end
 
 % user confirms 
 figure(fig1);
-trngSrl = srlwinds'; comSrl = srlnames;
+if ~lastRunLoaded || ~numel(trngSrl)
+    trngSrl = srlwinds'; comSrl = srlnames;
+end
 [trngSrl, comSrl, tblSrlMain, tblsSrl] = ...
     usrconfirm(trngSrl, comSrl, MainTable, tbls, hAXs, [0,1,0]);
 
@@ -668,6 +726,7 @@ clear srlname srltbl_ srlnames_ srlname_ isrl istim
 
 %% segment misc 
 disp('Please label any other data to save...')
+if ~lastRunLoaded || ~numel(trngMisc)
 
 % check for any named files 
 evtbl = MainTable.Properties.Events;
@@ -698,6 +757,7 @@ figure(fig1);
 if size(trngMisc,1) <= 1 
 trngMisc = repmat(datetime(NaT,'TimeZone',timeBegin.TimeZone), 1,2)';
 comMisc = "Segment any miscellaneous time periods, or close this window to cancel.";
+end
 end
 [trngMisc, comMisc, tblMiscMain, tblsMisc] = ...
     usrconfirm(trngMisc, comMisc, MainTable, tbls, hAXs, [1,1,0]);
@@ -932,4 +992,21 @@ saveas(fig, filename, 'png'); % preview
 else
     warning('figure handle not valid; may have been closed.')
 end
+end
+
+function idx = listdlg_chsel(promptstr, chnames, initnames)
+if nargin < 3
+    initnames = [];
+end
+if isempty(initnames)
+    initidx = 1;
+else
+    initidxsearch = channelnames == initnames';
+    [~,initidx] = find(initidxsearch);
+    if isempty(initidx)
+        initidx = 1;
+    end
+end
+idx = listdlg("PromptString",promptstr, "ListString",chnames, ...
+    "SelectionMode","multiple", "InitialValue",initidx);
 end
