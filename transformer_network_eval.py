@@ -7,7 +7,7 @@ from myPytorchModels import TimeSeriesTransformer
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .08 # EVALUATION sample time, s
+hzn = .04 # EVALUATION sample time, s
 groupsize=15
 numgroups=5
 numgroupsunpaired=2
@@ -165,9 +165,15 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
         ax.plot(Ysim[:,:, idx].flatten(), label="Simulated", alpha=0.7)
         ax.plot(Yar[:,:, idx].flatten(), label="AR Sim", alpha=0.6)
         ax.plot(Ylin[:,:, idx].flatten(), label="Linear Sim", alpha=0.5)
+        ymin = Ytrue[:,:, idx].min()
+        ymax = Ytrue[:,:, idx].max()
+        yrange = ymax - ymin
+        ymin -= yrange * 0.1
+        ymax += yrange * 0.1
+        ax.set_ylim(ymin, ymax)
         ax.set_ylabel("Feature Value")
         ax.set_title(f"Feature: {feature_names[idx]}")
-        ax.legend()
+        ax.legend(fontsize='xx-small')
         ax.grid(axis='both')
     # plot stim input
     axes[-1].plot(U[:,:,-1].flatten())
@@ -202,7 +208,7 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
         ax.plot(Ysim_recon[:,:, idx].flatten(), label="Simulated", alpha=0.7)
         ax.set_ylabel("Channel Value")
         ax.set_title(f"Channel: {idx}")
-        ax.legend()
+        ax.legend(fontsize='xx-small')
         ax.grid(axis='both')
     # plot stim input
     axes[-1].plot(U[:,:,-1].flatten())
