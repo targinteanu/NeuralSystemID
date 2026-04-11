@@ -3,19 +3,19 @@ import numpy as np
 from scipy.signal import firwin, filtfilt
 import torch
 import matplotlib.pyplot as plt
-from myPytorchModels import TimeSeriesTransformer
+from myPytorchModels import TimeSeriesConv as myNetMdl
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .04 # EVALUATION sample time, s
+hzn = 1 # EVALUATION sample time, s
 groupsize=15
 numgroups=5
 numgroupsunpaired=2
 #fc = np.array([4,10,27,60,90]) # freq band center freqs
 fc = np.array([4,10,27]) # freq band center freqs
-netfile = "neural_network_pytorch_0409b679619a4152151cba123382c576c417c4f4.pth"
+netfile = "neural_network_pytorch_1ed2199a2d4e5e144faa327b24752513f88b9634.pth"
 dt_target = 0.01 # model sample time, s
-seq_len = 64 # model transformer samples
+seq_len = 256 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 filtorder = 201
 
@@ -24,7 +24,7 @@ filtorder = 201
 # autoregressive model for each feature
 print("Training autoregressive model for each feature...")
 _, _, _, _, _, X, Y, _, _, _, _, _, _ = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=1, dt_target=dt_target, drawFromStart=True, maxNumel=1e7)
+    seq_len=seq_len, hzn_len=1, dt_target=dt_target, drawFromStart=True, maxNumel=5e8)
 Mar = []
 for f in range(Y.shape[-1]):
     x = X[:,:,f]
@@ -49,7 +49,7 @@ del X, Y
 device = torch.device('cpu')
 
 fs, feature_names, feature_correction, Xs, Ys, Xb, Yb, _, YsRaw, _, YbRaw, Us, Ub = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=5e7)
+    seq_len=seq_len, hzn_len=hzn_len, dt_target=dt_target, drawFromStart=False, maxNumel=1e9)
 Xs = torch.tensor(Xs, dtype=torch.float32)
 Ys = torch.tensor(Ys, dtype=torch.float32)
 Xb = torch.tensor(Xb, dtype=torch.float32)
@@ -70,7 +70,7 @@ print(YbRaw.shape)
 # -----------------------------------------------------------------------------------------------
 
 # define mdl struct ====================================================================
-model = TimeSeriesTransformer(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups, tuple_size=3, numGrpUnpaired=numgroupsunpaired)
+model = myNetMdl(dim_in=Xb.shape[-1], dim_out=Yb.shape[-1], time_len=seq_len, group_size=groupsize, num_groups=numgroups, tuple_size=3, numGrpUnpaired=numgroupsunpaired)
 if netfile:
     model.load_state_dict(torch.load(netfile, map_location=device))
 else:
