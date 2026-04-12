@@ -611,9 +611,9 @@ class TimeSeriesConv(nn.Module):
 
         # time conv properties
         # These should all be kept smaller than time_len
-        K1 = 16
-        K2 = 64
-        K3 = 64
+        K1 = 8
+        K2 = 16
+        K3 = 32
 
         # preprocessing features -------------------------------------------
         
