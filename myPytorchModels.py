@@ -318,7 +318,7 @@ class TimeSeriesTransformer(nn.Module):
         """
         x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N1,k)
         x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
-        x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.group_size, -1)
+        x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
 
         # Stage 1
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N1,C1)
@@ -515,7 +515,7 @@ class TimeSeriesConvTransformer(nn.Module):
         """
         x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N1,k)
         x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
-        x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.group_size, -1)
+        x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
 
         # Stage 1
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
@@ -698,7 +698,7 @@ class TimeSeriesConv(nn.Module):
         """
         x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N1,k)
         x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
-        x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.group_size, -1)
+        x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
 
         # Stage 1
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
