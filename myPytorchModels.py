@@ -611,9 +611,9 @@ class TimeSeriesConv(nn.Module):
 
         # time conv properties
         # These should all be kept smaller than time_len
-        K1 = 8
-        K2 = 16
-        K3 = 32
+        K1 = 16
+        K2 = 32
+        K3 = 64
 
         # preprocessing features -------------------------------------------
         
@@ -747,8 +747,6 @@ class TimeSeriesConv(nn.Module):
         #h = F.gelu(self.fc3(h))
         #h = F.gelu(self.fc4(h))
         #h = F.gelu(self.fc5(h))
-
-        # Transformer --------------------------------------------------------------------
 
         # latent dynamics 
         z = h[:, -1, :]  # (B, dim_model)
