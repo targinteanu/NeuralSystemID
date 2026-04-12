@@ -14,12 +14,12 @@ from csv2numpy import prepTimeSeqData
 # %%
 # Prepare the Data ---------------------------------------------------------------------
 
-seq_len = 256  # sequence length
+seq_len = 128  # sequence length
 mdl_Ts = 0.01  # model sample time, s
-hzn_len = 16 # samples
+hzn_len = 8 # samples
 
 fs, feature_names, feature_correction, Xs, Ys, X, Y, _, _, _, _, Us, U = prepTimeSeqData(
-    seq_len=seq_len, maxNumel=1e10, hzn_len=hzn_len, dt_target=mdl_Ts, 
+    seq_len=seq_len, maxNumel=5e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
     filepath="")
 Xs = torch.from_numpy(Xs).float()
 Ys = torch.from_numpy(Ys).float()
@@ -114,7 +114,7 @@ val_losses.extend(vl)
 
 # now the loop
 hzn_len = 1
-while hzn_len <= 8:
+while hzn_len <= 4:
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
         seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
         filepath="")
