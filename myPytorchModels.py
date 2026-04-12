@@ -240,9 +240,10 @@ class TimeSeriesTransformer(nn.Module):
         self.pair_fc2 = nn.Linear(C1, self.pair_output)  
 
         # Stage 2: linear over flattened group
-        self.group_fcA = nn.Linear(group_size * self.pair_output, 32)
-        self.group_fcC = nn.Linear(group_size, 16)
-        self.group_fcB = nn.Linear((num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired, 16)
+        self.group_fcA = nn.ModuleList([nn.Linear(group_size * self.pair_output, 32) for _ in range(num_groups-numGrpUnpaired)])
+        self.group_fcC = nn.ModuleList([nn.Linear(group_size, 16) for _ in range(numGrpUnpaired)])
+        b_in = (num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired
+        self.group_fcB = nn.ModuleList([nn.Linear(b_in, 16) for _ in range(group_size)])
         mlp_in = ((num_groups-numGrpUnpaired) * 32) + (group_size * 16) + (numGrpUnpaired * 16) + leftover_dim
 
         # stage 3B: feature-only processing to get to dim_model
@@ -325,10 +326,13 @@ class TimeSeriesTransformer(nn.Module):
         p = F.gelu(self.pair_fc2(p))           # (B,T,N1,pair_output)
 
         # Stage 2A: groups
-        p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
-        a = F.gelu(self.group_fcA(p_groups))                      
-        a_flat = a.view(B, T, -1)                                 
-        c = F.gelu(self.group_fcC(x_unpaired_groups))
+        p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)
+          # (B,T,num_groups,...)
+        a_list = [F.gelu(self.group_fcA[i](p_groups[:, :, i, :])) for i in range(self.num_groups-self.numGrpUnpaired)]
+        a = torch.stack(a_list, dim=2)  # (B, T, num_groups-numGrpUnpaired, 32)
+        a_flat = a.view(B, T, -1)             
+        c_list = [F.gelu(self.group_fcC[i](x_unpaired_groups[:, :, i, :])) for i in range(self.numGrpUnpaired)]                    
+        c = torch.stack(c_list, dim=2)
         c_flat = c.view(B, T, -1)
 
         # Stage 2B: threads
@@ -336,7 +340,8 @@ class TimeSeriesTransformer(nn.Module):
         p_threads = p_threads.permute(0,1,3,2,4).contiguous()           
         p_threads = p_threads.view(B, T, self.group_size, -1)            # (B,T,group_size,...)
         p_threads = torch.cat([p_threads, x_unpaired_threads], dim=-1) 
-        b = F.gelu(self.group_fcB(p_threads))                         
+        b_list = [F.gelu(self.group_fcB[i](p_threads[:, :, i, :])) for i in range(self.group_size)]
+        b = torch.stack(b_list, dim=2)
         b_flat = b.view(B, T, -1)         
         h = torch.cat([a_flat, b_flat, c_flat, x_left], dim=-1)        # (B,T,mlp_in)
 
@@ -429,9 +434,10 @@ class TimeSeriesConvTransformer(nn.Module):
         self.pair_fc2 = nn.Linear(C1, self.pair_output) 
 
         # Stage 2: linear over flattened group
-        self.group_fcA = nn.Linear(group_size * self.pair_output, 32)
-        self.group_fcC = nn.Linear(group_size, 16)
-        self.group_fcB = nn.Linear((num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired, 16)
+        self.group_fcA = nn.ModuleList([nn.Linear(group_size * self.pair_output, 32) for _ in range(num_groups-numGrpUnpaired)])
+        self.group_fcC = nn.ModuleList([nn.Linear(group_size, 16) for _ in range(numGrpUnpaired)])
+        b_in = (num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired
+        self.group_fcB = nn.ModuleList([nn.Linear(b_in, 16) for _ in range(group_size)])
         mlp_in = ((num_groups-numGrpUnpaired) * 32) + (group_size * 16) + (numGrpUnpaired * 16) + leftover_dim
 
         # stage 3A: time-only processing to get to len_model
@@ -523,9 +529,11 @@ class TimeSeriesConvTransformer(nn.Module):
 
         # Stage 2A: groups
         p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
-        a = F.gelu(self.group_fcA(p_groups))                      
-        a_flat = a.view(B, T, -1)                                 
-        c = F.gelu(self.group_fcC(x_unpaired_groups))
+        a_list = [F.gelu(self.group_fcA[i](p_groups[:, :, i, :])) for i in range(self.num_groups-self.numGrpUnpaired)]
+        a = torch.stack(a_list, dim=2)  # (B, T, num_groups-numGrpUnpaired, 32)
+        a_flat = a.view(B, T, -1)             
+        c_list = [F.gelu(self.group_fcC[i](x_unpaired_groups[:, :, i, :])) for i in range(self.numGrpUnpaired)]                    
+        c = torch.stack(c_list, dim=2)
         c_flat = c.view(B, T, -1)                               
 
         # Stage 2B: threads
@@ -533,7 +541,8 @@ class TimeSeriesConvTransformer(nn.Module):
         p_threads = p_threads.permute(0,1,3,2,4).contiguous()           
         p_threads = p_threads.view(B, T, self.group_size, -1)            # (B,T,group_size,...)
         p_threads = torch.cat([p_threads, x_unpaired_threads], dim=-1) 
-        b = F.gelu(self.group_fcB(p_threads))                         
+        b_list = [F.gelu(self.group_fcB[i](p_threads[:, :, i, :])) for i in range(self.group_size)]
+        b = torch.stack(b_list, dim=2)
         b_flat = b.view(B, T, -1)         
         h = torch.cat([a_flat, b_flat, c_flat, x_left], dim=-1)        # (B,T,mlp_in)
 
@@ -624,9 +633,10 @@ class TimeSeriesConv(nn.Module):
         self.pair_fc2 = nn.Linear(C1, self.pair_output) 
 
         # Stage 2: linear over flattened group
-        self.group_fcA = nn.Linear(group_size * self.pair_output, 32)
-        self.group_fcC = nn.Linear(group_size, 16)
-        self.group_fcB = nn.Linear((num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired, 16)
+        self.group_fcA = nn.ModuleList([nn.Linear(group_size * self.pair_output, 32) for _ in range(num_groups-numGrpUnpaired)])
+        self.group_fcC = nn.ModuleList([nn.Linear(group_size, 16) for _ in range(numGrpUnpaired)])
+        b_in = (num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired
+        self.group_fcB = nn.ModuleList([nn.Linear(b_in, 16) for _ in range(group_size)])
         mlp_in = ((num_groups-numGrpUnpaired) * 32) + (group_size * 16) + (numGrpUnpaired * 16) + leftover_dim
         dim_model = mlp_in
 
@@ -706,17 +716,20 @@ class TimeSeriesConv(nn.Module):
 
         # Stage 2A: groups
         p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
-        a = F.gelu(self.group_fcA(p_groups))                      
-        a_flat = a.view(B, T, -1)                                 
-        c = F.gelu(self.group_fcC(x_unpaired_groups))
-        c_flat = c.view(B, T, -1)                               
+        a_list = [F.gelu(self.group_fcA[i](p_groups[:, :, i, :])) for i in range(self.num_groups-self.numGrpUnpaired)]
+        a = torch.stack(a_list, dim=2)  # (B, T, num_groups-numGrpUnpaired, 32)
+        a_flat = a.view(B, T, -1)             
+        c_list = [F.gelu(self.group_fcC[i](x_unpaired_groups[:, :, i, :])) for i in range(self.numGrpUnpaired)]                    
+        c = torch.stack(c_list, dim=2)
+        c_flat = c.view(B, T, -1)                              
 
         # Stage 2B: threads
         p_threads = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size, self.pair_output)   
         p_threads = p_threads.permute(0,1,3,2,4).contiguous()           
         p_threads = p_threads.view(B, T, self.group_size, -1)            # (B,T,group_size,...)
         p_threads = torch.cat([p_threads, x_unpaired_threads], dim=-1) 
-        b = F.gelu(self.group_fcB(p_threads))                         
+        b_list = [F.gelu(self.group_fcB[i](p_threads[:, :, i, :])) for i in range(self.group_size)]
+        b = torch.stack(b_list, dim=2)
         b_flat = b.view(B, T, -1)         
         h = torch.cat([a_flat, b_flat, c_flat, x_left], dim=-1)        # (B,T,mlp_in)
 
