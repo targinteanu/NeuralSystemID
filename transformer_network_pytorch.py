@@ -19,7 +19,7 @@ mdl_Ts = 0.01  # model sample time, s
 hzn_len = 16 # samples
 
 fs, feature_names, feature_correction, Xs, Ys, X, Y, _, _, _, _, Us, U = prepTimeSeqData(
-    seq_len=seq_len, maxNumel=5e10, hzn_len=hzn_len, dt_target=mdl_Ts, 
+    seq_len=seq_len, maxNumel=1e10, hzn_len=hzn_len, dt_target=mdl_Ts, 
     filepath="")
 Xs = torch.from_numpy(Xs).float()
 Ys = torch.from_numpy(Ys).float()
