@@ -715,22 +715,22 @@ class TimeSeriesConv(nn.Module):
 
         # Stage 1
         #x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N1,k)
-        x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,3,2,1).view(-1, self.tuple_size, x_used.shape[1]).contiguous() # (B*N1,k,T)
-        x_unpaired = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], 1, x_unpaired.shape[2]).permute(0,3,2,1).view(-1, 1, x_unpaired.shape[1]).contiguous() # (B*N2,1,T)
+        x_pairs = x_used.reshape(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,3,2,1).reshape(-1, self.tuple_size, x_used.shape[1]).contiguous() # (B*N1,k,T)
+        x_unpaired = x_unpaired.reshape(x_unpaired.shape[0], x_unpaired.shape[1], 1, x_unpaired.shape[2]).permute(0,3,2,1).reshape(-1, 1, x_unpaired.shape[1]).contiguous() # (B*N2,1,T)
         #p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
         p = F.gelu(self.pair_conv1(x_pairs))     # (B*N1,C1,T')
         x_unpaired = F.gelu(self.unpaired_conv1(x_unpaired)) # (B*N2,1,T')
         T = T-self.K1+1 # set T<-T' after conv
-        x_unpaired = x_unpaired.view(B,-1,1,T).permute(0,3,2,1).view(B,T,-1).contiguous() # (B,T,N2)
-        p = p.view(B,-1,self.C1,T).permute(0,3,1,2).contiguous() # (B,T,N1,C1)
+        x_unpaired = x_unpaired.reshape(B,-1,1,T).permute(0,3,2,1).reshape(B,T,-1).contiguous() # (B,T,N2)
+        p = p.reshape(B,-1,self.C1,T).permute(0,3,1,2).contiguous() # (B,T,N1,C1)
         p = F.gelu(self.pair_fc2(p))           # (B,T,N,pair_output)
         # TO DO: need to do the same for x_left
 
-        x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
-        x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
+        x_unpaired_groups = x_unpaired.reshape(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
+        x_unpaired_threads = x_unpaired.reshape(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
 
         # Stage 2A: groups
-        p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
+        p_groups = p.reshape(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
         a_list = [F.gelu(self.group_fcA[i](p_groups[:, :, i, :])) for i in range(self.num_groups-self.numGrpUnpaired)]
         a = torch.stack(a_list, dim=2)  # (B, T, num_groups-numGrpUnpaired, 32)
         a_flat = a.view(B, T, -1)             
