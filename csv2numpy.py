@@ -259,7 +259,7 @@ def prepTimeSeqData(
     print("Sampling frequency (Hz):", fs)
     feature_names = info_df.iloc[:, 0].values
     feature_correction = info_df.iloc[:, 3].values
-    maxPairs = math.floor(maxNumel / (seq_len * len(feature_names)))
+    maxPairs = math.floor(maxNumel / ((seq_len+hzn_len) * len(feature_names)))
 
     # ------------------------
     # Load raw data
@@ -268,6 +268,9 @@ def prepTimeSeqData(
     baseline_time = baseline_df.iloc[:, 0].values            # time column (seconds)
     baseline_data_raw = baseline_df.iloc[:, 1:].values           # data columns
     del baseline_df  # free memory
+
+    if baseline_data_raw.shape[0] > maxPairs:
+        print("Warning: "+str(baseline_data_raw.shape[0]-maxPairs)+" baseline samples will be ignored to meet maxNumel limit.")
 
     if drawFromStart:
         iBLend = min(baseline_data_raw.shape[0], maxPairs)
@@ -282,6 +285,9 @@ def prepTimeSeqData(
     time = df.iloc[:, 0].values            # time column (seconds)
     data_raw = df.iloc[:, 1:].values           # data columns
     del df  # free memory
+
+    if data_raw.shape[0] > maxPairs:
+        print("Warning: "+str(data_raw.shape[0]-maxPairs)+" samples will be ignored to meet maxNumel limit.")
 
     if drawFromStart:
         iEnd = min(data_raw.shape[0], maxPairs)
