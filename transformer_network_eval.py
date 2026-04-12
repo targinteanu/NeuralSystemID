@@ -7,15 +7,15 @@ from myPytorchModels import TimeSeriesConv as myNetMdl
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = 1 # EVALUATION sample time, s
+hzn = .04 # EVALUATION sample time, s
 groupsize=15
 numgroups=5
 numgroupsunpaired=2
 #fc = np.array([4,10,27,60,90]) # freq band center freqs
 fc = np.array([4,10,27]) # freq band center freqs
-netfile = "neural_network_pytorch_1ed2199a2d4e5e144faa327b24752513f88b9634.pth"
+netfile = "neural_network_pytorch_fb1e4a4b92bf84f01a7e7a7749f18f7473956e37.pth"
 dt_target = 0.01 # model sample time, s
-seq_len = 256 # model transformer samples
+seq_len = 128 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 filtorder = 201
 
