@@ -617,7 +617,7 @@ class TimeSeriesConv(nn.Module):
 
         # preprocessing features -------------------------------------------
         
-        C1 = 32
+        C1 = 8
 
         self.num_groups = num_groups
         self.group_size = group_size
@@ -626,18 +626,18 @@ class TimeSeriesConv(nn.Module):
         self.num_pairs = (num_groups - numGrpUnpaired) * group_size  
         used_for_pairing = self.num_pairs * tuple_size
         leftover_dim = dim_in - used_for_pairing - (numGrpUnpaired * group_size)
-        self.pair_output = 8
+        self.pair_output = 4
 
         # Stage 1: pairwise linear 
         self.pair_fc1 = nn.Linear(tuple_size, C1) 
         self.pair_fc2 = nn.Linear(C1, self.pair_output) 
 
         # Stage 2: linear over flattened group
-        self.group_fcA = nn.ModuleList([nn.Linear(group_size * self.pair_output, 32) for _ in range(num_groups-numGrpUnpaired)])
-        self.group_fcC = nn.ModuleList([nn.Linear(group_size, 16) for _ in range(numGrpUnpaired)])
+        self.group_fcA = nn.ModuleList([nn.Linear(group_size * self.pair_output, 8) for _ in range(num_groups-numGrpUnpaired)])
+        self.group_fcC = nn.ModuleList([nn.Linear(group_size, 4) for _ in range(numGrpUnpaired)])
         b_in = (num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired
-        self.group_fcB = nn.ModuleList([nn.Linear(b_in, 16) for _ in range(group_size)])
-        mlp_in = ((num_groups-numGrpUnpaired) * 32) + (group_size * 16) + (numGrpUnpaired * 16) + leftover_dim
+        self.group_fcB = nn.ModuleList([nn.Linear(b_in, 4) for _ in range(group_size)])
+        mlp_in = ((num_groups-numGrpUnpaired) * 8) + (group_size * 4) + (numGrpUnpaired * 4) + leftover_dim
         dim_model = mlp_in
 
         # stage 3A: time-only processing to get to len_model
@@ -664,10 +664,10 @@ class TimeSeriesConv(nn.Module):
         # ---------------------------------------------------------------------------------------
 
         # MLP latent dynamics 
-        self.fc2 = nn.Linear(dim_model*time_len + dim_u, 512)
+        self.fc2 = nn.Linear(dim_model*time_len + dim_u, 128)
         #self.fc3 = nn.Linear(256, 256)
         #self.fc4 = nn.Linear(256, 256)
-        self.fc5 = nn.Linear(512, dim_model)
+        self.fc5 = nn.Linear(128, dim_model)
 
         # Output head for next-step prediction ------------------------------------------------
         self.fco1 = nn.Linear(dim_model, 128)
