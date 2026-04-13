@@ -140,7 +140,7 @@ Fthetaphi = Fthetaphi'; names = names';
 names = names(:, any(~isnan(Fthetaphi))); 
 Fthetaphi = Fthetaphi(:, any(~isnan(Fthetaphi))); 
 Fthetaphi = Fthetaphi(dt>0,:); tthetaphi = t(dt>0);
-Tthetaphi = array2timetable(Fthetaphi,"VariableNames",names,"RowTimes",tthetaphi);
+Tthetaphi = array2timetable(Fthetaphi,"VariableNames",names,"RowTimes",seconds(tthetaphi));
 Ts = min(dt(dt>0)); % resample time 
 treg = tthetaphi(1):Ts:tthetaphi(end);
 Freg = interp1(tthetaphi,Fthetaphi,treg);
