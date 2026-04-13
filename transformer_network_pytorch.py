@@ -67,7 +67,7 @@ val_losses.extend(vl)
 hzn_len = 1
 while hzn_len < 16:
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
-        seq_len=seq_len, maxNumel=2e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
+        seq_len=seq_len, maxNumel=4e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
         filepath="")
     Xsh = torch.from_numpy(Xsh).float()
     Ysh = torch.from_numpy(Ysh).float()
@@ -132,7 +132,7 @@ plt.show()
 # load final data set 
 
 fs, feature_names, feature_correction, Xs, Ys, X, Y, _, _, _, _, Us, U = prepTimeSeqData(
-    seq_len=seq_len, maxNumel=2e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
+    seq_len=seq_len, maxNumel=4e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
     filepath="")
 Xs = torch.from_numpy(Xs).float()
 Ys = torch.from_numpy(Ys).float()
