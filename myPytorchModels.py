@@ -627,13 +627,9 @@ class TimeSeriesConv(nn.Module):
         used_for_pairing = self.num_pairs * tuple_size
         leftover_dim = dim_in - used_for_pairing - (numGrpUnpaired * group_size)
         self.pair_output = 8
-        self.K1 = K1
 
         # Stage 1: pairwise linear 
-        #self.pair_fc1 = nn.Linear(tuple_size, C1) 
-        self.pair_conv1 = nn.Conv1d(tuple_size, C1, kernel_size=K1)
-        self.unpaired_conv1 = nn.Conv1d(1, 1, kernel_size=K1)
-        time_len = time_len - K1 + 1 # account for samples consumed in conv
+        self.pair_fc1 = nn.Linear(tuple_size, C1) 
         self.pair_fc2 = nn.Linear(C1, self.pair_output) 
 
         # Stage 2: linear over flattened group
@@ -645,11 +641,10 @@ class TimeSeriesConv(nn.Module):
         dim_model = mlp_in
 
         # stage 3A: time-only processing to get to len_model
-        #self.time_conv1 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K1)
+        self.time_conv1 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K1)
         self.time_conv2 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K2)
         self.time_conv3 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K3)
-        self.time_fc = nn.Linear(time_len - K2 - K3 + 2, 1)
-        #self.time_fc = nn.Linear(time_len - K1 - K2 - K3 + 3, 1)
+        self.time_fc = nn.Linear(time_len - K1 - K2 - K3 + 3, 1)
         #self.time_fc = nn.Linear(time_len - K1 - K2 + 2, len_model)
         #self.time_fc = nn.Linear(time_len - K1 + 1, len_model)
 
@@ -711,21 +706,13 @@ class TimeSeriesConv(nn.Module):
             dim=3
         )  # (B,T,N,2)
         """
-
-        # Stage 1
-        #x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N1,k)
-        x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,3,2,1).contiguous() # (B,N1,k,T)
-        x_unpaired = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], 1, x_unpaired.shape[2]).permute(0,3,2,1).contiguous() # (B,N2,1,T)
-        #p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
-        p = F.gelu(self.pair_conv1(x_pairs))     # (B,N,C1,T')
-        x_unpaired = F.gelu(self.unpaired_conv1(x_unpaired)) # (B,N2,1,T')
-        T = T-self.K1+1 # set T<-T' after conv
-        x_unpaired = x_unpaired.permute(0,3,2,1).contiguous().view(B,T,-1) # (B,T,N2)
-        p = p.permute(0,3,1,2).contiguous() # (B,T,N1,C1)
-        p = F.gelu(self.pair_fc2(p))           # (B,T,N,pair_output)
-
+        x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N1,k)
         x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
         x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
+
+        # Stage 1
+        p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
+        p = F.gelu(self.pair_fc2(p))           # (B,T,N,pair_output)
 
         # Stage 2A: groups
         p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
@@ -748,7 +735,7 @@ class TimeSeriesConv(nn.Module):
 
         # Stage 3A time processing
         h = h.permute(0,2,1) # (B, dim_model, T)
-        #h = F.gelu(self.time_conv1(h))
+        h = F.gelu(self.time_conv1(h))
         h = F.gelu(self.time_conv2(h))
         h = F.gelu(self.time_conv3(h))
         h = F.gelu(self.time_fc(h))
