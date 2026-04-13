@@ -642,14 +642,11 @@ class TimeSeriesConv(nn.Module):
 
         # stage 3A: time-only processing to get to len_model
         self.time_conv1 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K1)
-        time_len = time_len - K1 + 1
         self.time_conv2 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K2)
-        time_len = time_len - K2 + 1
         self.time_conv3 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K3)
-        time_len = time_len - K3 + 1
-        #self.time_fc = nn.Linear(time_len, 1)
-        #self.time_fc = nn.Linear(time_len, 1)
-        #self.time_fc = nn.Linear(time_len, 1)
+        self.time_fc = nn.Linear(time_len - K1 - K2 - K3 + 3, 1)
+        #self.time_fc = nn.Linear(time_len - K1 - K2 + 2, len_model)
+        #self.time_fc = nn.Linear(time_len - K1 + 1, len_model)
 
         # stage 3B: feature-only processing to get to dim_model
         """
@@ -664,7 +661,7 @@ class TimeSeriesConv(nn.Module):
         # ---------------------------------------------------------------------------------------
 
         # MLP latent dynamics 
-        self.fc2 = nn.Linear(dim_model*time_len + dim_u, 128)
+        self.fc2 = nn.Linear(dim_model + dim_u, 128)
         #self.fc3 = nn.Linear(256, 256)
         #self.fc4 = nn.Linear(256, 256)
         self.fc5 = nn.Linear(128, dim_model)
@@ -741,8 +738,8 @@ class TimeSeriesConv(nn.Module):
         h = F.gelu(self.time_conv1(h))
         h = F.gelu(self.time_conv2(h))
         h = F.gelu(self.time_conv3(h))
-        #h = F.gelu(self.time_fc(h))
-        h = h.permute(0,2,1) # (B, T', dim_model)
+        h = F.gelu(self.time_fc(h))
+        h = h.permute(0,2,1) # (B, T, dim_model)
 
         # Stage 3B MLP
         #h = F.gelu(self.fc1(h))
@@ -752,14 +749,13 @@ class TimeSeriesConv(nn.Module):
         #h = F.gelu(self.fc5(h))
 
         # latent dynamics 
-        #z = h[:, -1, :]  # (B, dim_model)
+        z = h[:, -1, :]  # (B, dim_model)
         #zskip = z.clone()
         #Z = torch.zeros(z.size(0), rollout, z.size(1), device=z.device) 
         Z_list = []
         for r in range(rollout):
             u = u_seq[:, r, :] # (B, dim_u)
-            z = h.reshape(B, -1) # (B, T'*dim_model) flatten time and features for MLP processing
-            z = torch.cat([z, u], dim=1) # (B, T'*dim_model+dim_u)
+            z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
             z = F.gelu(self.fc2(z))
             #z = F.gelu(self.fc3(z))
             #z = F.gelu(self.fc4(z))
@@ -768,7 +764,6 @@ class TimeSeriesConv(nn.Module):
             #zskip = z.clone()
             #Z[:, r, :] = z
             Z_list.append(z)
-            h = torch.cat([h[:,1:,:], z.unsqueeze(1)], dim=1).contiguous()
         Z = torch.stack(Z_list, dim=1)
 
         # Output head --------------------------------------------------------------------
