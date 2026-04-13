@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset, ConcatDataset, Dataset
 #import matplotlib.pyplot as plt
 from myPytorchModels import TimeSeriesConv as myNetMdl
 from myPytorchModelTrainer import trainDynsysModel
+import pandas as pd
 from csv2numpy import prepTimeSeqData
 
 # %%
@@ -16,24 +17,17 @@ from csv2numpy import prepTimeSeqData
 
 seq_len = 128  # sequence length
 mdl_Ts = 0.01  # model sample time, s
-hzn_len = 8 # samples
 
-fs, feature_names, feature_correction, Xs, Ys, X, Y, _, _, _, _, Us, U = prepTimeSeqData(
-    seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
-    filepath="")
-Xs = torch.from_numpy(Xs).float()
-Ys = torch.from_numpy(Ys).float()
-Us = torch.from_numpy(Us).float()
-X = torch.from_numpy(X).float()
-Y = torch.from_numpy(Y).float()
-U = torch.from_numpy(U).float()
+infofile = "info.csv"
+info_df = pd.read_csv(infofile)
+feature_names = info_df.iloc[:, 0].values
 
 num_feat = len(feature_names)
 
 # %%
 # Initialize the Model, Loss Function, and Optimizer
 
-test_size=0.5
+test_size=0.1
 batch_size = 16
 
 groupsize = 15
@@ -49,6 +43,103 @@ fbias = fbias*mdl_Ts*2*math.pi # scale by model sample time and 2pi to convert t
 with torch.no_grad():
     model.fcoFreq.bias.copy_(fbias)
 
+total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+# %%
+# Step 4: Train the Model
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# start by performing a few epochs on each set 
+
+train_losses = []
+val_losses = []
+
+"""
+# train on initial
+model, tl, vl = trainDynsysModel(model, optimizer, criterion, (train_loader, train_loader_s), (test_loader, test_loader_s), num_epochs=5, allow_early_stopping=False)
+train_losses.extend(tl)
+val_losses.extend(vl)
+"""
+# del the _s loaders to free memory
+# del train_dataset_s, test_dataset_s, train_loader_s, test_loader_s, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
+
+# now the loop
+hzn_len = 1
+while hzn_len < 16:
+    _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
+        seq_len=seq_len, maxNumel=2e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
+        filepath="")
+    Xsh = torch.from_numpy(Xsh).float()
+    Ysh = torch.from_numpy(Ysh).float()
+    Ush = torch.from_numpy(Ush).float()
+    Xh = torch.from_numpy(Xh).float()
+    Yh = torch.from_numpy(Yh).float()
+    Uh = torch.from_numpy(Uh).float()
+
+    train_N = int((1 - test_size) * len(Xh))
+    Xh_train = Xh[:train_N]
+    Yh_train = Yh[:train_N]
+    Uh_train = Uh[:train_N]
+    Xh_test = Xh[train_N:]
+    Yh_test = Yh[train_N:]
+    Uh_test = Uh[train_N:]
+
+    train_N_s = int((1 - test_size) * len(Xsh))
+    Xsh_train = Xsh[:train_N_s]
+    Ysh_train = Ysh[:train_N_s]
+    Ush_train = Ush[:train_N_s]
+    Xsh_test = Xsh[train_N_s:]
+    Ysh_test = Ysh[train_N_s:]
+    Ush_test = Ush[train_N_s:]
+
+    # Create TensorDatasets and loaders
+    train_dataset_h = TensorDataset(Xh_train, Yh_train, Uh_train)
+    test_dataset_h = TensorDataset(Xh_test, Yh_test, Uh_test)
+    train_dataset_sh = TensorDataset(Xsh_train, Ysh_train, Ush_train)
+    test_dataset_sh = TensorDataset(Xsh_test, Ysh_test, Ush_test)
+    train_loader_h = DataLoader(train_dataset_h, batch_size, shuffle=True)
+    test_loader_h = DataLoader(test_dataset_h, batch_size, shuffle=False)
+    train_loader_sh = DataLoader(train_dataset_sh, batch_size, shuffle=True)
+    test_loader_sh = DataLoader(test_dataset_sh, batch_size, shuffle=False)
+
+    print("Total learnable parameters:", total_params)
+    print("Training data shape:", Yh_train.shape, Ysh_train.shape)
+    print("Training data size:", Yh_train.numel() + Ysh_train.numel())
+    print("Ratio: ", (Yh_train.numel() + Ysh_train.numel()) / total_params)
+
+    # train
+    model, tl, vl = trainDynsysModel(model, optimizer, criterion, (train_loader_h, train_loader_sh), (test_loader_h, test_loader_sh), num_epochs=5, allow_early_stopping=False)
+    train_losses.extend(tl)
+    val_losses.extend(vl)
+
+    # del to free memory
+    del Xsh, Ysh, Ush, Xh, Yh, Uh, Xh_train, Yh_train, Uh_train, Xh_test, Yh_test, Uh_test, Xsh_train, Ysh_train, Ush_train, Xsh_test, Ysh_test, Ush_test
+    del train_dataset_h, test_dataset_h, train_dataset_sh, test_dataset_sh, train_loader_h, test_loader_h, train_loader_sh, test_loader_sh
+
+    hzn_len *= 2
+
+"""
+# After loop: plot train/val loss to inspect convergence
+plt.plot(train_losses, label='train_loss')
+plt.plot(val_losses, label='val_loss')
+plt.xlabel('Epoch')
+plt.ylabel('MSE')
+plt.legend()
+plt.show()
+"""
+
+# %% 
+# load final data set 
+
+fs, feature_names, feature_correction, Xs, Ys, X, Y, _, _, _, _, Us, U = prepTimeSeqData(
+    seq_len=seq_len, maxNumel=2e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
+    filepath="")
+Xs = torch.from_numpy(Xs).float()
+Ys = torch.from_numpy(Ys).float()
+Us = torch.from_numpy(Us).float()
+X = torch.from_numpy(X).float()
+Y = torch.from_numpy(Y).float()
+U = torch.from_numpy(U).float()
 
 # %%
 
@@ -89,7 +180,6 @@ print(f"test dataset size: {len(test_dataset)}, test dataset_s size: {len(test_d
 print(f"train loader size: {len(train_loader)}, train loader_s size: {len(train_loader_s)}")
 print(f"test loader size: {len(test_loader)}, test loader_s size: {len(test_loader_s)}")
 
-total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print("Total learnable parameters:", total_params)
 print("Training data shape:", Y_train.shape, Ys_train.shape)
 print("Training data size:", Y_train.numel() + Ys_train.numel())
@@ -99,87 +189,6 @@ print("Ratio: ", (Y_train.numel() + Ys_train.numel()) / total_params)
 del train_dataset, test_dataset, train_dataset_s, test_dataset_s
 del X_train, Y_train, U_train, X_test, Y_test, U_test, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
 del X, Y, U, Xs, Ys, Us
-
-# %%
-# Step 4: Train the Model
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-# start by performing a few epochs on each set 
-
-train_losses = []
-val_losses = []
-
-"""
-# train on initial
-model, tl, vl = trainDynsysModel(model, optimizer, criterion, (train_loader, train_loader_s), (test_loader, test_loader_s), num_epochs=5, allow_early_stopping=False)
-train_losses.extend(tl)
-val_losses.extend(vl)
-"""
-# del the _s loaders to free memory
-# del train_dataset_s, test_dataset_s, train_loader_s, test_loader_s, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
-
-# now the loop
-hzn_len = 1
-while hzn_len <= 4:
-    _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
-        seq_len=seq_len, maxNumel=1e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
-        filepath="")
-    Xsh = torch.from_numpy(Xsh).float()
-    Ysh = torch.from_numpy(Ysh).float()
-    Ush = torch.from_numpy(Ush).float()
-    Xh = torch.from_numpy(Xh).float()
-    Yh = torch.from_numpy(Yh).float()
-    Uh = torch.from_numpy(Uh).float()
-
-    Xh_train = Xh[:train_N]
-    Yh_train = Yh[:train_N]
-    Uh_train = Uh[:train_N]
-    Xh_test = Xh[train_N:]
-    Yh_test = Yh[train_N:]
-    Uh_test = Uh[train_N:]
-
-    Xsh_train = Xsh[:train_N_s]
-    Ysh_train = Ysh[:train_N_s]
-    Ush_train = Ush[:train_N_s]
-    Xsh_test = Xsh[train_N_s:]
-    Ysh_test = Ysh[train_N_s:]
-    Ush_test = Ush[train_N_s:]
-
-    # Create TensorDatasets and loaders
-    train_dataset_h = TensorDataset(Xh_train, Yh_train, Uh_train)
-    test_dataset_h = TensorDataset(Xh_test, Yh_test, Uh_test)
-    train_dataset_sh = TensorDataset(Xsh_train, Ysh_train, Ush_train)
-    test_dataset_sh = TensorDataset(Xsh_test, Ysh_test, Ush_test)
-    train_loader_h = DataLoader(train_dataset_h, batch_size, shuffle=True)
-    test_loader_h = DataLoader(test_dataset_h, batch_size, shuffle=False)
-    train_loader_sh = DataLoader(train_dataset_sh, batch_size, shuffle=True)
-    test_loader_sh = DataLoader(test_dataset_sh, batch_size, shuffle=False)
-
-    print("Total learnable parameters:", total_params)
-    print("Training data shape:", Yh_train.shape, Ys_train.shape)
-    print("Training data size:", Yh_train.numel() + Ys_train.numel())
-    print("Ratio: ", (Yh_train.numel() + Ys_train.numel()) / total_params)
-
-    # train
-    model, tl, vl = trainDynsysModel(model, optimizer, criterion, (train_loader_h, train_loader_sh), (test_loader_h, test_loader_sh), num_epochs=5, allow_early_stopping=False)
-    train_losses.extend(tl)
-    val_losses.extend(vl)
-
-    # del to free memory
-    del Xsh, Ysh, Ush, Xh, Yh, Uh, Xh_train, Yh_train, Uh_train, Xh_test, Yh_test, Uh_test, Xsh_train, Ysh_train, Ush_train, Xsh_test, Ysh_test, Ush_test
-    del train_dataset_h, test_dataset_h, train_dataset_sh, test_dataset_sh, train_loader_h, test_loader_h, train_loader_sh, test_loader_sh
-
-    hzn_len *= 2
-
-"""
-# After loop: plot train/val loss to inspect convergence
-plt.plot(train_losses, label='train_loss')
-plt.plot(val_losses, label='val_loss')
-plt.xlabel('Epoch')
-plt.ylabel('MSE')
-plt.legend()
-plt.show()
-"""
 
 # %%
 # Step 4A: full training on baseline data 
