@@ -664,10 +664,10 @@ class TimeSeriesConv(nn.Module):
         # ---------------------------------------------------------------------------------------
 
         # MLP latent dynamics 
-        self.fc2 = nn.Linear(dim_model*time_len + dim_u, 256)
+        self.fc2 = nn.Linear(dim_model*time_len + dim_u, 512)
         #self.fc3 = nn.Linear(256, 256)
         #self.fc4 = nn.Linear(256, 256)
-        self.fc5 = nn.Linear(256, dim_model)
+        self.fc5 = nn.Linear(512, dim_model)
 
         # Output head for next-step prediction ------------------------------------------------
         self.fco1 = nn.Linear(dim_model, 128)
