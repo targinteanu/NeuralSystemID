@@ -89,6 +89,12 @@ print(f"test dataset size: {len(test_dataset)}, test dataset_s size: {len(test_d
 print(f"train loader size: {len(train_loader)}, train loader_s size: {len(train_loader_s)}")
 print(f"test loader size: {len(test_loader)}, test loader_s size: {len(test_loader_s)}")
 
+total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+print("Total learnable parameters:", total_params)
+print("Training data shape:", Y_train.shape, Ys_train.shape)
+print("Training data size:", Y_train.numel() + Ys_train.numel())
+print("Ratio: ", (Y_train.numel() + Ys_train.numel()) / total_params)
+
 # datasets no longer used once we have loaders, so we can delete to free memory
 del train_dataset, test_dataset, train_dataset_s, test_dataset_s
 del X_train, Y_train, U_train, X_test, Y_test, U_test, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
@@ -148,6 +154,11 @@ while hzn_len <= 4:
     test_loader_h = DataLoader(test_dataset_h, batch_size, shuffle=False)
     train_loader_sh = DataLoader(train_dataset_sh, batch_size, shuffle=True)
     test_loader_sh = DataLoader(test_dataset_sh, batch_size, shuffle=False)
+
+    print("Total learnable parameters:", total_params)
+    print("Training data shape:", Yh_train.shape, Ys_train.shape)
+    print("Training data size:", Yh_train.numel() + Ys_train.numel())
+    print("Ratio: ", (Yh_train.numel() + Ys_train.numel()) / total_params)
 
     # train
     model, tl, vl = trainDynsysModel(model, optimizer, criterion, (train_loader_h, train_loader_sh), (test_loader_h, test_loader_sh), num_epochs=5, allow_early_stopping=False)
