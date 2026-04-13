@@ -227,8 +227,8 @@ pinkP = median(pinkP);
 % amp scaling to baseline ref value 
 Tfilt = alltbls{1,2}{1}; % baseline 
 Xabs = envelope(Tfilt.Variables);
-Xref = median(Xabs); % alternatively consider the first of statelevels()
-featsplit = ((length(bandnames)-2)*length(chanlistsel));
+Xref = median(Xabs); % alternatively consider the first of statelevels() or using kmeans()
+featsplit = ((length(bandnames)-2)*length(chanlistsel)); % these get both mag and phase
 featsmooth = ceil(SampleRate/100); % prepare to downsample to 10ms
 
 for Ti = 1:height(alltbls)
@@ -299,6 +299,9 @@ for Ti = 1:height(alltbls)
     end
     alltbls{Ti,3} = TThilb; alltbls{Ti,4} = TTmaph;
 end
+
+% make Xref cols correspond to table cols (variables)
+Xref = [Xref(1:featsplit), nan(1,featsplit), nan(1,featsplit), Xref((featsplit+1):end)];
 
 %% evaluate difference between stim and baseline 
 
