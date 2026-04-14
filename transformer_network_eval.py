@@ -86,9 +86,10 @@ else:
 # recover filtered signal from processed features 
 def unprocess(Y, featcorrection):
     numGrpIgnored = numgroupsunpaired # last two groups will not be used
-    Ymag = Y[..., :(numgroups-numGrpIgnored)*groupsize]
-    Ycos = Y[..., (numgroups*groupsize):((2*numgroups-numGrpIgnored)*groupsize)]
-    Ysin = Y[..., ((2*numgroups-numGrpIgnored)*groupsize):]
+    N = (numgroups-numGrpIgnored)*groupsize
+    Ymag = Y[..., :N]
+    Ycos = Y[..., N:2*N]
+    Ysin = Y[..., 2*N:3*N]
     Ymag = np.sqrt(np.exp(Ymag)) * featcorrection[:(numgroups-numGrpIgnored)*groupsize]
     #Ytan = Ysin / (Ycos + np.finfo(float).eps)
     Yphase = np.arctan2(Ysin, Ycos)
