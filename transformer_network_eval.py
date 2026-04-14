@@ -13,7 +13,7 @@ numgroups=5
 numgroupsunpaired=2
 #fc = np.array([4,10,27,60,90]) # freq band center freqs
 fc = np.array([4,10,27]) # freq band center freqs
-netfile = "neural_network_pytorch_3c579152f0e52842ed5f6563025692e5401f637f.pth"
+netfile = "neural_network_pytorch_3c579152f0e52842ed5f6563025692e5401f637f(2).pth"
 dt_target = 0.01 # model sample time, s
 seq_len = 128 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -205,8 +205,8 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
     # channel plots
     fig, axes = plt.subplots(len(example_indices)+1, 1, sharex=True, figsize=(10, 8))
     for ax, idx in zip(axes, example_indices):
-        ax.plot(Ytrue_recon[:,:, idx].flatten(), label="True")
-        ax.plot(Ysim_recon[:,:, idx].flatten(), label="Simulated", alpha=0.7)
+        ax.plot(Ytrue_recon[:,:, idx].T.flatten(), label="True")
+        ax.plot(Ysim_recon[:,:, idx].T.flatten(), label="Simulated", alpha=0.7)
         ax.set_ylabel("Channel Value")
         ax.set_title(f"Channel: {idx}")
         ax.legend(fontsize='xx-small')
@@ -324,8 +324,6 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     Ysim_recon = np.sum(Ysim_grouped, axis=-2)
     if Ytrue_recon is None:
         Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
-    else:
-        Ytrue_recon = Ytrue_recon
     mse_recon = np.mean((Ysim_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
     rho_recon = np.array([ np.corrcoef(Ysim_recon[:,i], Ytrue_recon[:,i])[0,1] for i in range(Ytrue_recon.shape[1]) ])
 
