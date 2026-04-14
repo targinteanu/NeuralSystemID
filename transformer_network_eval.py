@@ -188,18 +188,26 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
     # channel data reconstruction
     Ysim_grouped = unprocess(Ysim, feature_correction)
     Ytrue_grouped = unprocess(Ytrue, feature_correction)
+    Yar_grouped = unprocess(Yar, feature_correction)
+    Ylin_grouped = unprocess(Ylin, feature_correction)
     N = numgroups-numgroupsunpaired
     Ysim_grouped = Ysim_grouped[..., :N*groupsize]
     Ytrue_grouped = Ytrue_grouped[..., :N*groupsize]
+    Yar_grouped = Yar_grouped[..., :N*groupsize]
+    Ylin_grouped = Ylin_grouped[..., :N*groupsize]
     Ysim_grouped = Ysim_grouped.reshape(Ysim.shape[0], -1, N, groupsize)
     Ytrue_grouped = Ytrue_grouped.reshape(Ytrue.shape[0], -1, N, groupsize)
+    Yar_grouped = Yar_grouped.reshape(Yar.shape[0], -1, N, groupsize)
+    Ylin_grouped = Ylin_grouped.reshape(Ylin.shape[0], -1, N, groupsize)
     Ysim_recon = np.sum(Ysim_grouped, axis=-2)
+    Yar_recon = np.sum(Yar_grouped, axis=-2)
+    Ylin_recon = np.sum(Ylin_grouped, axis=-2)
     if Ytrue_recon is None:
         Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
-    else:
-        Ytrue_recon = Ytrue_recon
     example_indices = np.arange(maxNdisp)
     print("Ysim shape :", Ysim_recon.shape)
+    print("Yar shape:", Yar_recon.shape)
+    print("Ylin shape:", Ylin_recon.shape)
     print("Ytrue shape:", Ytrue_recon.shape)
 
     # channel plots
@@ -207,6 +215,14 @@ def run_examplesim(U, X, Y, Ytrue_recon=None):
     for ax, idx in zip(axes, example_indices):
         ax.plot(Ytrue_recon[:,:, idx].T.flatten(), label="True")
         ax.plot(Ysim_recon[:,:, idx].T.flatten(), label="Simulated", alpha=0.7)
+        ax.plot(Yar_recon[:,:, idx].T.flatten(), label="AR Sim", alpha=0.6)
+        ax.plot(Ylin_recon[:,:, idx].T.flatten(), label="Linear Sim", alpha=0.5)
+        ymin = Ytrue_recon[:,:, idx].min()
+        ymax = Ytrue_recon[:,:, idx].max()
+        yrange = ymax - ymin
+        ymin -= yrange * 0.1
+        ymax += yrange * 0.1
+        ax.set_ylim(ymin, ymax)
         ax.set_ylabel("Channel Value")
         ax.set_title(f"Channel: {idx}")
         ax.legend(fontsize='xx-small')
