@@ -37,8 +37,8 @@ del X, Y, A, x, y
 # linear regression model using all features
 print("Training linear regression model using all features...")
 _, _, _, _, _, X, Y, _, _, _, _, _, _ = prepTimeSeqData(
-    seq_len=1, hzn_len=1, dt_target=dt_target, drawFromStart=True, maxNumel=1e5)
-X = X[:,0,:]
+    seq_len=1, hzn_len=1, dt_target=dt_target, drawFromStart=True, maxNumel=5e5)
+X = X[:,-1,:]
 Y = Y[:,0,:]
 Mlin = np.linalg.lstsq(X, Y, rcond=None)[0]
 del X, Y
