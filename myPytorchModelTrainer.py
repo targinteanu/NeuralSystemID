@@ -1,6 +1,7 @@
 import torch
 import copy
 from torch.amp import GradScaler, autocast
+import math
 
 def trainDynsysModel(
         model, 
@@ -70,6 +71,13 @@ def trainDynsysModel(
             val_losses.append(epoch_val_loss)
 
             print(f"Epoch {epoch+1}/{num_epochs} — train_loss: {epoch_train_loss:.6f}, val_loss: {epoch_val_loss:.6f}")
+
+            if math.isnan(epoch_train_loss) or math.isnan(epoch_val_loss) or math.isinf(epoch_train_loss) or math.isinf(epoch_val_loss):
+                print(train_size, len(test_loader.dataset))
+                print(X_batch.shape, Y_batch.shape, U_batch.shape)
+                print(X_val.shape, Y_val.shape, U_val.shape)
+                print(Y_pred.isnan().any(), Y_pred.isinf().any())
+                print(Y_val_pred.isnan().any(), Y_val_pred.isinf().any())
 
             # --- Early stopping and best model recording ---
             if allow_early_stopping:
