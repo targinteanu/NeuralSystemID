@@ -652,6 +652,7 @@ class TimeSeriesConv(nn.Module):
         #self.time_fc = nn.Linear(time_len - K1 + 1, len_model)
 
         # stage 3B: feature-only processing to get to dim_model
+        self.norm = nn.LayerNorm(mlp_in)
         """
         self.fc1 = nn.Linear(mlp_in, 256)
         #self.fc2 = nn.Linear(256, 256)
@@ -748,6 +749,7 @@ class TimeSeriesConv(nn.Module):
         h = h.permute(0,2,1) # (B, T, dim_model)
 
         # Stage 3B MLP
+        h = self.norm(h)
         #h = F.gelu(self.fc1(h))
         #h = F.gelu(self.fc2(h))
         #h = F.gelu(self.fc3(h))
