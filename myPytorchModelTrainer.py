@@ -20,7 +20,7 @@ def trainDynsysModel(
     model.to(device)
     
     # make a variable to store the best model
-    best_model = model.state_dict()
+    best_model = copy.deepcopy(model.state_dict())
     
     model.train()
     best_val = float('inf')
