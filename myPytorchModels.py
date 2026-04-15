@@ -761,12 +761,14 @@ class TimeSeriesConv(nn.Module):
         Z_list = []
         for r in range(rollout):
             u = u_seq[:, r, :] # (B, dim_u)
-            z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
-            z = F.gelu(self.fc2(z))
-            #z = F.gelu(self.fc3(z))
-            #z = F.gelu(self.fc4(z))
-            z = F.gelu(self.fc5(z))
+            #z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
+            #z = F.gelu(self.fc2(z))
+            dz = F.gelu(self.fc2(torch.cat([z, u], dim=1)))
+            #dz = F.gelu(self.fc3(dz))
+            #dz = F.gelu(self.fc4(dz))
+            dz = F.gelu(self.fc5(dz))
             #z = z + zskip # skip connection
+            z = z + dz # skip connection from previous latent state to next
             #zskip = z.clone()
             #Z[:, r, :] = z
             Z_list.append(z)
@@ -779,7 +781,7 @@ class TimeSeriesConv(nn.Module):
         #y = F.gelu(self.fco3(y))
         #y = self.fco4(y)  # (B, dim_out)
         #out = y + xy_skip # skip connection
-        yAmp = torch.cumsum(self.fcoAmp(y), dim=1) + xAmp_skip # predict amplitude with skip connection
+        yAmp = self.fcoAmp(y) + xAmp_skip # predict amplitude with skip connection
         yFreq = torch.cumsum(self.fcoFreq(y), dim=1)
         yCos = xCos_skip*torch.cos(yFreq) - xSin_skip*torch.sin(yFreq) # reconstruct cosine with predicted freq and skip connection
         ySin = xSin_skip*torch.cos(yFreq) + xCos_skip*torch.sin(yFreq) # reconstruct sine with predicted freq and skip connection
