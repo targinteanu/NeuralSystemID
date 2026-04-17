@@ -269,34 +269,40 @@ def prepTimeSeqData(
     baseline_data_raw = baseline_df.iloc[:, 1:].values           # data columns
     del baseline_df  # free memory
 
-    if baseline_data_raw.shape[0] > maxPairs:
-        print("Warning: "+str(baseline_data_raw.shape[0]-maxPairs)+" baseline samples will be ignored to meet maxNumel limit.")
+    LBL = baseline_data_raw.shape[0]
+    if LBL > maxPairs:
+        print("Warning: "+str(LBL-maxPairs)+" baseline samples will be ignored to meet maxNumel limit.")
 
     if drawFromStart:
-        iBLend = min(baseline_data_raw.shape[0], maxPairs)
+        iBLend = min(LBL, maxPairs)
         baseline_time = baseline_time[:iBLend]
         baseline_data_raw = baseline_data_raw[:iBLend, :]
+        print("Baseline samples used:", 1, "to", iBLend+1)
     else: 
-        iBLstart = max(0, baseline_data_raw.shape[0] - maxPairs)
+        iBLstart = max(0, LBL - maxPairs)
         baseline_time = baseline_time[iBLstart:]
         baseline_data_raw = baseline_data_raw[iBLstart:, :]
+        print("Baseline samples used:", iBLstart+1, "to", LBL)
 
     df = pd.read_csv(datarawfile, dtype=np.float32)
     time = df.iloc[:, 0].values            # time column (seconds)
     data_raw = df.iloc[:, 1:].values           # data columns
     del df  # free memory
 
-    if data_raw.shape[0] > maxPairs:
-        print("Warning: "+str(data_raw.shape[0]-maxPairs)+" samples will be ignored to meet maxNumel limit.")
+    L = data_raw.shape[0]
+    if L > maxPairs:
+        print("Warning: "+str(L-maxPairs)+" samples will be ignored to meet maxNumel limit.")
 
     if drawFromStart:
-        iEnd = min(data_raw.shape[0], maxPairs)
+        iEnd = min(L, maxPairs)
         time = time[:iEnd]
         data_raw = data_raw[:iEnd, :]
+        print("Samples used:", 1, "to", iEnd+1)
     else: 
-        iStart = max(0, data_raw.shape[0] - maxPairs)
+        iStart = max(0, L - maxPairs)
         time = time[iStart:]
         data_raw = data_raw[iStart:, :]
+        print("Samples used:", iStart+1, "to", L)
 
     # ------------------------
     # Determine outliers
