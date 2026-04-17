@@ -29,6 +29,6 @@ torch.onnx.export(
     netfile+".onnx", 
     input_names=["X", "U"], 
     output_names=["Y"], 
-    opset_version=13, 
+    opset_version=18, 
     do_constant_folding=True
 )
