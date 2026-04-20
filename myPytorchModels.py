@@ -634,14 +634,14 @@ class TimeSeriesConv(nn.Module):
         self.pair_fc2 = nn.Linear(C1, self.pair_output) 
 
         # Stage 2: linear over flattened group
-        self.group_fcA = nn.Linear(group_size * self.pair_output, 4)
-        #nn.ModuleList([nn.Linear(group_size * self.pair_output, 4) for _ in range(num_groups-numGrpUnpaired)])
-        self.group_fcC = nn.Linear(group_size, 2)
-        #nn.ModuleList([nn.Linear(group_size, 2) for _ in range(numGrpUnpaired)])
+        self.group_fcA = nn.Linear(group_size * self.pair_output, 8)
+        #nn.ModuleList([nn.Linear(group_size * self.pair_output, 8) for _ in range(num_groups-numGrpUnpaired)])
+        self.group_fcC = nn.Linear(group_size, 4)
+        #nn.ModuleList([nn.Linear(group_size, 4) for _ in range(numGrpUnpaired)])
         b_in = (num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired
-        self.group_fcB = nn.Linear(b_in, 2)
-        #nn.ModuleList([nn.Linear(b_in, 2) for _ in range(group_size)])
-        mlp_in = ((num_groups-numGrpUnpaired) * 4) + (group_size * 2) + (numGrpUnpaired * 2) + leftover_dim
+        self.group_fcB = nn.Linear(b_in, 4)
+        #nn.ModuleList([nn.Linear(b_in, 4) for _ in range(group_size)])
+        mlp_in = ((num_groups-numGrpUnpaired) * 8) + (group_size * 4) + (numGrpUnpaired * 4) + leftover_dim
         dim_model = mlp_in
 
         # stage 3A: time-only processing to get to len_model
