@@ -67,7 +67,7 @@ val_losses.extend(vl)
 hzn_len = 1
 while hzn_len < 16:
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
-        seq_len=seq_len, maxNumel=5e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
+        seq_len=seq_len, maxNumel=4e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
         filepath="")
     Xsh = torch.from_numpy(Xsh).float()
     Ysh = torch.from_numpy(Ysh).float()
