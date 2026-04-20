@@ -617,7 +617,7 @@ class TimeSeriesConv(nn.Module):
 
         # preprocessing features -------------------------------------------
         
-        C1 = 8
+        C1 = 4
 
         self.num_groups = num_groups
         self.group_size = group_size
@@ -626,21 +626,22 @@ class TimeSeriesConv(nn.Module):
         self.num_pairs = (num_groups - numGrpUnpaired) * group_size  
         used_for_pairing = self.num_pairs * tuple_size
         leftover_dim = dim_in - used_for_pairing - (numGrpUnpaired * group_size)
-        self.pair_output = 4
+        self.pair_output = 2
 
         # Stage 1: pairwise linear 
         self.pair_fc1 = nn.Linear(tuple_size, C1) 
+        self.pair_norm = nn.LayerNorm(C1)
         self.pair_fc2 = nn.Linear(C1, self.pair_output) 
 
         # Stage 2: linear over flattened group
-        self.group_fcA = nn.Linear(group_size * self.pair_output, 8)
-        #nn.ModuleList([nn.Linear(group_size * self.pair_output, 8) for _ in range(num_groups-numGrpUnpaired)])
-        self.group_fcC = nn.Linear(group_size, 4)
-        #nn.ModuleList([nn.Linear(group_size, 4) for _ in range(numGrpUnpaired)])
+        self.group_fcA = nn.Linear(group_size * self.pair_output, 4)
+        #nn.ModuleList([nn.Linear(group_size * self.pair_output, 4) for _ in range(num_groups-numGrpUnpaired)])
+        self.group_fcC = nn.Linear(group_size, 2)
+        #nn.ModuleList([nn.Linear(group_size, 2) for _ in range(numGrpUnpaired)])
         b_in = (num_groups-numGrpUnpaired) * self.pair_output + numGrpUnpaired
-        self.group_fcB = nn.Linear(b_in, 4)
-        #nn.ModuleList([nn.Linear(b_in, 4) for _ in range(group_size)])
-        mlp_in = ((num_groups-numGrpUnpaired) * 8) + (group_size * 4) + (numGrpUnpaired * 4) + leftover_dim
+        self.group_fcB = nn.Linear(b_in, 2)
+        #nn.ModuleList([nn.Linear(b_in, 2) for _ in range(group_size)])
+        mlp_in = ((num_groups-numGrpUnpaired) * 4) + (group_size * 2) + (numGrpUnpaired * 2) + leftover_dim
         dim_model = mlp_in
 
         # stage 3A: time-only processing to get to len_model
@@ -667,6 +668,7 @@ class TimeSeriesConv(nn.Module):
         # MLP latent dynamics 
         self.fc2 = nn.Linear(dim_model + dim_u, 128)
         #self.fc3 = nn.Linear(256, 256)
+        self.fcnorm = nn.LayerNorm(128)
         #self.fc4 = nn.Linear(256, 256)
         self.fc5 = nn.Linear(128, dim_model)
 
@@ -716,6 +718,7 @@ class TimeSeriesConv(nn.Module):
 
         # Stage 1
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
+        p = self.pair_norm(p)
         p = F.gelu(self.pair_fc2(p))           # (B,T,N,pair_output)
 
         # Stage 2A: groups
@@ -767,6 +770,7 @@ class TimeSeriesConv(nn.Module):
             #z = F.gelu(self.fc2(z))
             dz = F.gelu(self.fc2(torch.cat([z, u], dim=1)))
             #dz = F.gelu(self.fc3(dz))
+            dz = self.fcnorm(dz)
             #dz = F.gelu(self.fc4(dz))
             dz = F.gelu(self.fc5(dz))
             #z = z + zskip # skip connection
