@@ -309,15 +309,20 @@ def prepTimeSeqData(
     # ------------------------
     if omitOutliers:
         threshsd = 3 # standard deviations 
-        threshprop = .5 # proportion of features
+        threshprop = .005 # proportion of features
+        winsize = np.ceil(5 * fs).astype(int) # window for smoothing outlier counts
         BLmean = np.mean(baseline_data_raw, axis=0)
         BLstd = np.std(baseline_data_raw, axis=0)
         BLisout = np.abs(baseline_data_raw - BLmean) > (threshsd * BLstd)
-        BLisnoise = np.sum(BLisout, axis=1) > (threshprop * baseline_data_raw.shape[1])
-        threshsd = 4 # standard deviations 
-        threshprop = .9 # proportion of features
+        BLisnoise = np.sum(BLisout, axis=1)
+        BLisnoise = np.convolve(BLisnoise.astype(float), np.ones(winsize)/winsize, mode='same')
+        BLisnoise = BLisnoise > (threshprop * baseline_data_raw.shape[1])
+        threshsd = 10 # standard deviations 
+        threshprop = .01 # proportion of features
         isout = np.abs(data_raw - BLmean) > (threshsd * BLstd)
-        isnoise = np.sum(isout, axis=1) > (threshprop * data_raw.shape[1])
+        isnoise = np.sum(isout, axis=1)
+        isnoise = np.convolve(isnoise.astype(float), np.ones(winsize)/winsize, mode='same')
+        isnoise = isnoise > (threshprop * data_raw.shape[1])
     else:
         BLisnoise = np.zeros(baseline_data_raw.shape[0], dtype=bool)
         isnoise = np.zeros(data_raw.shape[0], dtype=bool)
