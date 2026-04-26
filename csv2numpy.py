@@ -82,14 +82,21 @@ def prepTimeData(
     # Determine outliers
     # ------------------------
     if omitOutliers:
-        threshsd = 3 # standard deviations 
-        threshprop = .5 # proportion of features
-        BLmean = np.mean(baseline_data_raw, axis=0)
-        BLstd = np.std(baseline_data_raw, axis=0)
+        threshsd = 5 # standard deviations 
+        threshprop = .01 # proportion of features
+        winsize = np.ceil(10 * fs).astype(int) # window for smoothing outlier counts
+        BLmean = np.median(baseline_data_raw, axis=0) # changed mean -> median for robustness to outliers
+        BLstd = stats.median_abs_deviation(baseline_data_raw, axis=0, scale='normal') # changed SD -> MAD
         BLisout = np.abs(baseline_data_raw - BLmean) > (threshsd * BLstd)
-        BLisnoise = np.sum(BLisout, axis=1) > (threshprop * baseline_data_raw.shape[1])
+        BLisnoise = np.sum(BLisout, axis=1)
+        BLisnoise = np.convolve(BLisnoise.astype(float), np.ones(winsize)/winsize, mode='same')
+        BLisnoise = BLisnoise > (threshprop * baseline_data_raw.shape[1])
+        threshsd = 6 # standard deviations 
+        threshprop = .01 # proportion of features
         isout = np.abs(data_raw - BLmean) > (threshsd * BLstd)
-        isnoise = np.sum(isout, axis=1) > (threshprop * data_raw.shape[1])
+        isnoise = np.sum(isout, axis=1)
+        isnoise = np.convolve(isnoise.astype(float), np.ones(winsize)/winsize, mode='same')
+        isnoise = isnoise > (threshprop * data_raw.shape[1])
     else:
         BLisnoise = np.zeros(baseline_data_raw.shape[0], dtype=bool)
         isnoise = np.zeros(data_raw.shape[0], dtype=bool)
@@ -422,10 +429,10 @@ def prepTimeSeqData(
         Nbl = iBLend
     else:
         Nbl = len(baseline_data)
-    for iStart in range(drow_target):
+    for i0 in range(drow_target):
         inputs = []
         inputs_raw = []
-        for i in range(iStart, (Nbl - drow_target), drow_target):
+        for i in range(i0, (Nbl - drow_target), drow_target):
             dt = baseline_time[i+drow_target] - baseline_time[i]
             if (abs(dt - dt_target) <= dt_tol) and (not BLisnoise[i]):
                 inputs.append(baseline_data[i, :]) 
@@ -477,11 +484,11 @@ def prepTimeSeqData(
         N = iEnd
     else:
         N = len(data)
-    for iStart in range(drow_target):
+    for i0 in range(drow_target):
         inputs = []
         inputs_raw = []
         evs = []
-        for i in range(iStart, (N - drow_target), drow_target):
+        for i in range(i0, (N - drow_target), drow_target):
             dt = time[i+drow_target] - time[i]
             if (abs(dt - dt_target) <= dt_tol) and (not isnoise[i]):
                 inputs.append(data[i, :]) 
