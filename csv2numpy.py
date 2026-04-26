@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from scipy import stats
 import math
 import bisect
 
@@ -308,16 +309,16 @@ def prepTimeSeqData(
     # Determine outliers
     # ------------------------
     if omitOutliers:
-        threshsd = 3 # standard deviations 
-        threshprop = .005 # proportion of features
-        winsize = np.ceil(5 * fs).astype(int) # window for smoothing outlier counts
-        BLmean = np.mean(baseline_data_raw, axis=0)
-        BLstd = np.std(baseline_data_raw, axis=0)
+        threshsd = 5 # standard deviations 
+        threshprop = .01 # proportion of features
+        winsize = np.ceil(10 * fs).astype(int) # window for smoothing outlier counts
+        BLmean = np.median(baseline_data_raw, axis=0) # changed mean -> median for robustness to outliers
+        BLstd = stats.median_abs_deviation(baseline_data_raw, axis=0, scale='normal') # changed SD -> MAD
         BLisout = np.abs(baseline_data_raw - BLmean) > (threshsd * BLstd)
         BLisnoise = np.sum(BLisout, axis=1)
         BLisnoise = np.convolve(BLisnoise.astype(float), np.ones(winsize)/winsize, mode='same')
         BLisnoise = BLisnoise > (threshprop * baseline_data_raw.shape[1])
-        threshsd = 10 # standard deviations 
+        threshsd = 6 # standard deviations 
         threshprop = .01 # proportion of features
         isout = np.abs(data_raw - BLmean) > (threshsd * BLstd)
         isnoise = np.sum(isout, axis=1)
