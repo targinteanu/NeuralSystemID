@@ -2,12 +2,65 @@
 
 % find files and determine data fields 
 fp = uigetdir;
-filelist = dir(fp);
+filelist = dir(fullfile(fp, '*.mat'));
 file1 = filelist(~[filelist.isdir]);
 file1 = file1(arrayfun(@(f) f.bytes > 0, file1));
 file1 = file1(arrayfun(@(f) f.name(1)~='.', file1));
-file1 = file1(1); load(fullfile(file1.folder, file1.name));
-channelNames = {Channel_ID_Name_Map.Name};
+
+channelNamesAll = []; Fs = [];
+for fi = 1:length(file1)
+
+curfile = file1(fi); 
+curfiledata = load(fullfile(curfile.folder, curfile.name));
+if isfield(curfiledata, 'Channel_ID_Name_Map')
+    channelNames = {curfiledata.Channel_ID_Name_Map.Name};
+else
+    allFields = fieldnames(curfiledata);
+    channelFields = cellfun(@(str) str(1)=='C', allFields);
+    channelNames = allFields(channelFields);
+    channelInfo = ... trim away fields that are info about channels
+        contains(lower(channelNames), 'hz') | ...
+        contains(lower(channelNames), 'resolution') | ...
+        (contains(lower(channelNames), 'level') & ~contains(lower(channelNames), 'level_seg')) | ...
+        contains(lower(channelNames), 'gain') | ...
+        contains(lower(channelNames), 'time');
+    channelNames = channelNames(~channelInfo);
+    % 'LEVEL_SEG' should be removed from the end of some channel names!
+end
+
+% channel selection 
+% For now, only select ANALOG_IN and LFP channels; ignore spike, RAW, and
+% SEG. In the future, spike sorting should be performed later in this
+% script instead of throwing out spikes. Not sure what to do with RAW/SEG
+chincl = contains(channelNames, 'LFP') | ...
+         contains(channelNames, 'ANALOG_IN');
+channelNames = channelNames(chincl); 
+
+% get sample rates
+fs = cellfun(@getsamplerate, channelNames);
+
+% store, clear, move on
+Fs = [Fs; fs];
+channelNamesAll = [channelNamesAll; channelNames];
+clear curfile curfiledata
+clear channelNames channelInfo channelFields allFields
+clear fs
+
+end
+channelNames = channelNamesAll; clear channelNamesAll
+
+[channelNames, iFs] = unique(channelNames);
+Fs = Fs(iFs); clear iFs
+
+% group channels by sampling rate 
+FsGrouped = unique(Fs);
+channelNamesGrouped = cell(size(FsGrouped));
+for grp = 1:length(FsGrouped)
+    grpInds = Fs == FsGrouped(grp);
+    channelNamesGrouped{grp} = channelNames(grpInds);
+end
+clear grp grpInds
+
 fileDataFields = {...
     'SF_DRIVE_CONF', ...
     ... 'SF_DRIVE_DOWN', ...
@@ -18,23 +71,6 @@ fileDataFields = {...
     }; 
 channelDataFields = {'BitResolution', 'Gain'};
 
-% channel selection 
-% For now, only select ANALOG_IN and LFP channels; ignore spike, RAW, and
-% SEG. In the future, spike sorting should be performed later in this
-% script instead of throwing out spikes. Not sure what to do with RAW/SEG
-chincl = contains(channelNames, 'LFP') | ...
-         contains(channelNames, 'ANALOG_IN');
-channelNames = channelNames(chincl); 
-
-% group channels by sampling rate 
-Fs = cellfun(@getsamplerate, channelNames);
-FsGrouped = unique(Fs);
-channelNamesGrouped = cell(size(FsGrouped));
-for grp = 1:length(FsGrouped)
-    grpInds = Fs == FsGrouped(grp);
-    channelNamesGrouped{grp} = channelNames(grpInds);
-end
-clear grp grpInds
 Tbls0 = cell(size(FsGrouped));
 Tbls = Tbls0;
 
@@ -50,10 +86,12 @@ mkdir(svloc);
 %% run1 - populate "horizontal" 
 
 for f = filelist'
+    %%{
     clearvars -except ...
         Tbls Tbls0 channelNames channelDataFields fileDataFields ...
         f filelist svloc svN sizethresh ...
         Fs FsGrouped channelNamesGrouped
+    %}
     if (~f.isdir) && (f.bytes > 0)
         fnfull = fullfile(f.folder, f.name); 
         [fp,fn,fe] = fileparts(fnfull);
