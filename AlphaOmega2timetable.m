@@ -12,21 +12,7 @@ for fi = 1:length(file1)
 
 curfile = file1(fi); 
 curfiledata = load(fullfile(curfile.folder, curfile.name));
-if isfield(curfiledata, 'Channel_ID_Name_Map')
-    channelNames = {curfiledata.Channel_ID_Name_Map.Name};
-else
-    allFields = fieldnames(curfiledata);
-    channelFields = cellfun(@(str) str(1)=='C', allFields);
-    channelNames = allFields(channelFields);
-    channelInfo = ... trim away fields that are info about channels
-        contains(lower(channelNames), 'hz') | ...
-        contains(lower(channelNames), 'resolution') | ...
-        (contains(lower(channelNames), 'level') & ~contains(lower(channelNames), 'level_seg')) | ...
-        contains(lower(channelNames), 'gain') | ...
-        contains(lower(channelNames), 'time');
-    channelNames = channelNames(~channelInfo);
-    % 'LEVEL_SEG' should be removed from the end of some channel names!
-end
+channelNames = getChannelNames(curfiledata);
 
 % channel selection 
 % For now, only select ANALOG_IN and LFP channels; ignore spike, RAW, and
@@ -37,14 +23,13 @@ chincl = contains(channelNames, 'LFP') | ...
 channelNames = channelNames(chincl); 
 
 % get sample rates
-fs = cellfun(@getsamplerate, channelNames);
+fs = cellfun(@(chN) getsamplerate(chN, curfiledata), channelNames);
 
 % store, clear, move on
 Fs = [Fs; fs];
 channelNamesAll = [channelNamesAll; channelNames];
 clear curfile curfiledata
-clear channelNames channelInfo channelFields allFields
-clear fs
+clear channelNames fs
 
 end
 channelNames = channelNamesAll; clear channelNamesAll
@@ -86,7 +71,7 @@ mkdir(svloc);
 %% run1 - populate "horizontal" 
 
 for f = filelist'
-    %%{
+    %{
     clearvars -except ...
         Tbls Tbls0 channelNames channelDataFields fileDataFields ...
         f filelist svloc svN sizethresh ...
@@ -99,7 +84,7 @@ for f = filelist'
         fn1 = fn(1:(fni-1)); fn2 = fn((fni+1):end);
         fn1 = string(fn1); fn2 = string(fn2);
         if strcmpi(fe, '.mat')
-            load(fnfull)
+            curfiledata = load(fnfull);
 
             %{
             % anticipate if the memory will become full; 
@@ -114,36 +99,36 @@ for f = filelist'
             %}
 
             % look at channels 
-            chNames = {Channel_ID_Name_Map.Name};
+            chNames = getChannelNames(curfiledata);
             chincl = contains(chNames, 'LFP') | ...
                      contains(chNames, 'ANALOG_IN');
             chNames = chNames(chincl);
             if ~strcmpwrapper(channelNames, chNames)
                 warning(['On ',fn,': channel names do not match'])
             end
-            FileData = varnames2struct(fileDataFields, '');
+            FileData = varnames2struct(fileDataFields, curfiledata, '');
             for FSGRP = 1:length(channelNamesGrouped)
                 TT = []; T1 = inf; T2 = -inf;
                 chNamesGrp = channelNamesGrouped{FSGRP};
                 for CHNAME = chNamesGrp
                 chName = CHNAME{:};
                 try
-                t1 = eval([chName,'_TimeBegin']); % s
-                t2 = eval([chName,'_TimeEnd']); % s
-                fs = eval([chName,'_KHz'])*1000; % Hz
+                t1 = curfiledata.([chName,'_TimeBegin']); % s
+                t2 = curfiledata.([chName,'_TimeEnd']); % s
+                fs = curfiledata.([chName,'_KHz'])*1000; % Hz
                 T1 = min(T1, t1); T2 = max(T2, t2);
                 t = t1:(1/fs):t2; 
-                if exist([chName,'_BitResolution'],'var')
-                    DataRes = eval([chName,'_BitResolution']);
+                if isfield(curfiledata, [chName,'_BitResolution'])
+                    DataRes = curfiledata.([chName,'_BitResolution']);
                 else
                     DataRes = 1;
                 end
-                if exist([chName,'_Gain'],'var')
-                    DataGain = eval([chName,'_Gain']);
+                if isfield(curfiledata, [chName,'_Gain'])
+                    DataGain = curfiledata.([chName,'_Gain']);
                 else
                     DataGain = 1;
                 end
-                Data = eval(chName); % int
+                Data = curfiledata.(chName); % int
                 Data = double(Data)*DataRes/DataGain;
                 if length(t) ~= length(Data)
                     err = abs(length(Data) - length(t))/length(Data);
@@ -180,7 +165,7 @@ for f = filelist'
                     Tbls = Tbls0;
                 end
             end
-            clear FileData
+            clear curfiledata FileData
         end
     end
 end
@@ -245,20 +230,38 @@ end
 
 %% helper 
 
-function fs = getsamplerate(chName)
+function fs = getsamplerate(chName, filedata)
 fs = 0;
     try 
-        fs = evalinwrapper([chName,'_KHz'])*1000; % Hz
+        fs = filedata.([chName,'_KHz'])*1000; % Hz
     catch ME
         warning(['On ',chName,': ',ME.message])
     end
 end
 
-function S = varnames2struct(varnames, header)
-if nargin < 2
+function channelNames = getChannelNames(curfiledata)
+if isfield(curfiledata, 'Channel_ID_Name_Map')
+    channelNames = {curfiledata.Channel_ID_Name_Map.Name};
+else
+    allFields = fieldnames(curfiledata);
+    channelFields = cellfun(@(str) str(1)=='C', allFields);
+    channelNames = allFields(channelFields);
+    channelInfo = ... trim away fields that are info about channels
+        contains(lower(channelNames), 'hz') | ...
+        contains(lower(channelNames), 'resolution') | ...
+        (contains(lower(channelNames), 'level') & ~contains(lower(channelNames), 'level_seg')) | ...
+        contains(lower(channelNames), 'gain') | ...
+        contains(lower(channelNames), 'time');
+    channelNames = channelNames(~channelInfo);
+    % TO DO: 'LEVEL_SEG' should be removed from the end of some channel names!
+end
+end
+
+function S = varnames2struct(varnames, filedata, header)
+if nargin < 3
     header = '';
 end
-vars = cellfun(@(vn) evalinwrapper([header,vn]), varnames, 'UniformOutput', false);
+vars = cellfun(@(vn) filedata.([header,vn]), varnames, 'UniformOutput', false);
 S = cell2struct(vars, varnames, 2);
 end
 
@@ -266,18 +269,6 @@ function yn = strcmpwrapper(strs1, strs2)
 yn = length(strs1) == length(strs2); 
 if yn 
     yn = prod(strcmp(strs1, strs2));
-end
-end
-
-function var = evalinwrapper(varname)
-try 
-    var = evalin('base',varname);
-catch ME 
-    if contains(ME.message, 'Unrecognized function or variable')
-        var = nan;
-    else
-        rethrow(ME)
-    end
 end
 end
 
