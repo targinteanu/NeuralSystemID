@@ -281,6 +281,7 @@ def prepTimeSeqData(
     if LBL > maxPairs:
         print("Warning: "+str(LBL-maxPairs)+" baseline samples will be ignored to meet maxNumel limit.")
 
+    """
     if drawFromStart:
         iBLend = min(LBL, maxPairs)
         baseline_time = baseline_time[:iBLend]
@@ -291,6 +292,7 @@ def prepTimeSeqData(
         baseline_time = baseline_time[iBLstart:]
         baseline_data_raw = baseline_data_raw[iBLstart:, :]
         print("Baseline samples used:", iBLstart+1, "to", LBL)
+    """
 
     df = pd.read_csv(datarawfile, dtype=np.float32)
     time = df.iloc[:, 0].values            # time column (seconds)
@@ -301,6 +303,7 @@ def prepTimeSeqData(
     if L > maxPairs:
         print("Warning: "+str(L-maxPairs)+" samples will be ignored to meet maxNumel limit.")
 
+    """
     if drawFromStart:
         iEnd = min(L, maxPairs)
         time = time[:iEnd]
@@ -311,6 +314,7 @@ def prepTimeSeqData(
         time = time[iStart:]
         data_raw = data_raw[iStart:, :]
         print("Samples used:", iStart+1, "to", L)
+    """
 
     # ------------------------
     # Determine outliers
@@ -346,24 +350,40 @@ def prepTimeSeqData(
     baseline_data = baseline_df.iloc[:, 1:].values           # data columns
     del baseline_df  # free memory
 
+    """
     if drawFromStart:
         baseline_time = baseline_time[:iBLend]
         baseline_data = baseline_data[:iBLend, :]
     else:
         baseline_time = baseline_time[iBLstart:]
         baseline_data = baseline_data[iBLstart:, :]
+    """
 
     df = pd.read_csv(datafile, dtype=np.float32)
     time = df.iloc[:, 0].values            # time column (seconds)
     data = df.iloc[:, 1:].values           # data columns
     del df  # free memory
 
+    """
     if drawFromStart:
         time = time[:iEnd]
         data = data[:iEnd, :]
     else:
         time = time[iStart:]
         data = data[iStart:, :]
+    """
+
+    if not drawFromStart:
+        iBLstart = max(0, LBL - maxPairs)
+        baseline_time = baseline_time[iBLstart:]
+        baseline_data = baseline_data[iBLstart:, :]
+        baseline_data_raw = baseline_data_raw[iBLstart:, :]
+        BLisnoise = BLisnoise[iBLstart:]
+        iStart = max(0, L - maxPairs)
+        time = time[iStart:]
+        data = data[iStart:, :]
+        data_raw = data_raw[iStart:, :]
+        isnoise = isnoise[iStart:]
 
     # ------------------------
     # Load events
@@ -425,14 +445,23 @@ def prepTimeSeqData(
     Xr_list = []
     Yr_list = []
 
+    """
     if drawFromStart:
         Nbl = iBLend
     else:
         Nbl = len(baseline_data)
-    for i0 in range(drow_target):
+    """
+    Nbl = len(baseline_data)
+    i0 = 0
+    nPairs = 0
+    iBLend = 0
+    #for i0 in range(drow_target):
+    while (i0 < drow_target) and (nPairs < maxPairs):
         inputs = []
         inputs_raw = []
-        for i in range(i0, (Nbl - drow_target), drow_target):
+        i = i0
+        #for i in range(i0, (Nbl - drow_target), drow_target):
+        while (i < (Nbl - drow_target)) and (nPairs < maxPairs):
             dt = baseline_time[i+drow_target] - baseline_time[i]
             if (abs(dt - dt_target) <= dt_tol) and (not BLisnoise[i]):
                 inputs.append(baseline_data[i, :]) 
@@ -447,8 +476,11 @@ def prepTimeSeqData(
                         Y_list.append(y)
                         Xr_list.append(xr)
                         Yr_list.append(yr)
+                        nPairs += 1
+                        iBLend = max(iBLend, i)
                 inputs = []
                 inputs_raw = []
+            i += drow_target
         # catch trailing segment
         if len(inputs) > seq_len+hzn_len:
             inputs = np.array(inputs)
@@ -459,6 +491,14 @@ def prepTimeSeqData(
                 Y_list.append(y)
                 Xr_list.append(xr)
                 Yr_list.append(yr)
+                nPairs += 1
+                iBLend = max(iBLend, i)
+        i0 += 1
+    
+    if drawFromStart:
+        print("Samples used: ", 1, " to ", iBLend+1)
+    else:
+        print("Samples used: ", iStart+1, " to ", LBL)
 
     Xbl = np.concatenate(X_list, axis=0)
     Ybl = np.concatenate(Y_list, axis=0)
@@ -480,15 +520,24 @@ def prepTimeSeqData(
     Yr_list = []
     U_list = []
 
+    """
     if drawFromStart:
         N = iEnd
     else:
         N = len(data)
-    for i0 in range(drow_target):
+    """
+    N = len(data)
+    i0 = 0
+    nPairs = 0
+    iEnd = 0
+    #for i0 in range(drow_target):
+    while (i0 < drow_target) and (nPairs < maxPairs):
         inputs = []
         inputs_raw = []
         evs = []
-        for i in range(i0, (N - drow_target), drow_target):
+        i = i0
+        #for i in range(i0, (N - drow_target), drow_target):
+        while (i < (N - drow_target)) and (nPairs < maxPairs):
             dt = time[i+drow_target] - time[i]
             if (abs(dt - dt_target) <= dt_tol) and (not isnoise[i]):
                 inputs.append(data[i, :]) 
@@ -506,9 +555,12 @@ def prepTimeSeqData(
                         Xr_list.append(xr)
                         Yr_list.append(yr)
                         U_list.append(u)
+                        nPairs += 1
+                        iEnd = max(iEnd, i)
                 inputs = []
                 inputs_raw = []
                 evs = []
+            i += drow_target
         # catch trailing segment
         if len(inputs) > seq_len+hzn_len:
             inputs = np.array(inputs)
@@ -521,6 +573,14 @@ def prepTimeSeqData(
                 Xr_list.append(xr)
                 Yr_list.append(yr)
                 U_list.append(u)
+                nPairs += 1
+                iEnd = max(iEnd, i)
+            i0 += 1
+
+    if drawFromStart:
+        print("Samples used: ", 1, " to ", iEnd+1)
+    else:
+        print("Samples used: ", iStart+1, " to ", L)
 
     X = np.concatenate(X_list, axis=0)
     Y = np.concatenate(Y_list, axis=0)
