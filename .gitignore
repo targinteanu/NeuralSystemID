@@ -39,3 +39,4 @@ eventsraw.csv
 /__pycache__
 *.data
 *.onnx
+/.vscode
