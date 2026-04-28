@@ -668,7 +668,7 @@ class TimeSeriesConv(nn.Module):
         # MLP latent dynamics 
         self.fc2 = nn.Linear(dim_model + dim_u, 128)
         #self.fc3 = nn.Linear(256, 256)
-        self.fcnorm = nn.LayerNorm(128)
+        #self.fcnorm = nn.LayerNorm(128)
         #self.fc4 = nn.Linear(256, 256)
         self.fc5 = nn.Linear(128, dim_model)
 
@@ -770,7 +770,7 @@ class TimeSeriesConv(nn.Module):
             #z = F.gelu(self.fc2(z))
             dz = F.gelu(self.fc2(torch.cat([z, u], dim=1)))
             #dz = F.gelu(self.fc3(dz))
-            dz = self.fcnorm(dz)
+            #dz = self.fcnorm(dz)
             #dz = F.gelu(self.fc4(dz))
             dz = F.gelu(self.fc5(dz))
             #z = z + zskip # skip connection
