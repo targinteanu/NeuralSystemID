@@ -301,9 +301,9 @@ catch ME
             end
         end
         if T1small
-            T = [Tsmall; Tlarge];
+            T = tblvertcat(Tsmall, Tlarge);
         else
-            T = [Tlarge; Tsmall];
+            T = tblvertcat(Tlarge, Tsmall);
         end
     else
         rethrow(ME)
