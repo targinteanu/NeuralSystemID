@@ -14,6 +14,10 @@ curfile = file1(fi);
 curfiledata = load(fullfile(curfile.folder, curfile.name));
 channelNames = getChannelNames(curfiledata);
 
+% === TO DO: also get/process vars named CStimMarker_* ====================
+% CStimMarker_*(1,:) / CStimMarker_*_KHz seems to be timestamps of stim on
+% channels CStimMarker_*(2,:) !
+
 % channel selection 
 % For now, only select ANALOG_IN and LFP channels; ignore spike, RAW, and
 % SEG. In the future, spike sorting should be performed later in this
@@ -21,6 +25,7 @@ channelNames = getChannelNames(curfiledata);
 chincl = contains(channelNames, 'LFP') | ...
          contains(channelNames, 'ANALOG_IN');
 channelNames = channelNames(chincl); 
+% === TO DO: change above to lstdlg selection after loop ==================
 
 % get sample rates
 fs = cellfun(@(chN) getsamplerate(chN, curfiledata), channelNames);
@@ -104,6 +109,7 @@ for f = filelist'
             chincl = contains(chNames, 'LFP') | ...
                      contains(chNames, 'ANALOG_IN');
             chNames = chNames(chincl);
+            % === TO DO: get rid of above and add condition ## below ======
             if ~strcmpwrapper(channelNames, chNames)
                 warning(['On ',fn,': channel names do not match'])
             end
@@ -113,7 +119,12 @@ for f = filelist'
                 chNamesGrp = channelNamesGrouped{FSGRP};
                 for CHNAME = chNamesGrp
                 chName = CHNAME{:};
+                % === TO DO: condition ##, i.e. if sum(channelNames, chName) (?)
                 try
+                % === TO DO: sometimes there is no TimeBegin/End - why?? ==
+                if ~isfield(curfiledata,[chName,'_TimeBegin']) || ~isfield(curfiledata,[chName,'_TimeEnd'])
+                    keyboard
+                end
                 t1 = curfiledata.([chName,'_TimeBegin']); % s
                 t2 = curfiledata.([chName,'_TimeEnd']); % s
                 fs = curfiledata.([chName,'_KHz'])*1000; % Hz
