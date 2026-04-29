@@ -100,7 +100,7 @@ for f = filelist'
             %}
 
             % look at channels 
-            chNames = getChannelNames(curfiledata);
+            chNames = getChannelNames(curfiledata)';
             chincl = contains(chNames, 'LFP') | ...
                      contains(chNames, 'ANALOG_IN');
             chNames = chNames(chincl);
@@ -282,7 +282,7 @@ end
 function yn = strcmpwrapper(strs1, strs2)
 yn = length(strs1) == length(strs2); 
 if yn 
-    yn = prod(strcmp(strs1, strs2));
+    yn = prod(strcmp(sort(strs1), sort(strs2)));
 end
 end
 
