@@ -36,6 +36,7 @@ channelNames = channelNamesAll; clear channelNamesAll
 
 [channelNames, iFs] = unique(channelNames);
 Fs = Fs(iFs); clear iFs
+channelNames = channelNames'; Fs = Fs';
 
 % group channels by sampling rate 
 FsGrouped = unique(Fs);
@@ -261,8 +262,17 @@ function S = varnames2struct(varnames, filedata, header)
 if nargin < 3
     header = '';
 end
-vars = cellfun(@(vn) filedata.([header,vn]), varnames, 'UniformOutput', false);
+vars = cellfun(@(vn) getfieldwrapper(filedata, [header,vn]), varnames, 'UniformOutput', false);
 S = cell2struct(vars, varnames, 2);
+end
+
+function fld = getfieldwrapper(S, fldname)
+if isfield(S, fldname)
+    fld = S.(fldname);
+else
+    warning(['Unrecognized field name ',fldname]);
+    fld = [];
+end
 end
 
 function yn = strcmpwrapper(strs1, strs2)
