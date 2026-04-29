@@ -160,6 +160,7 @@ for f = filelist'
                 % if the memory is getting full, save and clear 
                 sz = whos('Tbls'); sz = sz.bytes;
                 if sz > sizethresh
+                    disp(['Saving ',svloc,filesep,'SavedTables',num2str(svN),'.mat'])
                     save([svloc,filesep,'SavedTables',num2str(svN),'.mat'], "Tbls");
                     svN = svN+1;
                     clear Tbls
@@ -173,6 +174,7 @@ end
 
 % save if haven't yet
 if sum(cellfun(@numel, Tbls))
+    disp(['Saving ',svloc,filesep,'SavedTables',num2str(svN),'.mat'])
     save([svloc,filesep,'SavedTables',num2str(svN),'.mat'], "Tbls");
     svN = svN+1;
 end
@@ -211,6 +213,7 @@ for FSGRP = 1:length(channelNamesGrouped)
             sz = whos('Tbl'); sz = sz.bytes;
             if sz > sizethresh
                 Tbl = sortrows(Tbl, 'Time');
+                disp(['Saving ',svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'])
                 save([svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'], "Tbl");
                 svN = svN+1;
                 clear Tbl
@@ -222,6 +225,7 @@ for FSGRP = 1:length(channelNamesGrouped)
     % save if haven't yet 
     if numel(Tbl)
         Tbl = sortrows(Tbl, 'Time');
+        disp(['Saving ',svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'])
         save([svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'], "Tbl");
         svN = svN+1;
     end
