@@ -8,46 +8,53 @@ file1 = file1(arrayfun(@(f) f.bytes > 0, file1));
 file1 = file1(arrayfun(@(f) f.name(1)~='.', file1));
 
 channelNames = []; Fs = []; channelIDs = [];
+stimNames = []; stimFs = []; stimIDs = [];
+% stim IDs appear to be independent of stim channel IDs; unclear if it is
+% necessary to track these or stimFs
 for fi = 1:length(file1)
 
 curfile = file1(fi); 
 curfiledata = load(fullfile(curfile.folder, curfile.name));
 [chNames, chIDs] = getChannelNames(curfiledata);
+[stNames, stIDs] = getStimNames(curfiledata);
 
 % get sample rates
 fs = cellfun(@(chN) getsamplerate(chN, curfiledata), chNames);
-
-% === TO DO: also get/process vars named CStimMarker_* ====================
-% CStimMarker_*(1,:) / CStimMarker_*_KHz seems to be timestamps of stim on
-% channels CStimMarker_*(2,:) !
+stimfs = cellfun(@(chN) getsamplerate(chN, curfiledata), stNames);
 
 % store, clear, move on
 Fs = [Fs, fs];
 channelNames = [channelNames, chNames];
 channelIDs = [channelIDs, chIDs];
+stimFs = [stimFs, stimfs];
+stimNames = [stimNames, stNames];
+stimIDs = [stimIDs, stIDs];
 clear curfile curfiledata
-clear chNames fs
-
+clear chNames chIDs fs stNames stIDs stimfs
 end
 
-[channelNames, iFs] = unique(channelNames);
-Fs = Fs(iFs); channelIDs = channelIDs(iFs); clear iFs
+[channelNames, iCh] = unique(channelNames);
+Fs = Fs(iCh); channelIDs = channelIDs(iCh); clear iCh
+
+[stimNames, iSt] = unique(stimNames);
+stimFs = stimFs(iSt); stimIDs = stimIDs(iSt); clear iSt
 
 % channel selection manually
-channelNamesWithFs = cellfun(@(i) [channelNames(i),': ',num2str(Fs(i)),'Hz'], ...
+channelNamesWithFs = arrayfun(@(i) [channelNames{i},': ',num2str(Fs(i)),'Hz'], ...
     1:length(Fs), 'UniformOutput',false);
-[chincl, chselmade] = listdlg("PromptString","Select Channels", "SelectionMode","multiple", ...
-    "ListString",channelNamesWithFs); 
+[chincl, chselmade] = listdlg("PromptString",'Select Data Channel(s)', ...
+    "SelectionMode","multiple", ...
+    "ListString",channelNamesWithFs, "ListSize",[300 500]); 
 if ~chselmade
     error('Selection must be made. Use Select All to choose all channels.')
 end
 channelNames = channelNames(chincl); Fs = Fs(chincl);
-channelIDs = channelIds(chincl);
+channelIDs = channelIDs(chincl);
 channelNamesWithFs = channelNamesWithFs(chincl); % used anywhere else?
 
 % group channels by sampling rate 
 FsGrouped = unique(Fs);
-channelNamesGrouped = cell(size(FsGrouped), 2); % [name, ID] 
+channelNamesGrouped = cell(size(FsGrouped, 2)); % [name, ID] 
 for grp = 1:length(FsGrouped)
     grpInds = Fs == FsGrouped(grp);
     channelNamesGrouped{grp,1} = channelNames(grpInds);
@@ -94,6 +101,7 @@ for f = filelist'
         fn1 = string(fn1); fn2 = string(fn2);
         if strcmpi(fe, '.mat')
             curfiledata = load(fnfull);
+            FileData = varnames2struct(fileDataFields, curfiledata, '');
 
             %{
             % anticipate if the memory will become full; 
@@ -107,19 +115,58 @@ for f = filelist'
             end
             %}
 
+            % process stim markers into event table 
+            ET = [];
+            for STNAME = stimNames
+                try
+                stName = STNAME{:};
+                stimTimesIDs = curfiledata.(stName);
+                stimfs = curfiledata.([stName,'_KHz'])*1000; % Hz
+                stimTimes = stimTimesIDs(1,:) / stimfs; % s
+                chID = stimTimesIDs(2,:);
+                chNames = cell(size(chID));
+                for iSt = 1:length(chID)
+                    iCh = channelIDs == chID(iSt);
+                    if sum(iCh) == 1
+                        chName = channelNames{find(iCh)};
+                    else
+                        chName = num2str(chID(iSt));
+                    end
+                    chNames{iSt} = [stName,' on channel ',chName];
+                end
+                stimTimes = stimTimes'; chNames = chNames';
+                E = eventtable(seconds(stimTimes), "EventLabels",string(chNames));
+                if isempty(ET)
+                    ET = E;
+                else
+                    ET = [ET; E];
+                end
+                clear E stName stimTimesIDs sitmTimes stimfs chID chNames 
+                clear iSt iCh chID chName
+                catch ME
+                    warning(ME.message)
+                end
+            end
+
+            %{
             % look at channels 
             if ~strcmpwrapper(channelNames, chNames)
                 warning(['On ',fn,': channel names do not match'])
             end
-            FileData = varnames2struct(fileDataFields, curfiledata, '');
+            %}
+            
+            % process a group of channels with same Fs into TT
             for FSGRP = 1:size(channelNamesGrouped,1)
                 TT = []; T1 = inf; T2 = -inf;
                 chNamesGrp = channelNamesGrouped{FSGRP,1};
+                % process a single channel in the group into T
                 for CHNAME = chNamesGrp
                 chName = CHNAME{:};
-                if sum(strcmp(channelNames, chName))
+                %if sum(strcmp(channelNames, chName))
                 try
-                % === TO DO: sometimes there is no TimeBegin/End - why?? ==
+
+                % interpret data
+                % sometimes there is no TimeBegin/End - why?? 
                 if ~isfield(curfiledata,[chName,'_TimeBegin']) || ...
                         ~isfield(curfiledata,[chName,'_TimeEnd']) || ...
                         ~isfield(curfiledata,[chName,'_KHz'])
@@ -149,6 +196,7 @@ for f = filelist'
                     t = linspace(t1, t2, length(Data));
                 end
 
+                % construct T and append it to TT 
                 t = seconds(t);
                 T = array2timetable(Data', 'RowTimes', t'); T.Properties.VariableNames{1} = chName;
                 if isempty(TT)
@@ -160,13 +208,18 @@ for f = filelist'
                 catch ME
                     warning(['On ',fn,' - ',chName,': ',ME.message])
                 end
-                end
+                %end
                 clear chName t1 t2 t Data err FileName T
                 end
 
-                % mark table with file details 
+                % mark table TT with file details 
                 TT.Properties.Events = eventtable(seconds([T1;T2]), ...
                     "EventLabels", string(fn)+[" Start";" End"]);
+
+                % include stims as events 
+                if ~isempty(ET)
+                    TT.Properties.Events = [TT.Properties.Events; ET];
+                end
 
                 Tbls{FSGRP} = tblvertcat(Tbls{FSGRP}, TT);
                 % if the memory is getting full, save and clear 
@@ -266,6 +319,7 @@ else
     channelNames = allFields(channelFields);
     channelInfo = ... trim away fields that are info about channels
         contains(lower(channelNames), 'hz') | ...
+        contains(lower(channelNames), 'stimmarker') | ...
         contains(lower(channelNames), 'resolution') | ...
         (contains(lower(channelNames), 'level') & ~contains(lower(channelNames), 'level_seg')) | ...
         contains(lower(channelNames), 'gain') | ...
@@ -273,6 +327,30 @@ else
     channelNames = channelNames(~channelInfo);
     channelNames = channelNames'; % horizontal
     channelIDs = nan(size(channelNames));
+    % TO DO: 'LEVEL_SEG' should be removed from the end of some channel names!
+end
+end
+
+function [stimNames, stimIDs] = getStimNames(curfiledata)
+if isfield(curfiledata, 'Ports_ID_Name_Map')
+    allNames = {curfiledata.Ports_ID_Name_Map.Name};
+    allIDs = [curfiledata.Ports_ID_Name_Map.ID];
+    stimFields = contains(allNames, 'CStimMarker');
+    stimNames = allNames(stimFields);
+    stimIDs = allIDs(stimFields);
+else
+    allFields = fieldnames(curfiledata);
+    stimFields = contains(allFields, 'CStimMarker');
+    stimNames = allFields(stimFields);
+    channelInfo = ... trim away fields that are info about channels
+        contains(lower(stimNames), 'hz') | ...
+        contains(lower(stimNames), 'resolution') | ...
+        (contains(lower(stimNames), 'level') & ~contains(lower(stimNames), 'level_seg')) | ...
+        contains(lower(stimNames), 'gain') | ...
+        contains(lower(stimNames), 'time');
+    stimNames = stimNames(~channelInfo);
+    stimNames = stimNames'; % horizontal
+    stimIDs = nan(size(stimNames)); % to be filled in later
     % TO DO: 'LEVEL_SEG' should be removed from the end of some channel names!
 end
 end
