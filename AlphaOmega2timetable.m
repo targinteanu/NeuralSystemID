@@ -14,21 +14,12 @@ curfile = file1(fi);
 curfiledata = load(fullfile(curfile.folder, curfile.name));
 channelNames = getChannelNames(curfiledata);
 
+% get sample rates
+fs = cellfun(@(chN) getsamplerate(chN, curfiledata), channelNames);
+
 % === TO DO: also get/process vars named CStimMarker_* ====================
 % CStimMarker_*(1,:) / CStimMarker_*_KHz seems to be timestamps of stim on
 % channels CStimMarker_*(2,:) !
-
-% channel selection 
-% For now, only select ANALOG_IN and LFP channels; ignore spike, RAW, and
-% SEG. In the future, spike sorting should be performed later in this
-% script instead of throwing out spikes. Not sure what to do with RAW/SEG
-chincl = contains(channelNames, 'LFP') | ...
-         contains(channelNames, 'ANALOG_IN');
-channelNames = channelNames(chincl); 
-% === TO DO: change above to lstdlg selection after loop ==================
-
-% get sample rates
-fs = cellfun(@(chN) getsamplerate(chN, curfiledata), channelNames);
 
 % store, clear, move on
 Fs = [Fs; fs];
@@ -41,7 +32,19 @@ channelNames = channelNamesAll; clear channelNamesAll
 
 [channelNames, iFs] = unique(channelNames);
 Fs = Fs(iFs); clear iFs
-channelNames = channelNames'; Fs = Fs';
+
+% channel selection manually
+channelNamesWithFs = cellfun(@(i) [channelNames(i),': ',num2str(Fs(i)),'Hz'], ...
+    1:length(Fs), 'UniformOutput',false);
+[chincl, chselmade] = listdlg("PromptString","Select Channels", "SelectionMode","multiple", ...
+    "ListString",channelNamesWithFs); 
+if ~chselmade
+    error('Selection must be made. Use Select All to choose all channels.')
+end
+channelNames = channelNames(chincl); Fs = Fs(chincl);
+channelNamesWithFs = channelNamesWithFs(chincl); % used anywhere else?
+
+channelNames = channelNames'; Fs = Fs'; % must be horizontal
 
 % group channels by sampling rate 
 FsGrouped = unique(Fs);
@@ -105,11 +108,6 @@ for f = filelist'
             %}
 
             % look at channels 
-            chNames = getChannelNames(curfiledata)';
-            chincl = contains(chNames, 'LFP') | ...
-                     contains(chNames, 'ANALOG_IN');
-            chNames = chNames(chincl);
-            % === TO DO: get rid of above and add condition ## below ======
             if ~strcmpwrapper(channelNames, chNames)
                 warning(['On ',fn,': channel names do not match'])
             end
@@ -119,10 +117,12 @@ for f = filelist'
                 chNamesGrp = channelNamesGrouped{FSGRP};
                 for CHNAME = chNamesGrp
                 chName = CHNAME{:};
-                % === TO DO: condition ##, i.e. if sum(channelNames, chName) (?)
+                if sum(strcmp(channelNames, chName))
                 try
                 % === TO DO: sometimes there is no TimeBegin/End - why?? ==
-                if ~isfield(curfiledata,[chName,'_TimeBegin']) || ~isfield(curfiledata,[chName,'_TimeEnd'])
+                if ~isfield(curfiledata,[chName,'_TimeBegin']) || ...
+                        ~isfield(curfiledata,[chName,'_TimeEnd']) || ...
+                        ~isfield(curfiledata,[chName,'_KHz'])
                     keyboard
                 end
                 t1 = curfiledata.([chName,'_TimeBegin']); % s
@@ -159,6 +159,7 @@ for f = filelist'
                 
                 catch ME
                     warning(['On ',fn,' - ',chName,': ',ME.message])
+                end
                 end
                 clear chName t1 t2 t Data err FileName T
                 end
