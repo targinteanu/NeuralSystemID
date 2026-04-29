@@ -7,15 +7,15 @@ file1 = filelist(~[filelist.isdir]);
 file1 = file1(arrayfun(@(f) f.bytes > 0, file1));
 file1 = file1(arrayfun(@(f) f.name(1)~='.', file1));
 
-channelNamesAll = []; Fs = [];
+channelNames = []; Fs = []; channelIDs = [];
 for fi = 1:length(file1)
 
 curfile = file1(fi); 
 curfiledata = load(fullfile(curfile.folder, curfile.name));
-channelNames = getChannelNames(curfiledata);
+[chNames, chIDs] = getChannelNames(curfiledata);
 
 % get sample rates
-fs = cellfun(@(chN) getsamplerate(chN, curfiledata), channelNames);
+fs = cellfun(@(chN) getsamplerate(chN, curfiledata), chNames);
 
 % === TO DO: also get/process vars named CStimMarker_* ====================
 % CStimMarker_*(1,:) / CStimMarker_*_KHz seems to be timestamps of stim on
@@ -23,15 +23,15 @@ fs = cellfun(@(chN) getsamplerate(chN, curfiledata), channelNames);
 
 % store, clear, move on
 Fs = [Fs, fs];
-channelNamesAll = [channelNamesAll, channelNames];
+channelNames = [channelNames, chNames];
+channelIDs = [channelIDs, chIDs];
 clear curfile curfiledata
-clear channelNames fs
+clear chNames fs
 
 end
-channelNames = channelNamesAll; clear channelNamesAll
 
 [channelNames, iFs] = unique(channelNames);
-Fs = Fs(iFs); clear iFs
+Fs = Fs(iFs); channelIDs = channelIDs(iFs); clear iFs
 
 % channel selection manually
 channelNamesWithFs = cellfun(@(i) [channelNames(i),': ',num2str(Fs(i)),'Hz'], ...
@@ -42,14 +42,16 @@ if ~chselmade
     error('Selection must be made. Use Select All to choose all channels.')
 end
 channelNames = channelNames(chincl); Fs = Fs(chincl);
+channelIDs = channelIds(chincl);
 channelNamesWithFs = channelNamesWithFs(chincl); % used anywhere else?
 
 % group channels by sampling rate 
 FsGrouped = unique(Fs);
-channelNamesGrouped = cell(size(FsGrouped));
+channelNamesGrouped = cell(size(FsGrouped), 2); % [name, ID] 
 for grp = 1:length(FsGrouped)
     grpInds = Fs == FsGrouped(grp);
-    channelNamesGrouped{grp} = channelNames(grpInds);
+    channelNamesGrouped{grp,1} = channelNames(grpInds);
+    channelNamesGrouped{grp,2} = channelIDs(grpInds);
 end
 clear grp grpInds
 
@@ -110,9 +112,9 @@ for f = filelist'
                 warning(['On ',fn,': channel names do not match'])
             end
             FileData = varnames2struct(fileDataFields, curfiledata, '');
-            for FSGRP = 1:length(channelNamesGrouped)
+            for FSGRP = 1:size(channelNamesGrouped,1)
                 TT = []; T1 = inf; T2 = -inf;
-                chNamesGrp = channelNamesGrouped{FSGRP};
+                chNamesGrp = channelNamesGrouped{FSGRP,1};
                 for CHNAME = chNamesGrp
                 chName = CHNAME{:};
                 if sum(strcmp(channelNames, chName))
@@ -204,7 +206,7 @@ filelist = filelist(arrayfun(@(f) f.bytes > 0, filelist));
 filelist = filelist(contains({filelist.name}, 'SavedTables'));
 svN = 1;
 
-for FSGRP = 1:length(channelNamesGrouped)
+for FSGRP = 1:size(channelNamesGrouped,1)
     fs = FsGrouped(FSGRP);
     Tbl = [];
     for f = filelist'
