@@ -22,8 +22,8 @@ fs = cellfun(@(chN) getsamplerate(chN, curfiledata), channelNames);
 % channels CStimMarker_*(2,:) !
 
 % store, clear, move on
-Fs = [Fs; fs];
-channelNamesAll = [channelNamesAll; channelNames];
+Fs = [Fs, fs];
+channelNamesAll = [channelNamesAll, channelNames];
 clear curfile curfiledata
 clear channelNames fs
 
@@ -43,8 +43,6 @@ if ~chselmade
 end
 channelNames = channelNames(chincl); Fs = Fs(chincl);
 channelNamesWithFs = channelNamesWithFs(chincl); % used anywhere else?
-
-channelNames = channelNames'; Fs = Fs'; % must be horizontal
 
 % group channels by sampling rate 
 FsGrouped = unique(Fs);
@@ -256,9 +254,10 @@ fs = 0;
     end
 end
 
-function channelNames = getChannelNames(curfiledata)
+function [channelNames, channelIDs] = getChannelNames(curfiledata)
 if isfield(curfiledata, 'Channel_ID_Name_Map')
     channelNames = {curfiledata.Channel_ID_Name_Map.Name};
+    channelIDs = [curfiledata.Channel_ID_Name_Map.ID];
 else
     allFields = fieldnames(curfiledata);
     channelFields = cellfun(@(str) str(1)=='C', allFields);
@@ -270,6 +269,8 @@ else
         contains(lower(channelNames), 'gain') | ...
         contains(lower(channelNames), 'time');
     channelNames = channelNames(~channelInfo);
+    channelNames = channelNames'; % horizontal
+    channelIDs = nan(size(channelNames));
     % TO DO: 'LEVEL_SEG' should be removed from the end of some channel names!
 end
 end
