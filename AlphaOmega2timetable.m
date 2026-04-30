@@ -384,7 +384,7 @@ function T = tblvertcat(T1, T2)
 try
     T = [T1; T2];
 catch ME
-    if contains(ME.identifier, 'SizeMismatch')
+    if contains(ME.identifier, 'SizeMismatch') || contains(ME.identifier, 'UnequalVarNames')
         T1small = width(T1) < width(T2);
         if T1small
             Tsmall = T1; Tlarge = T2;
