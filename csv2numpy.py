@@ -386,7 +386,7 @@ def prepTimeSeqData(
         right = bisect.bisect_right(event_times, t)
         return right - left
 
-    event_counts = np.array([count_events_in_window(t, 1.05*dt_target) for t in time])
+    event_counts = np.array([count_events_in_window(t, 10.5*dt_target) for t in time])
     event_counts = event_counts.reshape(-1, 1)
 
     """
