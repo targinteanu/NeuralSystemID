@@ -7,20 +7,20 @@ from myPytorchModels import TimeSeriesConv as myNetMdl
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = 1 # EVALUATION sample time, s
+hzn = .05 # EVALUATION sample time, s
 groupsize=15
 numgroups=5
 numgroupsunpaired=2
 #fc = np.array([4,10,27,60,90]) # freq band center freqs
 fc = np.array([4,10,27]) # freq band center freqs
-netfile = "neural_network_pytorch_Febd84ee36292c2d90235f49452beb2e9d9039a9_2.pth"
+netfile = "neural_network_pytorch_A845183f8d418db765f559b6d80e04ffcba087bc.pth"
 dt_target = 0.01 # model sample time, s
 seq_len = 128 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 filtorder = 201
 
 # train simpler model(s) for comparison ------------------------------------------------------
-
+"""
 # autoregressive model for each feature
 print("Training autoregressive model for each feature...")
 _, _, _, _, _, X, Y, _, _, _, _, _, _ = prepTimeSeqData(
@@ -42,7 +42,7 @@ X = X[:,-1,:]
 Y = Y[:,0,:]
 Mlin = np.linalg.lstsq(X, Y, rcond=None)[0]
 del X, Y
-
+"""
 # Prepare the Data ---------------------------------------------------------------------
 
 #device = (torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
@@ -377,7 +377,7 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     axes[-1].set_xlabel("Time Sample")  # Set x-label only on the last subplot
     plt.tight_layout()
     plt.show()
-
+"""
 print("Example sim on baseline data...")
 examplesel = np.linspace(0,Xb.shape[1]-1,12).astype(int)
 run_examplesim(Ub[examplesel], Xb[examplesel], Yb[examplesel], YbRaw[examplesel])
@@ -385,7 +385,7 @@ run_examplesim(Ub[examplesel], Xb[examplesel], Yb[examplesel], YbRaw[examplesel]
 print("Example sim on stimulated data...")
 examplesel = np.linspace(0,Xs.shape[1]-1,12).astype(int)
 run_examplesim(Us[examplesel], Xs[examplesel], Ys[examplesel], YsRaw[examplesel])
-
+"""
 # for output, only consider the final step of the horizon for evaluation, since that's the hardest to predict and most relevant for control applications.
 Ys = Ys[:,-1,:]
 Yb = Yb[:,-1,:]
