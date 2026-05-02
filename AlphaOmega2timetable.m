@@ -2,12 +2,66 @@
 
 % find files and determine data fields 
 fp = uigetdir;
-filelist = dir(fp);
+filelist = dir(fullfile(fp, '*.mat'));
 file1 = filelist(~[filelist.isdir]);
 file1 = file1(arrayfun(@(f) f.bytes > 0, file1));
 file1 = file1(arrayfun(@(f) f.name(1)~='.', file1));
-file1 = file1(1); load(fullfile(file1.folder, file1.name));
-channelNames = {Channel_ID_Name_Map.Name};
+
+channelNames = []; Fs = []; channelIDs = [];
+stimNames = []; stimFs = []; stimIDs = [];
+% stim IDs appear to be independent of stim channel IDs; unclear if it is
+% necessary to track these or stimFs
+for fi = 1:length(file1)
+
+curfile = file1(fi); 
+curfiledata = load(fullfile(curfile.folder, curfile.name));
+[chNames, chIDs] = getChannelNames(curfiledata);
+[stNames, stIDs] = getStimNames(curfiledata);
+
+% get sample rates
+fs = cellfun(@(chN) getsamplerate(chN, curfiledata), chNames);
+stimfs = cellfun(@(chN) getsamplerate(chN, curfiledata), stNames);
+
+% store, clear, move on
+Fs = [Fs, fs];
+channelNames = [channelNames, chNames];
+channelIDs = [channelIDs, chIDs];
+stimFs = [stimFs, stimfs];
+stimNames = [stimNames, stNames];
+stimIDs = [stimIDs, stIDs];
+clear curfile curfiledata
+clear chNames chIDs fs stNames stIDs stimfs
+end
+
+[channelNames, iCh] = unique(channelNames);
+Fs = Fs(iCh); channelIDs = channelIDs(iCh); clear iCh
+
+[stimNames, iSt] = unique(stimNames);
+stimFs = stimFs(iSt); stimIDs = stimIDs(iSt); clear iSt
+
+% channel selection manually
+channelNamesWithFs = arrayfun(@(i) [channelNames{i},': ',num2str(Fs(i)),'Hz'], ...
+    1:length(Fs), 'UniformOutput',false);
+[chincl, chselmade] = listdlg("PromptString",'Select Data Channel(s)', ...
+    "SelectionMode","multiple", ...
+    "ListString",channelNamesWithFs, "ListSize",[300 500]); 
+if ~chselmade
+    error('Selection must be made. Use Select All to choose all channels.')
+end
+channelNames = channelNames(chincl); Fs = Fs(chincl);
+channelIDs = channelIDs(chincl);
+channelNamesWithFs = channelNamesWithFs(chincl); % used anywhere else?
+
+% group channels by sampling rate 
+FsGrouped = unique(Fs);
+channelNamesGrouped = cell(size(FsGrouped, 2)); % [name, ID] 
+for grp = 1:length(FsGrouped)
+    grpInds = Fs == FsGrouped(grp);
+    channelNamesGrouped{grp,1} = channelNames(grpInds);
+    channelNamesGrouped{grp,2} = channelIDs(grpInds);
+end
+clear grp grpInds
+
 fileDataFields = {...
     'SF_DRIVE_CONF', ...
     ... 'SF_DRIVE_DOWN', ...
@@ -18,23 +72,6 @@ fileDataFields = {...
     }; 
 channelDataFields = {'BitResolution', 'Gain'};
 
-% channel selection 
-% For now, only select ANALOG_IN and LFP channels; ignore spike, RAW, and
-% SEG. In the future, spike sorting should be performed later in this
-% script instead of throwing out spikes. Not sure what to do with RAW/SEG
-chincl = contains(channelNames, 'LFP') | ...
-         contains(channelNames, 'ANALOG_IN');
-channelNames = channelNames(chincl); 
-
-% group channels by sampling rate 
-Fs = cellfun(@getsamplerate, channelNames);
-FsGrouped = unique(Fs);
-channelNamesGrouped = cell(size(FsGrouped));
-for grp = 1:length(FsGrouped)
-    grpInds = Fs == FsGrouped(grp);
-    channelNamesGrouped{grp} = channelNames(grpInds);
-end
-clear grp grpInds
 Tbls0 = cell(size(FsGrouped));
 Tbls = Tbls0;
 
@@ -50,10 +87,12 @@ mkdir(svloc);
 %% run1 - populate "horizontal" 
 
 for f = filelist'
+    %{
     clearvars -except ...
         Tbls Tbls0 channelNames channelDataFields fileDataFields ...
         f filelist svloc svN sizethresh ...
         Fs FsGrouped channelNamesGrouped
+    %}
     if (~f.isdir) && (f.bytes > 0)
         fnfull = fullfile(f.folder, f.name); 
         [fp,fn,fe] = fileparts(fnfull);
@@ -61,7 +100,8 @@ for f = filelist'
         fn1 = fn(1:(fni-1)); fn2 = fn((fni+1):end);
         fn1 = string(fn1); fn2 = string(fn2);
         if strcmpi(fe, '.mat')
-            load(fnfull)
+            curfiledata = load(fnfull);
+            FileData = varnames2struct(fileDataFields, curfiledata, '');
 
             %{
             % anticipate if the memory will become full; 
@@ -75,37 +115,80 @@ for f = filelist'
             end
             %}
 
+            % process stim markers into event table 
+            ET = [];
+            for STNAME = stimNames
+                try
+                stName = STNAME{:};
+                stimTimesIDs = curfiledata.(stName);
+                stimfs = curfiledata.([stName,'_KHz'])*1000; % Hz
+                stimTimes = stimTimesIDs(1,:) / stimfs; % s
+                chID = stimTimesIDs(2,:);
+                chNames = cell(size(chID));
+                for iSt = 1:length(chID)
+                    iCh = channelIDs == chID(iSt);
+                    if sum(iCh) == 1
+                        chName = channelNames{find(iCh)};
+                    else
+                        chName = num2str(chID(iSt));
+                    end
+                    chNames{iSt} = [stName,' on channel ',chName];
+                end
+                stimTimes = stimTimes'; chNames = chNames';
+                E = eventtable(seconds(stimTimes), "EventLabels",string(chNames));
+                if isempty(ET)
+                    ET = E;
+                else
+                    ET = [ET; E];
+                end
+                clear E stName stimTimesIDs sitmTimes stimfs chID chNames 
+                clear iSt iCh chID chName
+                catch ME
+                    warning(ME.message)
+                end
+            end
+
+            %{
             % look at channels 
-            chNames = {Channel_ID_Name_Map.Name};
-            chincl = contains(chNames, 'LFP') | ...
-                     contains(chNames, 'ANALOG_IN');
-            chNames = chNames(chincl);
             if ~strcmpwrapper(channelNames, chNames)
                 warning(['On ',fn,': channel names do not match'])
             end
-            FileData = varnames2struct(fileDataFields, '');
-            for FSGRP = 1:length(channelNamesGrouped)
+            %}
+            
+            % process a group of channels with same Fs into TT
+            for FSGRP = 1:size(channelNamesGrouped,1)
                 TT = []; T1 = inf; T2 = -inf;
-                chNamesGrp = channelNamesGrouped{FSGRP};
+                chNamesGrp = channelNamesGrouped{FSGRP,1};
+                % process a single channel in the group into T
                 for CHNAME = chNamesGrp
                 chName = CHNAME{:};
+                %if sum(strcmp(channelNames, chName))
                 try
-                t1 = eval([chName,'_TimeBegin']); % s
-                t2 = eval([chName,'_TimeEnd']); % s
-                fs = eval([chName,'_KHz'])*1000; % Hz
+
+                % interpret data
+                % sometimes there is no TimeBegin/End - why?? 
+                if isfield(curfiledata, chName) && (...
+                        ~isfield(curfiledata,[chName,'_TimeBegin']) || ...
+                        ~isfield(curfiledata,[chName,'_TimeEnd']) || ...
+                        ~isfield(curfiledata,[chName,'_KHz']))
+                    keyboard
+                end
+                t1 = curfiledata.([chName,'_TimeBegin']); % s
+                t2 = curfiledata.([chName,'_TimeEnd']); % s
+                fs = curfiledata.([chName,'_KHz'])*1000; % Hz
                 T1 = min(T1, t1); T2 = max(T2, t2);
                 t = t1:(1/fs):t2; 
-                if exist([chName,'_BitResolution'],'var')
-                    DataRes = eval([chName,'_BitResolution']);
+                if isfield(curfiledata, [chName,'_BitResolution'])
+                    DataRes = curfiledata.([chName,'_BitResolution']);
                 else
                     DataRes = 1;
                 end
-                if exist([chName,'_Gain'],'var')
-                    DataGain = eval([chName,'_Gain']);
+                if isfield(curfiledata, [chName,'_Gain'])
+                    DataGain = curfiledata.([chName,'_Gain']);
                 else
                     DataGain = 1;
                 end
-                Data = eval(chName); % int
+                Data = curfiledata.(chName); % int
                 Data = double(Data)*DataRes/DataGain;
                 if length(t) ~= length(Data)
                     err = abs(length(Data) - length(t))/length(Data);
@@ -114,6 +197,7 @@ for f = filelist'
                     t = linspace(t1, t2, length(Data));
                 end
 
+                % construct T and append it to TT 
                 t = seconds(t);
                 T = array2timetable(Data', 'RowTimes', t'); T.Properties.VariableNames{1} = chName;
                 if isempty(TT)
@@ -125,30 +209,38 @@ for f = filelist'
                 catch ME
                     warning(['On ',fn,' - ',chName,': ',ME.message])
                 end
+                %end
                 clear chName t1 t2 t Data err FileName T
                 end
 
-                % mark table with file details 
+                % mark table TT with file details 
                 TT.Properties.Events = eventtable(seconds([T1;T2]), ...
                     "EventLabels", string(fn)+[" Start";" End"]);
+
+                % include stims as events 
+                if ~isempty(ET)
+                    TT.Properties.Events = [TT.Properties.Events; ET];
+                end
 
                 Tbls{FSGRP} = tblvertcat(Tbls{FSGRP}, TT);
                 % if the memory is getting full, save and clear 
                 sz = whos('Tbls'); sz = sz.bytes;
                 if sz > sizethresh
+                    disp(['Saving ',svloc,filesep,'SavedTables',num2str(svN),'.mat'])
                     save([svloc,filesep,'SavedTables',num2str(svN),'.mat'], "Tbls");
                     svN = svN+1;
                     clear Tbls
                     Tbls = Tbls0;
                 end
             end
-            clear FileData
+            clear curfiledata FileData
         end
     end
 end
 
 % save if haven't yet
 if sum(cellfun(@numel, Tbls))
+    disp(['Saving ',svloc,filesep,'SavedTables',num2str(svN),'.mat'])
     save([svloc,filesep,'SavedTables',num2str(svN),'.mat'], "Tbls");
     svN = svN+1;
 end
@@ -168,7 +260,7 @@ filelist = filelist(arrayfun(@(f) f.bytes > 0, filelist));
 filelist = filelist(contains({filelist.name}, 'SavedTables'));
 svN = 1;
 
-for FSGRP = 1:length(channelNamesGrouped)
+for FSGRP = 1:size(channelNamesGrouped,1)
     fs = FsGrouped(FSGRP);
     Tbl = [];
     for f = filelist'
@@ -187,6 +279,7 @@ for FSGRP = 1:length(channelNamesGrouped)
             sz = whos('Tbl'); sz = sz.bytes;
             if sz > sizethresh
                 Tbl = sortrows(Tbl, 'Time');
+                disp(['Saving ',svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'])
                 save([svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'], "Tbl");
                 svN = svN+1;
                 clear Tbl
@@ -198,6 +291,7 @@ for FSGRP = 1:length(channelNamesGrouped)
     % save if haven't yet 
     if numel(Tbl)
         Tbl = sortrows(Tbl, 'Time');
+        disp(['Saving ',svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'])
         save([svloc,filesep,'SavedTable',num2str(fs),'Hz',num2str(svN),'.mat'], "Tbl");
         svN = svN+1;
     end
@@ -207,39 +301,82 @@ end
 
 %% helper 
 
-function fs = getsamplerate(chName)
+function fs = getsamplerate(chName, filedata)
 fs = 0;
     try 
-        fs = evalinwrapper([chName,'_KHz'])*1000; % Hz
+        fs = filedata.([chName,'_KHz'])*1000; % Hz
     catch ME
         warning(['On ',chName,': ',ME.message])
     end
 end
 
-function S = varnames2struct(varnames, header)
-if nargin < 2
+function [channelNames, channelIDs] = getChannelNames(curfiledata)
+if isfield(curfiledata, 'Channel_ID_Name_Map')
+    channelNames = {curfiledata.Channel_ID_Name_Map.Name};
+    channelIDs = [curfiledata.Channel_ID_Name_Map.ID];
+else
+    allFields = fieldnames(curfiledata);
+    channelFields = cellfun(@(str) str(1)=='C', allFields);
+    channelNames = allFields(channelFields);
+    channelInfo = ... trim away fields that are info about channels
+        contains(lower(channelNames), 'hz') | ...
+        contains(lower(channelNames), 'stimmarker') | ...
+        contains(lower(channelNames), 'resolution') | ...
+        (contains(lower(channelNames), 'level') & ~contains(lower(channelNames), 'level_seg')) | ...
+        contains(lower(channelNames), 'gain') | ...
+        contains(lower(channelNames), 'time');
+    channelNames = channelNames(~channelInfo);
+    channelNames = channelNames'; % horizontal
+    channelIDs = nan(size(channelNames));
+    % TO DO: 'LEVEL_SEG' should be removed from the end of some channel names!
+end
+end
+
+function [stimNames, stimIDs] = getStimNames(curfiledata)
+if isfield(curfiledata, 'Ports_ID_Name_Map')
+    allNames = {curfiledata.Ports_ID_Name_Map.Name};
+    allIDs = [curfiledata.Ports_ID_Name_Map.ID];
+    stimFields = contains(allNames, 'CStimMarker');
+    stimNames = allNames(stimFields);
+    stimIDs = allIDs(stimFields);
+else
+    allFields = fieldnames(curfiledata);
+    stimFields = contains(allFields, 'CStimMarker');
+    stimNames = allFields(stimFields);
+    channelInfo = ... trim away fields that are info about channels
+        contains(lower(stimNames), 'hz') | ...
+        contains(lower(stimNames), 'resolution') | ...
+        (contains(lower(stimNames), 'level') & ~contains(lower(stimNames), 'level_seg')) | ...
+        contains(lower(stimNames), 'gain') | ...
+        contains(lower(stimNames), 'time');
+    stimNames = stimNames(~channelInfo);
+    stimNames = stimNames'; % horizontal
+    stimIDs = nan(size(stimNames)); % to be filled in later
+    % TO DO: 'LEVEL_SEG' should be removed from the end of some channel names!
+end
+end
+
+function S = varnames2struct(varnames, filedata, header)
+if nargin < 3
     header = '';
 end
-vars = cellfun(@(vn) evalinwrapper([header,vn]), varnames, 'UniformOutput', false);
+vars = cellfun(@(vn) getfieldwrapper(filedata, [header,vn]), varnames, 'UniformOutput', false);
 S = cell2struct(vars, varnames, 2);
+end
+
+function fld = getfieldwrapper(S, fldname)
+if isfield(S, fldname)
+    fld = S.(fldname);
+else
+    warning(['Unrecognized field name ',fldname]);
+    fld = [];
+end
 end
 
 function yn = strcmpwrapper(strs1, strs2)
 yn = length(strs1) == length(strs2); 
 if yn 
-    yn = prod(strcmp(strs1, strs2));
-end
-end
-
-function var = evalinwrapper(varname)
-try 
-    var = evalin('base',varname);
-catch ME 
-    if contains(ME.message, 'Unrecognized function or variable')
-        var = nan;
-    else
-        rethrow(ME)
-    end
+    yn = prod(strcmp(sort(strs1), sort(strs2)));
 end
 end
 
@@ -247,7 +384,7 @@ function T = tblvertcat(T1, T2)
 try
     T = [T1; T2];
 catch ME
-    if contains(ME.identifier, 'SizeMismatch')
+    if contains(ME.identifier, 'SizeMismatch') || contains(ME.identifier, 'UnequalVarNames')
         T1small = width(T1) < width(T2);
         if T1small
             Tsmall = T1; Tlarge = T2;
@@ -262,9 +399,9 @@ catch ME
             end
         end
         if T1small
-            T = [Tsmall; Tlarge];
+            T = tblvertcat(Tsmall, Tlarge);
         else
-            T = [Tlarge; Tsmall];
+            T = tblvertcat(Tlarge, Tsmall);
         end
     else
         rethrow(ME)

@@ -6,7 +6,11 @@ function EvOut = AlphaOmegaTable2Depth(Tbl)
 % from the file names. 
 % 
 
-Ev = Tbl.Properties.Events; 
+if strcmpi(class(Tbl), 'eventtable')
+    Ev = Tbl;
+else
+    Ev = Tbl.Properties.Events; 
+end
 lbl = Ev.EventLabels;
 
 SIDE = repmat("", size(lbl));
