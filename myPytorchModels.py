@@ -695,17 +695,6 @@ class TimeSeriesConv(nn.Module):
         B = x.size(0)
         rollout = u_seq.size(1)
 
-        print(x.shape)
-
-        # time processing first 
-        x = x.permute(0,2,1) # (B, dim_in, T)
-        x = F.gelu(self.time_conv1(x))
-        x = F.gelu(self.time_conv2(x))
-        x = F.gelu(self.time_conv3(x))
-        x = x.permute(0,2,1) # (B, T, dim_in)
-
-        print(x.shape)
-
         num_paired = (self.num_pairs * self.tuple_size) # "kN1"
         num_unpaired = self.numGrpUnpaired * self.group_size # "N2"
         x_used = x[:, :, :num_paired]  # (B,T,kN1)
@@ -716,6 +705,19 @@ class TimeSeriesConv(nn.Module):
         xCos_skip = x_used[:,-1:,self.num_pairs:2*self.num_pairs]
         xSin_skip = x_used[:,-1:,2*self.num_pairs:3*self.num_pairs]
         xUnpaired_skip = x_unpaired[:,-1:,:]
+
+        # time processing first 
+        x = x.permute(0,2,1) # (B, dim_in, T)
+        x = F.gelu(self.time_conv1(x))
+        x = F.gelu(self.time_conv2(x))
+        x = F.gelu(self.time_conv3(x))
+        x = x.permute(0,2,1) # (B, T, dim_in)
+
+        # unsure if the below re-assignment is necessary based on how the arrays exist in memory
+        x_used = x[:, :, :num_paired]  # (B,T,kN1)
+        x_unpaired = x[:, :, num_paired:(num_paired+num_unpaired)] # (B,T,N2)
+        x_left = x[:, :, (num_paired+num_unpaired):]  # (B,T,n); may be unused
+
         """
         x_pairs = torch.stack( 
             (
@@ -729,14 +731,10 @@ class TimeSeriesConv(nn.Module):
         x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
         x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
 
-        print(x_pairs.shape)
-
         # Stage 1
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
         p = self.pair_norm(p)
         p = F.gelu(self.pair_fc2(p))           # (B,T,N,pair_output)
-
-        print(p.shape)
 
         # Stage 2A: groups
         p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
