@@ -645,10 +645,11 @@ class TimeSeriesConv(nn.Module):
         dim_model = mlp_in
 
         # stage 3A: time-only processing to get to len_model
-        self.time_conv1 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K1)
-        self.time_conv2 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K2)
-        self.time_conv3 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K3)
-        self.time_fc = nn.Linear(time_len - K1 - K2 - K3 + 3, 1)
+        self.time_conv1 = nn.Conv1d(dim_in, dim_in, groups=dim_in, kernel_size=K1)
+        self.time_conv2 = nn.Conv1d(dim_in, dim_in, groups=dim_in, kernel_size=K2)
+        self.time_conv3 = nn.Conv1d(dim_in, dim_in, groups=dim_in, kernel_size=K3)
+        self.time_len_postconv = time_len - K1 - K2 - K3 + 3
+        self.time_fc = nn.Linear(self.time_len_postconv, 1)
         #self.time_fc = nn.Linear(time_len - K1 - K2 + 2, len_model)
         #self.time_fc = nn.Linear(time_len - K1 + 1, len_model)
 
@@ -689,9 +690,21 @@ class TimeSeriesConv(nn.Module):
         """
         if x.ndim != 3:
             raise ValueError(f"Expected input ndim=3, got {x.ndim}")
-        T = x.size(1)
+        #T = x.size(1)
+        T = self.time_len_postconv
         B = x.size(0)
         rollout = u_seq.size(1)
+
+        print(x.shape)
+
+        # time processing first 
+        x = x.permute(0,2,1) # (B, dim_in, T)
+        x = F.gelu(self.time_conv1(x))
+        x = F.gelu(self.time_conv2(x))
+        x = F.gelu(self.time_conv3(x))
+        x = x.permute(0,2,1) # (B, T, dim_in)
+
+        print(x.shape)
 
         num_paired = (self.num_pairs * self.tuple_size) # "kN1"
         num_unpaired = self.numGrpUnpaired * self.group_size # "N2"
@@ -716,10 +729,14 @@ class TimeSeriesConv(nn.Module):
         x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
         x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
 
+        print(x_pairs.shape)
+
         # Stage 1
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
         p = self.pair_norm(p)
         p = F.gelu(self.pair_fc2(p))           # (B,T,N,pair_output)
+
+        print(p.shape)
 
         # Stage 2A: groups
         p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
@@ -745,9 +762,11 @@ class TimeSeriesConv(nn.Module):
 
         # Stage 3A time processing
         h = h.permute(0,2,1) # (B, dim_model, T)
+        """
         h = F.gelu(self.time_conv1(h))
         h = F.gelu(self.time_conv2(h))
         h = F.gelu(self.time_conv3(h))
+        """
         h = F.gelu(self.time_fc(h))
         h = h.permute(0,2,1) # (B, T, dim_model)
 
