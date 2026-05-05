@@ -632,6 +632,7 @@ class TimeSeriesConv(nn.Module):
         self.pair_fc1 = nn.Linear(tuple_size, C1) 
         self.pair_norm = nn.LayerNorm(C1)
         self.pair_fc2 = nn.Linear(C1, self.pair_output) 
+        self.pair_norm2 = nn.LayerNorm(self.pair_output)
 
         # Stage 2: linear over flattened group
         self.group_fcA = nn.Linear(group_size * self.pair_output, 8)
@@ -737,6 +738,7 @@ class TimeSeriesConv(nn.Module):
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
         p = self.pair_norm(p)
         p = F.gelu(self.pair_fc2(p))           # (B,T,N,pair_output)
+        p = self.pair_norm2(p)
 
         # Stage 2A: groups
         p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
