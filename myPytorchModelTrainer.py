@@ -12,6 +12,7 @@ def trainDynsysModel(
         num_epochs = 100, # max 
         patience = 10, # epochs to wait for improvement before stopping
         allow_early_stopping = True,
+        debugmode = False,
 ):
     
     # determine GPU or CPU device: 
@@ -28,6 +29,11 @@ def trainDynsysModel(
     train_losses = []
     val_losses = []
     scaler = GradScaler()
+
+    if debugmode:
+        torch.autograd.set_detect_anomaly(True)
+    else:
+        torch.autograd.set_detect_anomaly(False)
 
     if not isinstance(TrainLoader, tuple):
         # TO DO: think about organizing this as dict instead of list/tuple 
