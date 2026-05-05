@@ -649,6 +649,7 @@ class TimeSeriesConv(nn.Module):
         self.time_conv2 = nn.Conv1d(dim_in, dim_in, groups=dim_in, kernel_size=K2)
         self.time_conv3 = nn.Conv1d(dim_in, dim_in, groups=dim_in, kernel_size=K3)
         self.time_len_postconv = time_len - K1 - K2 - K3 + 3
+        self.time_conv_norm = nn.LayerNorm(dim_in)
         self.time_fc = nn.Linear(self.time_len_postconv, 1)
         #self.time_fc = nn.Linear(time_len - K1 - K2 + 2, len_model)
         #self.time_fc = nn.Linear(time_len - K1 + 1, len_model)
@@ -712,6 +713,7 @@ class TimeSeriesConv(nn.Module):
         x = F.gelu(self.time_conv2(x))
         x = F.gelu(self.time_conv3(x))
         x = x.permute(0,2,1) # (B, T, dim_in)
+        x = self.time_conv_norm(x)
 
         # unsure if the below re-assignment is necessary based on how the arrays exist in memory
         x_used = x[:, :, :num_paired]  # (B,T,kN1)
