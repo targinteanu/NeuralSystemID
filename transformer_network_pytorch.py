@@ -62,7 +62,7 @@ val_losses.extend(vl)
 """
 # del the _s loaders to free memory
 # del train_dataset_s, test_dataset_s, train_loader_s, test_loader_s, Xs_train, Ys_train, Us_train, Xs_test, Ys_test, Us_test
-"""
+
 # now the loop
 hzn_len = 1
 while hzn_len < 16:
@@ -119,7 +119,6 @@ while hzn_len < 16:
     hzn_len *= 2
 
 """
-"""
 # After loop: plot train/val loss to inspect convergence
 plt.plot(train_losses, label='train_loss')
 plt.plot(val_losses, label='val_loss')
@@ -128,7 +127,6 @@ plt.ylabel('MSE')
 plt.legend()
 plt.show()
 """
-hzn_len = 16
 
 # %% 
 # load final data set 
