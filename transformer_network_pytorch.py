@@ -65,7 +65,7 @@ val_losses.extend(vl)
 
 # now the loop
 hzn_len = 1
-while hzn_len < 8:
+while hzn_len < 16:
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
         seq_len=seq_len, maxNumel=4e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
         filepath="")
@@ -199,7 +199,7 @@ print("Train samples:", train_size)
 print("Batch size:", batch_size)
 print("Batches/epoch:", steps_per_epoch)
 
-model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, train_loader, test_loader, num_epochs=100, allow_early_stopping=True, debugmode=True)
+model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, train_loader, test_loader, num_epochs=100, allow_early_stopping=True, debugmode=False)
 
 """
 # After loop: plot train/val loss to inspect convergence
