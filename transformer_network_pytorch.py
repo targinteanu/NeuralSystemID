@@ -65,7 +65,7 @@ val_losses.extend(vl)
 
 # now the loop
 hzn_len = 1
-while hzn_len < 16:
+while hzn_len < 8:
     _, _, _, Xsh, Ysh, Xh, Yh, _, _, _, _, Ush, Uh = prepTimeSeqData(
         seq_len=seq_len, maxNumel=4e9, hzn_len=hzn_len, dt_target=mdl_Ts, 
         filepath="")
