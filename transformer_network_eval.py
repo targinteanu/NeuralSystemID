@@ -78,6 +78,7 @@ else:
     fcenter = torch.tensor(fc, dtype=torch.float32)
     fbias = fcenter.repeat_interleave(groupsize)
     fbias = fbias*dt_target*2*math.pi # scale by model sample time and 2pi to convert to radians
+    fbias = torch.atanh(fbias / (math.pi + 1e-5)) # apply inverse tanh to get bias in pre-tanh space
     with torch.no_grad():
         model.fcoFreq.bias.copy_(fbias)
 
