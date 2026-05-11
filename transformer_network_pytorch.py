@@ -354,7 +354,7 @@ plt.show()
 
 # %%
 # Step 4B: full training on main data 
-
+"""
 train_size = len(train_loader_s.dataset)
 steps_per_epoch = math.ceil(train_size / batch_size)
 print("Train samples:", train_size)
@@ -362,7 +362,7 @@ print("Batch size:", batch_size)
 print("Batches/epoch:", steps_per_epoch)
 
 model, train_losses, val_losses = trainDynsysModel(model, optimizer, criterion, train_loader_s, test_loader_s, num_epochs=100, allow_early_stopping=True, debugmode=False)
-
+"""
 """
 # After loop: plot train/val loss to inspect convergence
 plt.plot(train_losses, label='train_loss')
