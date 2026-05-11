@@ -7,13 +7,13 @@ from myPytorchModels import TimeSeriesConv as myNetMdl
 from csv2numpy import prepTimeSeqData
 
 # set params -------------------------------------------------------------------------------------
-hzn = .05 # EVALUATION sample time, s
+hzn = .5 # EVALUATION sample time, s
 groupsize=15
 numgroups=5
 numgroupsunpaired=2
 #fc = np.array([4,10,27,60,90]) # freq band center freqs
 fc = np.array([4,10,27]) # freq band center freqs
-netfile = "neural_network_pytorch_74fb23bd19ce2f783b30c95db63c6c9edab4cf1f_2.pth"
+netfile = "neural_network_pytorch_093523772db8074d4eac32acee3d4d2943fb7193_2.pth"
 dt_target = 0.01 # model sample time, s
 seq_len = 128 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -303,8 +303,8 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     barwid = .35
     barx = np.arange(len(mse))
     plt.figure()
-    plt.bar(barx-2*barwid, 1-mse, width=barwid, label="NN 1-MSE")
-    plt.bar(barx-barwid, 1-mse_ar, width=barwid, label="AR 1-MSE")
+    #plt.bar(barx-2*barwid, 1-mse, width=barwid, label="NN 1-MSE")
+    #plt.bar(barx-barwid, 1-mse_ar, width=barwid, label="AR 1-MSE")
     plt.bar(barx, rho, width=barwid, label="NN correlation")
     plt.bar(barx+barwid, rho_ar, width=barwid, label="AR correlation")
     plt.legend()
@@ -375,8 +375,8 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     # show a bar plot of mse per feature
     barx = np.arange(len(mse_recon))
     plt.figure()
-    plt.bar(barx-2*barwid, 1-mse_recon, width=barwid, label="NN 1-MSE")
-    plt.bar(barx-barwid, 1-mse_recon_ar, width=barwid, label="AR 1-MSE")
+    #plt.bar(barx-2*barwid, 1-mse_recon, width=barwid, label="NN 1-MSE")
+    #plt.bar(barx-barwid, 1-mse_recon_ar, width=barwid, label="AR 1-MSE")
     plt.bar(barx, rho_recon, width=barwid, label="NN correlation")
     plt.bar(barx+barwid, rho_recon_ar, width=barwid, label="AR correlation")
     plt.legend()
