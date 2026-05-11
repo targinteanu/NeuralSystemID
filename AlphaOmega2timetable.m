@@ -6,9 +6,11 @@ filelist = dir(fullfile(fp, '*.mat'));
 file1 = filelist(~[filelist.isdir]);
 file1 = file1(arrayfun(@(f) f.bytes > 0, file1));
 file1 = file1(arrayfun(@(f) f.name(1)~='.', file1));
-
+%%
 channelNames = []; Fs = []; channelIDs = [];
 stimNames = []; stimFs = []; stimIDs = [];
+mindepth = inf; maxdepth = -inf;
+mintime = inf; maxtime = -inf;
 % stim IDs appear to be independent of stim channel IDs; unclear if it is
 % necessary to track these or stimFs
 for fi = 1:length(file1)
@@ -18,9 +20,31 @@ curfiledata = load(fullfile(curfile.folder, curfile.name));
 [chNames, chIDs] = getChannelNames(curfiledata);
 [stNames, stIDs] = getStimNames(curfiledata);
 
+% get details of this rec 
+[data, flag] = sscanf(curfile.name, '%ct%fd%ff%f %s');
+if flag > 4
+    SIDE = string(char(data(1)));
+    N = data(2);
+    DEPTH = data(3);
+    FILE = data(4);
+    mindepth = min(mindepth, DEPTH);
+    maxdepth = max(maxdepth, DEPTH);
+end
+
 % get sample rates
 fs = cellfun(@(chN) getsamplerate(chN, curfiledata), chNames);
 stimfs = cellfun(@(chN) getsamplerate(chN, curfiledata), stNames);
+
+% get times 
+for chName = chNames
+    chname = chName{:};
+    if isfield(curfiledata, [chname,'_TimeBegin'])
+        mintime = min(mintime, curfiledata.([chname,'_TimeBegin']));
+    end
+    if isfield(curfiledata, [chname,'_TimeEnd'])
+        maxtime = max(maxtime, curfiledata.([chname,'_TimeEnd']));
+    end
+end
 
 % store, clear, move on
 Fs = [Fs, fs];
@@ -52,6 +76,21 @@ channelNames = channelNames(chincl); Fs = Fs(chincl);
 channelIDs = channelIDs(chincl);
 channelNamesWithFs = channelNamesWithFs(chincl); % used anywhere else?
 
+% depth selection manually 
+minmaxdepth = inputdlg({'Minimum Depth:', 'Maximum Depth:'}, ...
+    'Specify Depth Range', 1, {num2str(mindepth), num2str(maxdepth)});
+if ~isempty(minmaxdepth)
+    minDepth = str2double(minmaxdepth{1});
+    maxDepth = str2double(minmaxdepth{2});
+end
+% time selection manually 
+minmaxtime = inputdlg({'Start Time (s):', 'End Time (s):'}, ...
+    'Specify Time Range', 1, {num2str(mintime), num2str(maxtime)});
+if ~isempty(minmaxtime)
+    mintime = str2double(minmaxtime{1});
+    maxtime = str2double(minmaxtime{2});
+end
+
 % group channels by sampling rate 
 FsGrouped = unique(Fs);
 channelNamesGrouped = cell(size(FsGrouped, 2)); % [name, ID] 
@@ -60,7 +99,8 @@ for grp = 1:length(FsGrouped)
     channelNamesGrouped{grp,1} = channelNames(grpInds);
     channelNamesGrouped{grp,2} = channelIDs(grpInds);
 end
-clear grp grpInds
+clear grp grpInds minmaxdepth minmaxtime
+mintime = seconds(mintime); maxtime = seconds(maxtime);
 
 fileDataFields = {...
     'SF_DRIVE_CONF', ...
@@ -114,6 +154,17 @@ for f = filelist'
                 Tbls = Tbls0;
             end
             %}
+
+            % get details of this rec
+            [data, flag] = sscanf(fn, '%ct%fd%ff%f %s');
+            if flag > 4
+                SIDE = string(char(data(1)));
+                N = data(2);
+                DEPTH = data(3);
+                FILE = data(4);
+            end
+
+            if (DEPTH >= mindepth) && (DEPTH <= maxdepth)
 
             % process stim markers into event table 
             ET = [];
@@ -222,7 +273,13 @@ for f = filelist'
                     TT.Properties.Events = [TT.Properties.Events; ET];
                 end
 
-                Tbls{FSGRP} = tblvertcat(Tbls{FSGRP}, TT);
+                % limit time window 
+                timesel = (TT.Time >= mintime) & (TT.Time <= maxtime);
+                TT = TT(timesel,:);
+
+                if ~isempty(TT)
+                    Tbls{FSGRP} = tblvertcat(Tbls{FSGRP}, TT);
+                end
                 % if the memory is getting full, save and clear 
                 sz = whos('Tbls'); sz = sz.bytes;
                 if sz > sizethresh
@@ -232,6 +289,8 @@ for f = filelist'
                     clear Tbls
                     Tbls = Tbls0;
                 end
+
+            end
             end
             clear curfiledata FileData
         end
