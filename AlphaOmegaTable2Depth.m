@@ -10,6 +10,8 @@ if strcmpi(class(Tbl), 'eventtable')
     Ev = Tbl;
 else
     Ev = Tbl.Properties.Events; 
+    Ev = Ev( Ev.Time >= min(Tbl.Time) , :);
+    Ev = Ev( Ev.Time <= max(Tbl.Time) , :);
 end
 lbl = Ev.EventLabels;
 
