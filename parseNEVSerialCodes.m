@@ -38,7 +38,7 @@ codeLabelMap(7)  = 'decoding_start';
 codeLabelMap(8)  = 'decoding_end';
 codeLabelMap(9)  = 'decoding_end';
 for nImg = 1:99 % variable # img for adaptive paradigm
-    codeLabelMap(nImg) = ['image_',num2str(100+nImg),'_adaptive'];
+    codeLabelMap(100+nImg) = ['image_',num2str(nImg),'_adaptive'];
 end
 
 % Load events table from nev2table
