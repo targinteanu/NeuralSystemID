@@ -17,7 +17,9 @@ function events = parseNEVSerialCodes(nevFilePath, codesToKeep)
 %   - Uses default code-to-label mapping for EventName
 
 if nargin < 2 || isempty(codesToKeep)
-    error('You must supply a vector of codes to keep, e.g. [61 10 11 1:3 5 6 70 71 7 8 9].');
+    %error('You must supply a vector of codes to keep, e.g. [61 10 11 1:3 5 6 70 71 7 8 9].');
+    warning('codesToKeep will be set to default.')
+    codesToKeep = [61 10 11 1:3 5 6 70 71 7 8 9 101:199];
 end
 
 % Default code-to-label mapping
@@ -35,6 +37,9 @@ codeLabelMap(71) = 'stim_end';
 codeLabelMap(7)  = 'decoding_start';
 codeLabelMap(8)  = 'decoding_end';
 codeLabelMap(9)  = 'decoding_end';
+for nImg = 1:99 % variable # img for adaptive paradigm
+    codeLabelMap(nImg) = ['image_',num2str(100+nImg),'_adaptive'];
+end
 
 % Load events table from nev2table
 T = nev2table(nevFilePath);
