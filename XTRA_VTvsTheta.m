@@ -61,21 +61,27 @@ for s = 1:length(subjnames)
 end
 
 figure; 
+mkr = {'s', 'x', 'o'};
+clr = {[0.0660    0.4430    0.7450], ... blue 
+       [0.8660    0.3290         0], ... red 
+       [0.2310    0.6660    0.1960], ... green
+       [0.5210    0.0860    0.8190], ... purple
+       [0.4645    0.3470    0.0625], ... dark yellow
+       ...[0.9290    0.6940    0.1250], ... yellow
+       [0.1840    0.7450    0.9370], ... teal
+       [0.8190    0.0150    0.5450]  ... dark red
+       };
 for s = 1:length(subjnames)
     subj = subjnames(s);
     VT = data2{s,1};
     if ~isempty(VT)
-        BL1 = data2{s,2};
-        NB = data2{s,3};
-        BL2 = data2{s,4};
-        if ~isempty(BL1)
-            plot(VT, BL1, '.r'); hold on; 
-        end
-        if ~isempty(NB)
-            plot(VT, NB, '.b'); hold on;
-        end 
-        if ~isempty(BL2)
-            plot(VT, BL2, '.m'); hold on;
+        for v = 2:4
+            V = data2{s,v};
+            if ~isempty(V)
+                plot(VT, V, '.', ...
+                    'Marker', mkr{v-1}, 'Color', clr{s}); 
+                hold on;
+            end
         end
     end
 end
