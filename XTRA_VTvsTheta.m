@@ -62,9 +62,9 @@ end
 
 figure; 
 alignR = true;
-VTcutoff = 15;
+%VTcutoff = 15;
 anatcutoff = 0.5;
-mkr = {'s', 'd', 'x'};
+mkr = {'s', 'o', 'x'};
 clr = {[0.0660    0.4430    0.7450], ... blue 
        [0.8660    0.3290         0], ... red 
        [0.2310    0.6660    0.1960], ... green
@@ -77,25 +77,24 @@ clr = {[0.0660    0.4430    0.7450], ... blue
 for s = 1:length(subjnames)
     subj = subjnames(s);
     VT = data2{s,1};
-    VTsel = VT > VTcutoff;
+    %VTsel = VT > VTcutoff;
     anatsel = anat{:,s} > anatcutoff;
     if ~isempty(VT)
+        VT = VT(anatsel);
         for v = 2:4
             V = data2{s,v};
             if ~isempty(V)
+                V = V(anatsel);
                 plot(VT, V, '.', ...
                     'Marker', mkr{v-1}, 'Color', clr{s}); 
                 hold on;
-                if sum(anatsel)
-                    plot(VT(anatsel), V(anatsel), 'o', ...
-                        'MarkerSize',10, 'Color',clr{s});
-                end
-                if sum(VTsel)
+                %if sum(VTsel)
                     
-Vsel_vals = V(VTsel);
-VTsel_vals = VT(VTsel);
+%Vsel_vals = V(VTsel);
+%VTsel_vals = VT(VTsel);
+Vsel_vals = V; VTsel_vals = VT;
 [p, fiteval] = polyfit(VTsel_vals, Vsel_vals, 1);
-xfit = [VTcutoff, max(VTsel_vals)];
+xfit = [min(VTsel_vals), max(VTsel_vals)];
 yfit = polyval(p, xfit);
 plot(xfit, yfit, ':', 'Color', clr{s}, 'LineWidth', 1.5);
 if alignR
@@ -115,7 +114,7 @@ else
 end
 alignR = ~alignR;
 
-                end
+                %end
             end
         end
     end
