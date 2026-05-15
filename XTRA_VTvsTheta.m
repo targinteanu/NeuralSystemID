@@ -48,9 +48,9 @@ for s = 1:length(subjnames)
                 vi = 1;
             elseif strcmp(vname, 'BL')
                 vi = 2;
-            elseif strcmp(vname, 'NB')
-                vi = 3;
             elseif strcmp(vname, 'BL2')
+                vi = 3;
+            elseif strcmp(vname, 'NB')
                 vi = 4;
             else
                 warning(['Unrecognized variable name ',vname]);
@@ -63,7 +63,8 @@ end
 figure; 
 alignR = true;
 VTcutoff = 15;
-mkr = {'s', 'x', 'o'};
+anatcutoff = 0.5;
+mkr = {'s', 'd', 'x'};
 clr = {[0.0660    0.4430    0.7450], ... blue 
        [0.8660    0.3290         0], ... red 
        [0.2310    0.6660    0.1960], ... green
@@ -77,6 +78,7 @@ for s = 1:length(subjnames)
     subj = subjnames(s);
     VT = data2{s,1};
     VTsel = VT > VTcutoff;
+    anatsel = anat{:,s} > anatcutoff;
     if ~isempty(VT)
         for v = 2:4
             V = data2{s,v};
@@ -84,6 +86,10 @@ for s = 1:length(subjnames)
                 plot(VT, V, '.', ...
                     'Marker', mkr{v-1}, 'Color', clr{s}); 
                 hold on;
+                if sum(anatsel)
+                    plot(VT(anatsel), V(anatsel), 'o', ...
+                        'MarkerSize',10, 'Color',clr{s});
+                end
                 if sum(VTsel)
                     
 Vsel_vals = V(VTsel);
@@ -115,4 +121,4 @@ alignR = ~alignR;
     end
 end
 grid on;
-xlabel('XTRA VT'); ylabel('Theta Power (dB)');
+xlabel('x = XTRA VT'); ylabel('y = Theta Power (dB)');
