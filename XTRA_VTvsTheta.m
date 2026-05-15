@@ -61,12 +61,14 @@ for s = 1:length(subjnames)
 end
 
 figure; 
+alignR = true;
+VTcutoff = 15;
 mkr = {'s', 'x', 'o'};
 clr = {[0.0660    0.4430    0.7450], ... blue 
        [0.8660    0.3290         0], ... red 
        [0.2310    0.6660    0.1960], ... green
        [0.5210    0.0860    0.8190], ... purple
-       [0.4645    0.3470    0.0625], ... dark yellow
+       [0.4645    0.3470    0.0625], ... brown
        ...[0.9290    0.6940    0.1250], ... yellow
        [0.1840    0.7450    0.9370], ... teal
        [0.8190    0.0150    0.5450]  ... dark red
@@ -74,6 +76,7 @@ clr = {[0.0660    0.4430    0.7450], ... blue
 for s = 1:length(subjnames)
     subj = subjnames(s);
     VT = data2{s,1};
+    VTsel = VT > VTcutoff;
     if ~isempty(VT)
         for v = 2:4
             V = data2{s,v};
@@ -81,6 +84,32 @@ for s = 1:length(subjnames)
                 plot(VT, V, '.', ...
                     'Marker', mkr{v-1}, 'Color', clr{s}); 
                 hold on;
+                if sum(VTsel)
+                    
+Vsel_vals = V(VTsel);
+VTsel_vals = VT(VTsel);
+[p, fiteval] = polyfit(VTsel_vals, Vsel_vals, 1);
+xfit = [VTcutoff, max(VTsel_vals)];
+yfit = polyval(p, xfit);
+plot(xfit, yfit, ':', 'Color', clr{s}, 'LineWidth', 1.5);
+if alignR
+    text(xfit(end), yfit(end), ['  y = ',num2str(p(1)),'x + ',num2str(p(2))], ...
+        'HorizontalAlignment','left', 'VerticalAlignment','bottom', ...
+        'Color',clr{s});
+    text(xfit(end), yfit(end), ['  R^2 = ',num2str(fiteval.rsquared)], ...
+        'HorizontalAlignment','left', 'VerticalAlignment','top', ...
+        'Color',clr{s});
+else
+    text(xfit(1), yfit(1), ['  y = ',num2str(p(1)),'x + ',num2str(p(2))], ...
+        'HorizontalAlignment','right', 'VerticalAlignment','bottom', ...
+        'Color',clr{s});
+    text(xfit(1), yfit(1), ['  R^2 = ',num2str(fiteval.rsquared)], ...
+        'HorizontalAlignment','right', 'VerticalAlignment','top', ...
+        'Color',clr{s});
+end
+alignR = ~alignR;
+
+                end
             end
         end
     end
