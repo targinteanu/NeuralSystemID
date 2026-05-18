@@ -117,11 +117,12 @@ for s = 1:length(subjnames)
     if ~isempty(VT)
         VT = VT(anatsel);
         for v = 2:4
+            g = 1 + 2*(v-2)/3; % gamma color brightness adjustment
             V = data{s,v};
             if ~isempty(V)
                 V = V(anatsel);
                 plot(VT, V, '.', ...
-                    'Marker', mkr{1,v-1}, 'Color', clr{s}, 'LineWidth',1.5); 
+                    'Marker', mkr{1,v-1}, 'Color', clr{s}.^g, 'LineWidth',1.5); 
                 hold on;
                 lgd = [lgd, subj+":", vnames(v,2)];
                 %if sum(VTsel)
@@ -133,24 +134,24 @@ Vsel_vals = V; VTsel_vals = VT;
 rho = corr(VTsel_vals, Vsel_vals, "Type","Spearman");
 xfit = [min(VTsel_vals), max(VTsel_vals)];
 yfit = polyval(p, xfit);
-plot(xfit, yfit, mkr{2,v-1}, 'Color', clr{s}, 'LineWidth', 1.5);
+plot(xfit, yfit, mkr{2,v-1}, 'Color', clr{s}.^g, 'LineWidth', 1.5);
 txt1 = ['  \it y\rm = ',num2str(p(1),'%.1f'),'\it x\rm + ',num2str(p(2),'%.1f'),'  '];
 %txt2 = ['  R^2 = ',num2str(fiteval.rsquared,'%+.2f'),'  '];
 txt2 = ['  \rho = ',num2str(rho,'%+.2f'),'  '];
 if alignR
     text(xfit(end), yfit(end), txt1, ...
         'HorizontalAlignment','left', 'VerticalAlignment','bottom', ...
-        'Color',clr{s});
+        'Color',clr{s}.^g);
     text(xfit(end), yfit(end), txt2, ...
         'HorizontalAlignment','left', 'VerticalAlignment','top', ...
-        'Color',clr{s});
+        'Color',clr{s}.^g);
 else
     text(xfit(1), yfit(1), txt1, ...
         'HorizontalAlignment','right', 'VerticalAlignment','bottom', ...
-        'Color',clr{s});
+        'Color',clr{s}.^g);
     text(xfit(1), yfit(1), txt2, ...
         'HorizontalAlignment','right', 'VerticalAlignment','top', ...
-        'Color',clr{s});
+        'Color',clr{s}.^g);
 end
 alignR = ~alignR;
 
@@ -169,7 +170,6 @@ legend(lgd, 'Location','eastoutside')
 
 figure; 
 alignR = true;
-anatcutoff = 0.01;
 
 % first: all scatter plot
 for s = 1:length(subjnames)
@@ -236,3 +236,64 @@ grid on;
 xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
 xlim([6 24]);
 legend(anatHCP.Properties.VariableNames, 'Location','eastoutside')
+
+%% Power vs VT: all cond each subject
+
+for s = 1:length(subjnames)
+figure; 
+lgd = [];
+alignR = true;
+
+    subj = subjnames(s);
+    VT = data{s,1};
+    anatsel = anatHCP{:,s} > anatcutoff;
+    if ~isempty(VT)
+        VT = VT(anatsel);
+        for v = 2:4
+            g = 1 + 2*(v-2)/3; % gamma color brightness adjustment
+            V = data{s,v};
+            if ~isempty(V)
+                V = V(anatsel);
+                plot(VT, V, '.', ...
+                    'Marker', mkr{1,v-1}, 'Color', clr{s}.^g, 'LineWidth',1.5); 
+                hold on;
+                lgd = [lgd, subj+":", vnames(v,2)];
+                    
+Vsel_vals = V; VTsel_vals = VT;
+[p, fiteval] = polyfit(VTsel_vals, Vsel_vals, 1);
+rho = corr(VTsel_vals, Vsel_vals, "Type","Spearman");
+xfit = [min(VTsel_vals), max(VTsel_vals)];
+yfit = polyval(p, xfit);
+plot(xfit, yfit, mkr{2,v-1}, 'Color', clr{s}.^g, 'LineWidth', 1.5);
+txt1 = ['  \it y\rm = ',num2str(p(1),'%.1f'),'\it x\rm + ',num2str(p(2),'%.1f'),'  '];
+%txt2 = ['  R^2 = ',num2str(fiteval.rsquared,'%+.2f'),'  '];
+txt2 = ['  \rho = ',num2str(rho,'%+.2f'),'  '];
+if alignR
+    text(xfit(end), yfit(end), txt1, ...
+        'HorizontalAlignment','left', 'VerticalAlignment','bottom', ...
+        'Color',clr{s}.^g);
+    text(xfit(end), yfit(end), txt2, ...
+        'HorizontalAlignment','left', 'VerticalAlignment','top', ...
+        'Color',clr{s}.^g);
+else
+    text(xfit(1), yfit(1), txt1, ...
+        'HorizontalAlignment','right', 'VerticalAlignment','bottom', ...
+        'Color',clr{s}.^g);
+    text(xfit(1), yfit(1), txt2, ...
+        'HorizontalAlignment','right', 'VerticalAlignment','top', ...
+        'Color',clr{s}.^g);
+end
+alignR = ~alignR;
+
+            end
+        end
+    end
+
+grid on;
+title("Subject: "+subj);
+xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
+legend(lgd, 'Location','eastoutside')
+xl = xlim; 
+xl = xl + [-1,1]*diff(xl)*0.25;
+xlim(xl);
+end
