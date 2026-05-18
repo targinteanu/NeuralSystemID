@@ -3,7 +3,7 @@ opts = detectImportOptions(filename);
 opts.Sheet = 1;
 opts.DataRange = 'A1';
 data = readcell(filename, opts);
-opts.Sheet = 2;
+opts.Sheet = 3;
 %opts = setvartype(opts, 'char'); % ensure flexible import
 opts = setvartype(opts, 'double');
 opts.VariableNamesRange = 1;      % first row contains variable names
@@ -60,10 +60,26 @@ for s = 1:length(subjnames)
     end
 end
 
+%%
+figure; 
+for s = 1:length(subjnames)
+    subj = subjnames(s);
+    VT = data2{s,1};
+    a = anat{:,s}; 
+    if ~isempty(VT)
+        plot(a, VT, 's', 'Color',clr{s}, 'LineWidth',1.5);
+        hold on;
+    end
+end
+grid on;
+xlabel('x = anatomy'); ylabel('y = XTRA VT');
+legend(anat.Properties.VariableNames, 'Location','eastoutside');
+
+%%
 figure; 
 alignR = true;
 %VTcutoff = 15;
-anatcutoff = 0.5;
+anatcutoff = 0.01;
 mkr = {'s', 'o', 'x'};
 clr = {[0.0660    0.4430    0.7450], ... blue 
        [0.8660    0.3290         0], ... red 
@@ -86,7 +102,7 @@ for s = 1:length(subjnames)
             if ~isempty(V)
                 V = V(anatsel);
                 plot(VT, V, '.', ...
-                    'Marker', mkr{v-1}, 'Color', clr{s}); 
+                    'Marker', mkr{v-1}, 'Color', clr{s}, 'LineWidth',1.5); 
                 hold on;
                 %if sum(VTsel)
                     
