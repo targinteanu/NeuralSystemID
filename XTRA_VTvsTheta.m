@@ -4,7 +4,7 @@ opts = detectImportOptions(filename);
 opts.Sheet = 3;
 opts.DataRange = 'A1';
 %}
-theta = readcell(filename, 'Sheet',3, 'Range','A:S');
+ephys = readcell(filename, 'Sheet',3, 'Range','A:S');
 
 opts = detectImportOptions(filename);
 opts.Sheet = 1;
@@ -26,19 +26,23 @@ subjnames = string(anatHCP.Properties.VariableNames);
 subjrename = "Subject "+string(1:length(subjnames));
 
 %% reshape data into [<region> x <subj>] x <VT/BL/NB/BL2>
-newsubjcol = cellfun(@ischar, theta(1,:));
-newsubjcol = newsubjcol | cellfun(@isstring, theta(1,:));
+newsubjcol = cellfun(@ischar, ephys(1,:));
+newsubjcol = newsubjcol | cellfun(@isstring, ephys(1,:));
 for c = 1:length(newsubjcol)
     if newsubjcol(c)
-        if ~contains(theta{1,c}, 'XPD')
+        if ~contains(ephys{1,c}, 'XPD')
             newsubjcol(c) = false;
         end
     end
 end
 data = cell(length(subjnames), 4);
+vnames =["VT", "VT"; 
+         "BL", "Rest"; 
+         "BL2", "Rest After Task"; 
+         "NB", "Task"];
 for s = 1:length(subjnames)
     subj = subjnames(s);
-    c = find(strcmp(theta(1,:), subj));
+    c = find(strcmp(ephys(1,:), subj));
     if length(c) > 1
         error("Subject ID "+subj+" is not unique.");
     end
@@ -54,19 +58,14 @@ for s = 1:length(subjnames)
             d = length(newsubjcol);
         end
         for v = c:d
-            vname = theta{2,v};
-            if strcmp(vname, 'VT')
-                vi = 1;
-            elseif strcmp(vname, 'BL')
-                vi = 2;
-            elseif strcmp(vname, 'BL2')
-                vi = 3;
-            elseif strcmp(vname, 'NB')
-                vi = 4;
-            else
+            vname = ephys{2,v};
+            vi = find(strcmp(vname, vnames(:,1)));
+            if isempty(vi)
                 warning(['Unrecognized variable name ',vname]);
+            else
+                vi = vi(1);
+                data{s, vi} = [ephys{3:end, v}]';
             end
-            data{s, vi} = [theta{3:end, v}]';
         end
     end
 end
@@ -99,12 +98,14 @@ xlabel('anatomy'); ylabel('XTRA VT');
 title('Anatomy-VT Comparison');
 legend(anatHCP.Properties.VariableNames, 'Location','eastoutside');
 
-%%
+%% Power vs VT: all in one 
 figure; 
+lgd = [];
 alignR = true;
 %VTcutoff = 15;
 anatcutoff = 0.01;
-mkr = {'s', 'o', 'x'};
+mkr = {'s',  'o',  'x'; 
+       ':', '-.', '--'};
 for s = 1:length(subjnames)
     subj = subjnames(s);
     VT = data{s,1};
@@ -117,8 +118,9 @@ for s = 1:length(subjnames)
             if ~isempty(V)
                 V = V(anatsel);
                 plot(VT, V, '.', ...
-                    'Marker', mkr{v-1}, 'Color', clr{s}, 'LineWidth',1.5); 
+                    'Marker', mkr{1,v-1}, 'Color', clr{s}, 'LineWidth',1.5); 
                 hold on;
+                lgd = [lgd, subj+":", vnames(v,2)];
                 %if sum(VTsel)
                     
 %Vsel_vals = V(VTsel);
@@ -128,7 +130,7 @@ Vsel_vals = V; VTsel_vals = VT;
 rho = corr(VTsel_vals, Vsel_vals, "Type","Spearman");
 xfit = [min(VTsel_vals), max(VTsel_vals)];
 yfit = polyval(p, xfit);
-plot(xfit, yfit, ':', 'Color', clr{s}, 'LineWidth', 1.5);
+plot(xfit, yfit, mkr{2,v-1}, 'Color', clr{s}, 'LineWidth', 1.5);
 txt1 = ['  \it y\rm = ',num2str(p(1),'%.1f'),'\it x\rm + ',num2str(p(2),'%.1f'),'  '];
 %txt2 = ['  R^2 = ',num2str(fiteval.rsquared,'%+.2f'),'  '];
 txt2 = ['  \rho = ',num2str(rho,'%+.2f'),'  '];
@@ -156,4 +158,5 @@ alignR = ~alignR;
 end
 grid on;
 xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
-xlim([5 25]);
+xlim([6 24]);
+legend(lgd, 'Location','eastoutside')
