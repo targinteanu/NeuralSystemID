@@ -75,7 +75,7 @@ clr = {[0.0660    0.4430    0.7450], ... blue
        [0.8660    0.3290         0], ... red 
        [0.2310    0.6660    0.1960], ... green
        [0.5210    0.0860    0.8190], ... purple
-       [0.4645    0.3470    0.0625], ... brown
+       [0.6193    0.4627    0.0833], ... gold
        ...[0.9290    0.6940    0.1250], ... yellow
        [0.1840    0.7450    0.9370], ... teal
        [0.8190    0.0150    0.5450]  ... dark red
@@ -99,6 +99,7 @@ title('Anatomy-VT Comparison');
 legend(anatHCP.Properties.VariableNames, 'Location','eastoutside');
 
 %% Power vs VT: all in one 
+
 figure; 
 lgd = [];
 alignR = true;
@@ -106,7 +107,9 @@ alignR = true;
 anatcutoff = 0.01;
 mkr = {'s',  'o',  'x'; 
        ':', '-.', '--'};
+
 for s = 1:length(subjnames)
+
     subj = subjnames(s);
     VT = data{s,1};
     %VTsel = VT > VTcutoff;
@@ -156,7 +159,80 @@ alignR = ~alignR;
         end
     end
 end
+
 grid on;
 xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
 xlim([6 24]);
 legend(lgd, 'Location','eastoutside')
+
+%% Power vs VT: baseline all subjects 
+
+figure; 
+alignR = true;
+anatcutoff = 0.01;
+
+% first: all scatter plot
+for s = 1:length(subjnames)
+    subj = subjnames(s);
+    VT = data{s,1};
+    anatsel = anatHCP{:,s} > anatcutoff;
+    if ~isempty(VT)
+        VT = VT(anatsel);
+        v = 2; % baseline 
+        V = data{s,v};
+        if ~isempty(V)
+            V = V(anatsel);
+            plot(VT, V, '.', ...
+                'Marker', mkr{1,v-1}, 'Color', clr{s}, 'LineWidth',1.5); 
+            hold on;
+        end
+    end
+end
+
+
+% second: all trendlines
+for s = 1:length(subjnames)
+    subj = subjnames(s);
+    VT = data{s,1};
+    anatsel = anatHCP{:,s} > anatcutoff;
+    if ~isempty(VT)
+        VT = VT(anatsel);
+        v = 2; % baseline 
+        V = data{s,v};
+        if ~isempty(V)
+            V = V(anatsel);
+
+Vsel_vals = V; VTsel_vals = VT;
+[p, fiteval] = polyfit(VTsel_vals, Vsel_vals, 1);
+rho = corr(VTsel_vals, Vsel_vals, "Type","Spearman");
+xfit = [min(VTsel_vals), max(VTsel_vals)];
+yfit = polyval(p, xfit);
+plot(xfit, yfit, mkr{2,v-1}, 'Color', clr{s}, 'LineWidth', 1.5);
+txt1 = ['  \it y\rm = ',num2str(p(1),'%.1f'),'\it x\rm + ',num2str(p(2),'%.1f'),'  '];
+txt2 = ['  \rho = ',num2str(rho,'%+.2f'),'  '];
+if alignR
+    text(xfit(end), yfit(end), txt1, ...
+        'HorizontalAlignment','left', 'VerticalAlignment','bottom', ...
+        'Color',clr{s});
+    text(xfit(end), yfit(end), txt2, ...
+        'HorizontalAlignment','left', 'VerticalAlignment','top', ...
+        'Color',clr{s});
+else
+    text(xfit(1), yfit(1), txt1, ...
+        'HorizontalAlignment','right', 'VerticalAlignment','bottom', ...
+        'Color',clr{s});
+    text(xfit(1), yfit(1), txt2, ...
+        'HorizontalAlignment','right', 'VerticalAlignment','top', ...
+        'Color',clr{s});
+end
+alignR = ~alignR;
+
+        end
+    end
+end
+
+
+grid on;
+xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
+xlim([6 24]);
+legend(anatHCP.Properties.VariableNames, 'Location','eastoutside')
