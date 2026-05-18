@@ -129,9 +129,9 @@ rho = corr(VTsel_vals, Vsel_vals, "Type","Spearman");
 xfit = [min(VTsel_vals), max(VTsel_vals)];
 yfit = polyval(p, xfit);
 plot(xfit, yfit, ':', 'Color', clr{s}, 'LineWidth', 1.5);
-txt1 = ['  \it y\rm = ',num2str(p(1),3),'\it x\rm + ',num2str(p(2),3),'  '];
-%txt2 = ['  R^2 = ',num2str(fiteval.rsquared,3),'  '];
-txt2 = ['  \rho = ',num2str(rho,3),'  '];
+txt1 = ['  \it y\rm = ',num2str(p(1),'%.1f'),'\it x\rm + ',num2str(p(2),'%.1f'),'  '];
+%txt2 = ['  R^2 = ',num2str(fiteval.rsquared,'%+.2f'),'  '];
+txt2 = ['  \rho = ',num2str(rho,'%+.2f'),'  '];
 if alignR
     text(xfit(end), yfit(end), txt1, ...
         'HorizontalAlignment','left', 'VerticalAlignment','bottom', ...
