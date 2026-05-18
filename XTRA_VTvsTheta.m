@@ -37,7 +37,7 @@ for c = 1:length(newsubjcol)
 end
 data = cell(length(subjnames), 4);
 vnames =["VT", "VT"; 
-         "BL", "Rest"; 
+         "BL", "Rest Baseline"; 
          "BL2", "Rest After Task"; 
          "NB", "Task"];
 for s = 1:length(subjnames)
@@ -106,7 +106,7 @@ alignR = true;
 %VTcutoff = 15;
 anatcutoff = 0.01;
 mkr = {'s',  'o',  'x'; 
-       ':', '-.', '--'};
+       '--', '-.', ':'};
 
 for s = 1:length(subjnames)
 
@@ -236,6 +236,7 @@ grid on;
 xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
 xlim([6 24]);
 legend(anatHCP.Properties.VariableNames, 'Location','eastoutside')
+title('Baseline All Subjects')
 
 %% Power vs VT: all cond each subject
 
