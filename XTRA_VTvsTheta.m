@@ -1,33 +1,44 @@
 filename = '/Users/torenarginteanu/Documents/Anderson Lab/XTRA/XTRA_neurophys-VT.xlsx'; % spreadsheet 
+%{
+opts = detectImportOptions(filename);
+opts.Sheet = 3;
+opts.DataRange = 'A1';
+%}
+theta = readcell(filename, 'Sheet',3, 'Range','A:S');
+
 opts = detectImportOptions(filename);
 opts.Sheet = 1;
-opts.DataRange = 'A1';
-data = readcell(filename, opts);
-opts.Sheet = 3;
-%opts = setvartype(opts, 'char'); % ensure flexible import
 opts = setvartype(opts, 'double');
 opts.VariableNamesRange = 1;      % first row contains variable names
 opts.DataRange = 'A2';               % data starts on second row
-anat = readtable(filename, opts);
-anat = anat(:,2:6);
+anatAH = readtable(filename, opts);
+anatAH = anatAH(:,2:6);
 
-subjnames = string(anat.Properties.VariableNames);
+opts = detectImportOptions(filename);
+opts.Sheet = 2;
+opts = setvartype(opts, 'double');
+opts.VariableNamesRange = 1;      % first row contains variable names
+opts.DataRange = 'A2';               % data starts on second row
+anatHCP = readtable(filename, opts);
+anatHCP = anatHCP(:,2:6);
+
+subjnames = string(anatHCP.Properties.VariableNames);
 subjrename = "Subject "+string(1:length(subjnames));
 
-% reshape data into [<region> x <subj>] x <VT/BL/NB/BL2>
-newsubjcol = cellfun(@ischar, data(1,:));
-newsubjcol = newsubjcol | cellfun(@isstring, data(1,:));
+%% reshape data into [<region> x <subj>] x <VT/BL/NB/BL2>
+newsubjcol = cellfun(@ischar, theta(1,:));
+newsubjcol = newsubjcol | cellfun(@isstring, theta(1,:));
 for c = 1:length(newsubjcol)
     if newsubjcol(c)
-        if ~contains(data{1,c}, 'XPD')
+        if ~contains(theta{1,c}, 'XPD')
             newsubjcol(c) = false;
         end
     end
 end
-data2 = cell(length(subjnames), 4);
+data = cell(length(subjnames), 4);
 for s = 1:length(subjnames)
     subj = subjnames(s);
-    c = find(strcmp(data(1,:), subj));
+    c = find(strcmp(theta(1,:), subj));
     if length(c) > 1
         error("Subject ID "+subj+" is not unique.");
     end
@@ -43,7 +54,7 @@ for s = 1:length(subjnames)
             d = length(newsubjcol);
         end
         for v = c:d
-            vname = data{2,v};
+            vname = theta{2,v};
             if strcmp(vname, 'VT')
                 vi = 1;
             elseif strcmp(vname, 'BL')
@@ -55,32 +66,12 @@ for s = 1:length(subjnames)
             else
                 warning(['Unrecognized variable name ',vname]);
             end
-            data2{s, vi} = [data{3:end, v}]';
+            data{s, vi} = [theta{3:end, v}]';
         end
     end
 end
 
 %%
-figure; 
-for s = 1:length(subjnames)
-    subj = subjnames(s);
-    VT = data2{s,1};
-    a = anat{:,s}; 
-    if ~isempty(VT)
-        plot(a, VT, 's', 'Color',clr{s}, 'LineWidth',1.5);
-        hold on;
-    end
-end
-grid on;
-xlabel('x = anatomy'); ylabel('y = XTRA VT');
-legend(anat.Properties.VariableNames, 'Location','eastoutside');
-
-%%
-figure; 
-alignR = true;
-%VTcutoff = 15;
-anatcutoff = 0.01;
-mkr = {'s', 'o', 'x'};
 clr = {[0.0660    0.4430    0.7450], ... blue 
        [0.8660    0.3290         0], ... red 
        [0.2310    0.6660    0.1960], ... green
@@ -90,15 +81,39 @@ clr = {[0.0660    0.4430    0.7450], ... blue
        [0.1840    0.7450    0.9370], ... teal
        [0.8190    0.0150    0.5450]  ... dark red
        };
+figure; 
 for s = 1:length(subjnames)
     subj = subjnames(s);
-    VT = data2{s,1};
+    VT = data{s,1};
+    aHCP = anatHCP{:,s}; 
+    aAH = anatAH{:,s};
+    if ~isempty(VT)
+        %plot3(aHCP, aAH, VT, 's', 'Color',clr{s}, 'LineWidth',1.5);
+        plot(.5*(aHCP+aAH), VT, 's', 'Color',clr{s}, 'LineWidth',1.5);
+        hold on;
+    end
+end
+grid on;
+%xlabel('HCP'); ylabel('Al-Hakim'); zlabel('XTRA VT');
+xlabel('anatomy'); ylabel('XTRA VT');
+title('Anatomy-VT Comparison');
+legend(anatHCP.Properties.VariableNames, 'Location','eastoutside');
+
+%%
+figure; 
+alignR = true;
+%VTcutoff = 15;
+anatcutoff = 0.01;
+mkr = {'s', 'o', 'x'};
+for s = 1:length(subjnames)
+    subj = subjnames(s);
+    VT = data{s,1};
     %VTsel = VT > VTcutoff;
-    anatsel = anat{:,s} > anatcutoff;
+    anatsel = anatHCP{:,s} > anatcutoff;
     if ~isempty(VT)
         VT = VT(anatsel);
         for v = 2:4
-            V = data2{s,v};
+            V = data{s,v};
             if ~isempty(V)
                 V = V(anatsel);
                 plot(VT, V, '.', ...
@@ -110,21 +125,25 @@ for s = 1:length(subjnames)
 %VTsel_vals = VT(VTsel);
 Vsel_vals = V; VTsel_vals = VT;
 [p, fiteval] = polyfit(VTsel_vals, Vsel_vals, 1);
+rho = corr(VTsel_vals, Vsel_vals, "Type","Spearman");
 xfit = [min(VTsel_vals), max(VTsel_vals)];
 yfit = polyval(p, xfit);
 plot(xfit, yfit, ':', 'Color', clr{s}, 'LineWidth', 1.5);
+txt1 = ['  \it y\rm = ',num2str(p(1),3),'\it x\rm + ',num2str(p(2),3),'  '];
+%txt2 = ['  R^2 = ',num2str(fiteval.rsquared,3),'  '];
+txt2 = ['  \rho = ',num2str(rho,3),'  '];
 if alignR
-    text(xfit(end), yfit(end), ['  y = ',num2str(p(1)),'x + ',num2str(p(2))], ...
+    text(xfit(end), yfit(end), txt1, ...
         'HorizontalAlignment','left', 'VerticalAlignment','bottom', ...
         'Color',clr{s});
-    text(xfit(end), yfit(end), ['  R^2 = ',num2str(fiteval.rsquared)], ...
+    text(xfit(end), yfit(end), txt2, ...
         'HorizontalAlignment','left', 'VerticalAlignment','top', ...
         'Color',clr{s});
 else
-    text(xfit(1), yfit(1), ['  y = ',num2str(p(1)),'x + ',num2str(p(2))], ...
+    text(xfit(1), yfit(1), txt1, ...
         'HorizontalAlignment','right', 'VerticalAlignment','bottom', ...
         'Color',clr{s});
-    text(xfit(1), yfit(1), ['  R^2 = ',num2str(fiteval.rsquared)], ...
+    text(xfit(1), yfit(1), txt2, ...
         'HorizontalAlignment','right', 'VerticalAlignment','top', ...
         'Color',clr{s});
 end
@@ -136,4 +155,5 @@ alignR = ~alignR;
     end
 end
 grid on;
-xlabel('x = XTRA VT'); ylabel('y = Theta Power (dB)');
+xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
+xlim([5 25]);
