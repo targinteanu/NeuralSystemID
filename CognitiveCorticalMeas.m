@@ -25,6 +25,7 @@ for Ti = 1:height(tblsToAnalyze)
 
 % clean baseline selection 
 PDdata = tblsToAnalyze{Ti};
+RecordingDescription = PDdata.Properties.Description
 srate = PDdata.Properties.SampleRate;
 if isnan(srate)
     srate = 1/median(seconds(diff(PDdata.Time)));
@@ -115,6 +116,7 @@ R = mean(G,2, 'omitnan');
 OLthresh = thetaPowerWindowed > median(thetaPowerWindowed, 'omitnan');
 OLthresh = thetaPowerWindowed(OLthresh); 
 io = isoutlier(OLthresh, 'mean'); OLthresh = min(OLthresh(io));
+keyboard; % copy R to separate spreadsheet 
 
 end
 
