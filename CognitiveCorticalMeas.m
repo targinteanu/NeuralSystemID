@@ -1,5 +1,7 @@
 %% obtain segmented, artifact-free data 
 
+freqbnd = [30, 70]; % band freq bounds (Hz)
+
 % file selection
 [fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Artifact-Free Data File');
 load(fullfile(fp,fn));
@@ -50,15 +52,34 @@ PDdata = PDdata(:,channames); % reorder
 % common avg ECoG reref 
 PDdata{:,:} = PDdata{:,:} - mean(PDdata{:,1:63}, 2, 'omitnan');
 
+% notch out power line noise and any harmonics in band
+f0 = 60; % power line fundamental 
+qFactor = 35;
+notchB = 1; notchA = 1;
+for h = f0:f0:min((srate/2), max(freqbnd))
+    % add a notch at harmonic h
+    [notchBh,notchAh] = iirnotch(h/(srate/2), (h/(srate/2))/qFactor);
+    notchB = conv(notchB, notchBh); notchA = conv(notchA, notchAh);
+end
+figure; freqz(notchB,notchA,[],srate); sgtitle('Power Line Notch Filter');
+
+% filter band of interest 
+filtwts = fir1(1024, freqbnd./(srate/2));
+figure; freqz(filtwts,1,[],srate); sgtitle('Band Filter');
+
+pause(.001); drawnow; pause(.001);
+
 % signal processing 
-%thetaPowerCortex = bandpower(PDdata.Variables, srate, [4,9]);
+%thetaPowerCortex = bandpower(PDdata.Variables, srate, freqbnd);
 %thetaPowerCortex(isoutlier(sqrt(thetaPowerCortex))) = nan;
-filtwts = fir1(1024, [4, 9]./(srate/2));
 %PDdata = FilterTimetable(@(b,x) filtfilt(b,1,x), filtwts, PDdata);
 for ch = 1:width(PDdata)
     disp(['Filtering channel ',num2str(ch),' of ',num2str(width(PDdata))])
     x = PDdata{:,ch};
     if sum(~isnan(x))
+        if (length(notchB) > 1) || (length(notchA) > 1) || (notchB(1) ~= 1)
+            x = filtfilt(notchB,notchA,x);
+        end
         PDdata{:,ch} = filtfilt(filtwts,1,x);
     end
 end
@@ -97,4 +118,4 @@ io = isoutlier(OLthresh, 'mean'); OLthresh = min(OLthresh(io));
 
 end
 
-writetable(tblOut, fullfile(fp,'ThetaPowerAllChans.xlsx'));
+writetable(tblOut, fullfile(fp,'BandPowerAllChans.xlsx'));
