@@ -651,7 +651,8 @@ class TimeSeriesConv(nn.Module):
         self.time_conv3 = nn.Conv1d(dim_in, dim_in, groups=dim_in, kernel_size=K3)
         self.time_len_postconv = time_len - K1 - K2 - K3 + 3
         self.time_conv_norm = nn.LayerNorm(dim_in)
-        self.time_fc = nn.Linear(self.time_len_postconv, 1)
+        #self.time_fc = nn.Linear(self.time_len_postconv, 1)
+        self.time_fc = nn.Conv1d(dim_in, dim_in, groups=dim_in, kernel_size=self.time_len_postconv) # global conv to collapse time dimension
         #self.time_fc = nn.Linear(time_len - K1 - K2 + 2, len_model)
         #self.time_fc = nn.Linear(time_len - K1 + 1, len_model)
 
@@ -693,7 +694,7 @@ class TimeSeriesConv(nn.Module):
         if x.ndim != 3:
             raise ValueError(f"Expected input ndim=3, got {x.ndim}")
         #T = x.size(1)
-        T = self.time_len_postconv
+        T = 1
         B = x.size(0)
         rollout = u_seq.size(1)
 
@@ -713,23 +714,15 @@ class TimeSeriesConv(nn.Module):
         x = F.gelu(self.time_conv1(x))
         x = F.gelu(self.time_conv2(x))
         x = F.gelu(self.time_conv3(x))
+        x = F.gelu(self.time_fc(x))
         x = x.permute(0,2,1) # (B, T, dim_in)
         x = self.time_conv_norm(x)
 
         # unsure if the below re-assignment is necessary based on how the arrays exist in memory
-        x_used = x[:, :, :num_paired]  # (B,T,kN1)
-        x_unpaired = x[:, :, num_paired:(num_paired+num_unpaired)] # (B,T,N2)
-        x_left = x[:, :, (num_paired+num_unpaired):]  # (B,T,n); may be unused
+        x_used = x[..., :num_paired]  # (B,T,kN1)
+        x_unpaired = x[..., num_paired:(num_paired+num_unpaired)] # (B,T,N2)
+        x_left = x[..., (num_paired+num_unpaired):]  # (B,T,n); may be unused
 
-        """
-        x_pairs = torch.stack( 
-            (
-                x_used[:, :, :self.num_pairs],            # first half
-                x_used[:, :, self.num_pairs:],            # second half
-            ),
-            dim=3
-        )  # (B,T,N,2)
-        """
         x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N1,k)
         x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
         x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
@@ -763,14 +756,14 @@ class TimeSeriesConv(nn.Module):
         h = torch.cat([a_flat, b_flat, c_flat, x_left], dim=-1)        # (B,T,mlp_in)
 
         # Stage 3A time processing
-        h = h.permute(0,2,1) # (B, dim_model, T)
+        #h = h.permute(0,2,1) # (B, dim_model, T)
         """
         h = F.gelu(self.time_conv1(h))
         h = F.gelu(self.time_conv2(h))
         h = F.gelu(self.time_conv3(h))
         """
-        h = F.gelu(self.time_fc(h))
-        h = h.permute(0,2,1) # (B, T, dim_model)
+        #h = F.gelu(self.time_fc(h))
+        #h = h.permute(0,2,1) # (B, T, dim_model)
 
         # Stage 3B MLP
         h = self.norm(h)
