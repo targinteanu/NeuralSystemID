@@ -4,7 +4,8 @@ opts = detectImportOptions(filename);
 opts.Sheet = 3;
 opts.DataRange = 'A1';
 %}
-ephys = readcell(filename, 'Sheet',3, 'Range','A:S');
+ephys = readcell(filename, 'Sheet',4, 'Range','A:S');
+bandname = 'Low Gamma';
 
 opts = detectImportOptions(filename);
 opts.Sheet = 1;
@@ -162,7 +163,7 @@ alignR = ~alignR;
 end
 
 grid on;
-xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
+xlabel('\it x\rm = XTRA VT'); ylabel(['\it y\rm = ',bandname,' Power (dB)']);
 xlim([6 24]);
 legend(lgd, 'Location','eastoutside')
 
@@ -233,7 +234,7 @@ end
 
 
 grid on;
-xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
+xlabel('\it x\rm = XTRA VT'); ylabel(['\it y\rm = ',bandname,' Power (dB)']);
 xlim([6 24]);
 legend(anatHCP.Properties.VariableNames, 'Location','eastoutside')
 title('Baseline All Subjects')
@@ -292,7 +293,7 @@ alignR = ~alignR;
 
 grid on;
 title("Subject: "+subj);
-xlabel('\it x\rm = XTRA VT'); ylabel('\it y\rm = Theta Power (dB)');
+xlabel('\it x\rm = XTRA VT'); ylabel(['\it y\rm = ',bandname,' Power (dB)']);
 legend(lgd, 'Location','eastoutside')
 xl = xlim; 
 xl = xl + [-1,1]*diff(xl)*0.25;
