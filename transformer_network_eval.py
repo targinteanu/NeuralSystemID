@@ -13,7 +13,8 @@ numgroups=5
 numgroupsunpaired=2
 #fc = np.array([4,10,27,60,90]) # freq band center freqs
 fc = np.array([4,10,27]) # freq band center freqs
-netfile = "neural_network_pytorch_093523772db8074d4eac32acee3d4d2943fb7193_3.pth"
+netfile = ""
+arfile = ""
 dt_target = 0.01 # model sample time, s
 seq_len = 128 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
@@ -22,17 +23,21 @@ filtorder = 201
 # train simpler model(s) for comparison ------------------------------------------------------
 
 # autoregressive model for each feature
-print("Training autoregressive model for each feature...")
-_, _, _, _, _, X, Y, _, _, _, _, _, _ = prepTimeSeqData(
-    seq_len=seq_len, hzn_len=1, dt_target=dt_target, drawFromStart=True, maxNumel=5e8)
-Mar = []
-for f in range(Y.shape[-1]):
-    x = X[:,:,f]
-    y = Y[:,0,f]
-    A = np.linalg.lstsq(x, y, rcond=None)[0]
-    Mar.append(A)
-Mar = np.stack(Mar, axis=1)
-del X, Y, A, x, y
+if arfile:
+    Mar = np.load(arfile)
+else:
+    # autoregressive model for each feature
+    print("Training autoregressive model for each feature...")
+    _, _, _, _, _, X, Y, _, _, _, _, _, _ = prepTimeSeqData(
+        seq_len=seq_len, hzn_len=1, dt_target=dt_target, drawFromStart=True, maxNumel=5e8)
+    Mar = []
+    for f in range(Y.shape[-1]):
+        x = X[:,:,f]
+        y = Y[:,0,f]
+        A = np.linalg.lstsq(x, y, rcond=None)[0]
+        Mar.append(A)
+    Mar = np.stack(Mar, axis=1)
+    del X, Y, A, x, y
 """
 # linear regression model using all features
 print("Training linear regression model using all features...")

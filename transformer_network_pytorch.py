@@ -13,6 +13,18 @@ import pandas as pd
 from csv2numpy import prepTimeSeqData
 
 # %%
+# simpler model as baseline for comparison 
+def trainAR(X, Y):
+    Mar = []
+    for f in range(Y.shape[-1]):
+        x = X[:,:,f]
+        y = Y[:,0,f]
+        A = np.linalg.lstsq(x, y, rcond=None)[0]
+        Mar.append(A)
+    Mar = np.stack(Mar, axis=1)
+    return Mar
+
+# %%
 # Prepare the Data ---------------------------------------------------------------------
 
 seq_len = 128  # sequence length
@@ -86,6 +98,12 @@ while hzn_len < 16:
     Xsh_test = Xsh[train_N_s:]
     Ysh_test = Ysh[train_N_s:]
     Ush_test = Ush[train_N_s:]
+
+    # train simpler baseline model for comparison 
+    if hzn_len == 1:
+        Mar = trainAR(Xh_train, Yh_train)
+        np.save("neural_network_AR.npy", Mar)
+        del Mar
 
     # Create TensorDatasets and loaders
     train_dataset_h = TensorDataset(Xh_train, Yh_train, Uh_train)
