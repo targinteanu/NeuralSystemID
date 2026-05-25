@@ -115,8 +115,10 @@ end
 dd = dd/dd(1);
 figure; plot(krange, dd);
 %}
+
 %% visualize clusters 
-[kidx,kc,kd] = kmeans(WFS, k, 'Distance','correlation');
+%[kidx,kc,kd] = kmeans(WFS, k);
+[kidx,kc,kd] = kgmm(WFS, k);
 
 % scatter 
 figure;
@@ -179,6 +181,24 @@ for ki = unique(kidx)'
 end
 
 %% helpers 
+
+function [idx, C, S] = kgmm(X, k)
+% fit Gaussian mixture model to WFS to obtain cluster assignments kidx
+%rng(0); % for reproducibility
+options = statset('MaxIter',1000);
+
+% try to fit GMM with k components, using regularization to avoid singular covariances
+gm = fitgmdist(X, k, 'Options', options, 'RegularizationValue', 1e-6, ...
+    'Replicates', 5, 'CovarianceType', 'full');
+
+% cluster indices: assign each point to the component with highest posterior
+idx = cluster(gm, X);
+
+% also compute cluster centers in PC space (optional for plotting/inspection)
+C = gm.mu;
+S = gm.Sigma;
+end
+
 function [bincent, binvals] = corgm(y, z, trng)
 % compute cross-event conditional occurrence (histogram of z around y)
 % y and z are vectors of timepoints (in same units as trng), trng is scalar window
