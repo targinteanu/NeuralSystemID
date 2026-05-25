@@ -10,6 +10,7 @@ uOL = OL( x(OL) > mid );
 % decide whether to use upper or lower threshold 
 % based on count or magnitude 
 sgn = false; % flip signal sign
+%{
 if length(uOL) > length(lOL)
     TH = uTH;
 elseif length(lOL) > length(uOL)
@@ -24,6 +25,16 @@ else
         TH = lTH;
         sgn = true;
     end
+end
+%}
+%[~,~,~,Tstat] = ttest2(abs(x(uOL)), abs(x(lOL)), 'Vartype','unequal');
+%if Tstat.tstat > 0
+xu = x(uOL).^2; xl = x(lOL).^2;
+if mean(xu)/std(xu) > mean(xl)/std(xl)
+    TH = uTH; % Set threshold to upper threshold
+else
+    TH = lTH; % Set threshold to lower threshold
+    sgn = true; % Flip signal sign
 end
 
 if sgn
