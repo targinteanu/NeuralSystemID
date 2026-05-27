@@ -93,7 +93,7 @@ WFS = WFS(:,1:nPC);
 %% cluster waveforms 
 
 % identify # clusters, k
-krange = 1:ceil(size(WFS,1)/10);
+krange = 2:ceil(size(WFS,1)/100);
 %{
 % Determine the optimal number of clusters using the elbow method
 distances = pdist(WFS, 'euclidean');
@@ -102,11 +102,20 @@ clusterDendrogram = dendrogram(linkageTree, 0);
 %}
 % Calculate the optimal number of clusters using the silhouette method
 %silhouetteValues = silhouette(WFS, clusterIdx);
-optimalK = evalclusters(WFS, 'gmdistribution', 'Silhouette', 'KList', krange);
-k = optimalK.OptimalK;
-figure; plot(optimalK.InspectedK, optimalK.CriterionValues);
-grid on; hold on; plot(k, optimalK.CriterionValues(krange==k), 'o');
-xlabel('# clusters (k)'); ylabel('Silhouette score');
+%optimalK = evalclusters(WFS, 'gmdistribution', 'Silhouette', 'KList', krange);
+%k = optimalK.OptimalK;
+%figure; plot(optimalK.InspectedK, optimalK.CriterionValues);
+CriterionValues = nan(size(krange));
+parfor ki = 57:length(krange)
+    %tic
+    [kidx,kc,kd] = kgmm(WFS, krange(ki));
+    CriterionValues(ki) = mean(silhouette(WFS, kidx));
+    %toc
+end
+figure; plot(krange, CriterionValues);
+[~,ki] = max(CriterionValues); k = krange(ki);
+grid on; hold on; plot(k, CriterionValues(krange==k), 'o');
+xlabel('# clusters (k)'); ylabel('mean Silhouette score');
 %{
 dd = [];
 ddd = pdist(WFS, 'euclidean'); ddd = mean(ddd);
