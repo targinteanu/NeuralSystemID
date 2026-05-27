@@ -101,7 +101,9 @@ while hzn_len < 16:
 
     # train simpler baseline model for comparison 
     if hzn_len == 1:
+        print("Training autoregressive model for each feature...")
         Mar = trainAR(Xh_train, Yh_train)
+        print("Saving autoregressive model...")
         np.save("neural_network_AR.npy", Mar)
         del Mar
 
