@@ -76,13 +76,17 @@ tWF = (-WFlen:WFlen)/fs;
 maxPC = 200; % max # components to consider 
 thrE = 95; % cumulative %var explained target 
 [C,WFS,L,T,E,M] = pca(WF);
-nPC = find(cumsum(E) > thrE);
+EE = cumsum(E);
+nPC = find(EE > thrE);
 if isempty(nPC)
     nPC = maxPC;
 else
     nPC = min(nPC);
     nPC = min(nPC, maxPC);
 end
+figure; plot(EE); hold on; grid on; plot(nPC, EE(nPC), 'o');
+xlabel('# PCs'); ylabel('Cumulative % var explained');
+title('PCA dim reduction');
 nPC = min(nPC, size(WF,2));
 WFS = WFS(:,1:nPC);
 
@@ -98,7 +102,7 @@ clusterDendrogram = dendrogram(linkageTree, 0);
 %}
 % Calculate the optimal number of clusters using the silhouette method
 %silhouetteValues = silhouette(WFS, clusterIdx);
-optimalK = evalclusters(WFS, 'kmeans', 'Silhouette', 'KList', krange);
+optimalK = evalclusters(WFS, 'gmdistribution', 'Silhouette', 'KList', krange);
 k = optimalK.OptimalK;
 figure; plot(optimalK.InspectedK, optimalK.CriterionValues);
 grid on; hold on; plot(k, optimalK.CriterionValues(krange==k), 'o');
@@ -171,10 +175,10 @@ for ki = unique(kidx)'
     for kj = unique(kidx)'
         spkj = spkIdx(kidx == kj);
         subplot(k,k,p);
-        [bincent, binvals] = corgm(spki, spkj, ceil(0.5*fs));
-        bincent = bincent/fs;
+        [bincent, binvals] = corgm(spki, spkj, ceil(0.2*fs));
+        bincent = bincent/fs; binvals = binvals*fs;
         bar(bincent, binvals);
-        xlabel('delay (s)'); ylabel('probability');
+        xlabel('delay (s)'); ylabel('avg # per s');
         title([num2str(kj),' given ',num2str(ki)]);
         p = p+1;
     end
@@ -182,10 +186,11 @@ end
 
 %% helpers 
 
+
 function [idx, C, S] = kgmm(X, k)
 % fit Gaussian mixture model to WFS to obtain cluster assignments kidx
 %rng(0); % for reproducibility
-options = statset('MaxIter',1000);
+options = statset('MaxIter',10000);
 
 % try to fit GMM with k components, using regularization to avoid singular covariances
 gm = fitgmdist(X, k, 'Options', options, 'RegularizationValue', 1e-6, ...
@@ -198,6 +203,7 @@ idx = cluster(gm, X);
 C = gm.mu;
 S = gm.Sigma;
 end
+
 
 function [bincent, binvals] = corgm(y, z, trng)
 % compute cross-event conditional occurrence (histogram of z around y)
@@ -227,8 +233,9 @@ else
 end
 
 % create bin edges covering [-trng, trng]
-binedges = (-trng:dt:trng);
-bincent = (binedges(1:end-1) + binedges(2:end))/2;
+binedges = (dt/2):dt:trng; 
+binedges = [-fliplr(binedges), binedges]; % force center at 0
+bincent = (binedges(1:end-1) + binedges(2:end))/2; % should icl 0
 nb = numel(bincent);
 binvals = zeros(1, nb);
 
