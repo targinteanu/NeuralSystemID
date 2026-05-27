@@ -143,7 +143,7 @@ grid on;
 title('Cluster scatterplot in PC space'); 
 xlabel('PC1'); ylabel('PC2'); zlabel('PC3');
 
-% waveform 
+%% waveform 
 figure; 
 errorbar(tWF, mean(WF), std(WF), 'Color',[.5 .5 .5]); hold on;
 for ki = unique(kidx)'
@@ -199,11 +199,11 @@ end
 function [idx, C, S] = kgmm(X, k)
 % fit Gaussian mixture model to WFS to obtain cluster assignments kidx
 %rng(0); % for reproducibility
-options = statset('MaxIter',10000);
+options = statset('MaxIter',100000);
 
 % try to fit GMM with k components, using regularization to avoid singular covariances
 gm = fitgmdist(X, k, 'Options', options, 'RegularizationValue', 1e-6, ...
-    'Replicates', 5, 'CovarianceType', 'full');
+    'Replicates', 10, 'CovarianceType', 'full');
 
 % cluster indices: assign each point to the component with highest posterior
 idx = cluster(gm, X);
