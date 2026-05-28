@@ -106,12 +106,42 @@ clusterDendrogram = dendrogram(linkageTree, 0);
 %k = optimalK.OptimalK;
 %figure; plot(optimalK.InspectedK, optimalK.CriterionValues);
 CriterionValues = nan(size(krange));
-parfor ki = 57:length(krange)
-    %tic
+
+% initial rough search
+parfor ki = round(linspace(1,length(krange),16))
+    tic
     [kidx,kc,kd] = kgmm(WFS, krange(ki));
     CriterionValues(ki) = mean(silhouette(WFS, kidx));
-    %toc
+    disp(['k = ',num2str(krange(ki)),'; Criterion = ',num2str(CriterionValues(ki))])
+    toc
 end
+
+% refined search 
+continuesearch = true;
+while continuesearch
+% find the indices of the highest and second-highest CriterionValues
+[sortedVals, sortedIdx] = sort(CriterionValues, 'descend');
+% handle potential NaNs by ignoring them
+valid = ~isnan(sortedVals);
+sortedVals = sortedVals(valid);
+sortedIdx = sortedIdx(valid);
+kj = sortedIdx(1); kl = sortedIdx(2);
+ki = (kj+kl)/2; ki = ceil(ki);
+if ~isnan(CriterionValues(ki))
+    ki = (kj+kl)/2; ki = floor(ki);
+    if ~isnan(CriterionValues(ki))
+        continuesearch = false; % Exit the loop after refinement
+    end
+end
+if continuesearch
+    tic
+    [kidx,kc,kd] = kgmm(WFS, krange(ki));
+    CriterionValues(ki) = mean(silhouette(WFS, kidx));
+    disp(['k = ',num2str(krange(ki)),'; Criterion = ',num2str(CriterionValues(ki))])
+    toc
+end
+end
+
 figure; plot(krange, CriterionValues);
 [~,ki] = max(CriterionValues); k = krange(ki);
 grid on; hold on; plot(k, CriterionValues(krange==k), 'o');
