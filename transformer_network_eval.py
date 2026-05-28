@@ -19,7 +19,7 @@ dt_target = 0.01 # model sample time, s
 seq_len = 128 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 filtorder = 201
-dodiff = True
+dodiff = True # eval change over time instead of raw value
 
 # train simpler model(s) for comparison ------------------------------------------------------
 
@@ -330,20 +330,27 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     print("NN Mean correlation:", np.mean(rho))
     print("AR Mean MSE:", np.mean(mse_ar))
     print("AR Mean correlation:", np.mean(rho_ar))
+
     # show a bar plot of mse per feature
     barwid = .35
     barx = np.arange(len(mse))
-    plt.figure()
-    #plt.bar(barx-2*barwid, 1-mse, width=barwid, label="NN 1-MSE")
-    #plt.bar(barx-barwid, 1-mse_ar, width=barwid, label="AR 1-MSE")
-    plt.bar(barx, rho, width=barwid, label="NN correlation")
-    plt.bar(barx+barwid, rho_ar, width=barwid, label="AR correlation")
-    plt.legend()
-    plt.xlabel("Feature index")
-    plt.xticks(ticks=range(0, len(mse), groupsize), labels=feature_names[::groupsize], rotation=90, ha='right')
-    plt.ylabel("accuracy")
-    plt.title("Accuracy per Feature")
-    plt.grid(axis='y')
+    barfig, barax = plt.subplots(2, 1, sharex=True)
+    barax[0].bar(barx, rho, width=barwid, label="NN", color='red')
+    barax[0].bar(barx+barwid, rho_ar, width=barwid, label="AR", color='blue')
+    barax[0].legend()
+    #barax[0].set_xlabel("Feature index")
+    #barax[0].set_xticks(ticks=range(0, len(mse), groupsize), labels=feature_names[::groupsize], rotation=90, ha='right')
+    barax[0].set_ylabel("correlation")
+    barax[0].set_title("Accuracy per Feature")
+    barax[0].grid(axis='y')
+    barax[1].bar(barx, 1-mse, width=barwid, label="NN", color='red')
+    barax[1].bar(barx+barwid, 1-mse_ar, width=barwid, label="AR", color='blue')
+    barax[1].legend()
+    barax[1].set_xlabel("Feature index")
+    barax[1].set_xticks(ticks=range(0, len(mse), groupsize), labels=feature_names[::groupsize], rotation=90, ha='right')
+    barax[1].set_ylabel("1-MSE")
+    barax[1].grid(axis='y')
+    plt.tight_layout()
     plt.show()
 
     # a few example channels 
@@ -354,9 +361,9 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     # Create a single figure with vertically stacked subplots
     fig, axes = plt.subplots(len(example_indices)+1, 1, sharex=True, figsize=(10, 8))
     for ax, idx in zip(axes, example_indices):
-        ax.plot(Ytrue[:, idx], label="True")
-        ax.plot(Ysim[:, idx], label="NN Simulated", alpha=0.7)
-        ax.plot(Yar[:, idx], label="AR Simulated", alpha=0.6)
+        ax.plot(Ytrue[:, idx], label="True", color='black')
+        ax.plot(Ysim[:, idx], label="NN", alpha=0.7, color='red')
+        ax.plot(Yar[:, idx], label="AR", alpha=0.6, color='blue')
         ax.set_ylabel("Feature Value")
         ax.set_title(f"Feature: {feature_names[idx]} (MSE: {mse[idx]:.4f}; corr: {rho[idx]:.4f})")
         ax.legend()
@@ -380,16 +387,21 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
 
     # show a bar plot of mse per feature
     barx = np.arange(len(mse_recon))
-    plt.figure()
-    #plt.bar(barx-2*barwid, 1-mse_recon, width=barwid, label="NN 1-MSE")
-    #plt.bar(barx-barwid, 1-mse_recon_ar, width=barwid, label="AR 1-MSE")
-    plt.bar(barx, rho_recon, width=barwid, label="NN correlation")
-    plt.bar(barx+barwid, rho_recon_ar, width=barwid, label="AR correlation")
-    plt.legend()
-    plt.xlabel("Channel index")
-    plt.ylabel("accuracy")
-    plt.title("Accuracy per Channel")
-    plt.grid(axis='y')
+    barfig, barax = plt.subplots(2, 1, sharex=True)
+    barax[0].bar(barx, rho_recon, width=barwid, label="NN", color='red')
+    barax[0].bar(barx+barwid, rho_recon_ar, width=barwid, label="AR", color='blue')
+    barax[0].legend()
+    #barax[0].set_xlabel("Channel index")
+    barax[0].set_ylabel("correlation")
+    barax[0].set_title("Accuracy per Channel")
+    barax[0].grid(axis='y')
+    barax[1].bar(barx, 1-mse_recon, width=barwid, label="NN", color='red')
+    barax[1].bar(barx+barwid, 1-mse_recon_ar, width=barwid, label="AR", color='blue')
+    barax[1].legend()
+    barax[1].set_xlabel("Channel index")
+    barax[1].set_ylabel("1-MSE")
+    barax[1].grid(axis='y')
+    plt.tight_layout()
     plt.show()
 
     # a few example channels 
@@ -400,9 +412,9 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     # Create a single figure with vertically stacked subplots
     fig, axes = plt.subplots(len(example_indices)+1, 1, sharex=True, figsize=(10, 8))
     for ax, idx in zip(axes, example_indices):
-        ax.plot(Ytrue_recon[:, idx], label="True")
-        ax.plot(Ysim_recon[:, idx], label="NN Simulated", alpha=0.7)
-        ax.plot(Yar_recon[:, idx], label="AR Simulated", alpha=0.6)
+        ax.plot(Ytrue_recon[:, idx], label="True", color='black')
+        ax.plot(Ysim_recon[:, idx], label="NN", alpha=0.7, color='red')
+        ax.plot(Yar_recon[:, idx], label="AR", alpha=0.6, color='blue')
         ax.set_ylabel("Channel Value")
         ax.set_title(f"Channel: {idx} (MSE: {mse_recon[idx]:.4f}; corr: {rho_recon[idx]:.4f})")
         ax.legend()
