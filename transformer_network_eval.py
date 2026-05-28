@@ -13,12 +13,13 @@ numgroups=5
 numgroupsunpaired=2
 #fc = np.array([4,10,27,60,90]) # freq band center freqs
 fc = np.array([4,10,27]) # freq band center freqs
-netfile = ""
-arfile = ""
+netfile = "neural_network_pytorch_38757f70f4fc8aa0a179ee358c74212c1e790970.pth"
+arfile = "neural_network_AR_38757f70f4fc8aa0a179ee358c74212c1e790970.npy"
 dt_target = 0.01 # model sample time, s
 seq_len = 128 # model transformer samples
 hzn_len = math.ceil(hzn / dt_target)  # horizon as multiple of MODEL Ts, NOT data Ts 
 filtorder = 201
+dodiff = True
 
 # train simpler model(s) for comparison ------------------------------------------------------
 
@@ -293,6 +294,31 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     Ysim = np.array(Ysim)
     Yar = np.array(Yar)[:,-1,:]
     Ytrue = Y.numpy()
+
+    # reconstruct raw signal from filtered bands 
+    Ysim_grouped = unprocess(Ysim, feature_correction)
+    Yar_grouped = unprocess(Yar, feature_correction)
+    Ytrue_grouped = unprocess(Ytrue, feature_correction)
+    N = numgroups-numgroupsunpaired
+    Ysim_grouped = Ysim_grouped[:, :N*groupsize]
+    Yar_grouped = Yar_grouped[:, :N*groupsize]
+    Ytrue_grouped = Ytrue_grouped[:, :N*groupsize]
+    Ysim_grouped = Ysim_grouped.reshape(-1, N, groupsize)
+    Yar_grouped = Yar_grouped.reshape(-1, N, groupsize)
+    Ytrue_grouped = Ytrue_grouped.reshape(-1, N, groupsize)
+    Ysim_recon = np.sum(Ysim_grouped, axis=-2)
+    Yar_recon = np.sum(Yar_grouped, axis=-2)
+    if Ytrue_recon is None:
+        Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
+
+    if dodiff:
+        Ytrue = np.diff(Ytrue, axis=0)
+        Ysim = np.diff(Ysim, axis=0)
+        Yar = np.diff(Yar, axis=0)
+        Ytrue_recon = np.diff(Ytrue_recon, axis=0)
+        Ysim_recon = np.diff(Ysim_recon, axis=0)
+        Yar_recon = np.diff(Yar_recon, axis=0)
+
     print("Ysim shape :", Ysim.shape)
     print("Yar shape:", Yar.shape)
     print("Ytrue shape:", Ytrue.shape)
@@ -336,7 +362,10 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
         ax.legend()
         ax.grid(axis='both')
     # plot stim input
-    axes[-1].plot(U[:,-1,-1])
+    if dodiff:
+        axes[-1].plot(U[1:,-1,-1])
+    else:
+        axes[-1].plot(U[:,-1,-1])
     axes[-1].set_title("Stimulus Input")
     axes[-1].set_ylabel("Count")
     axes[-1].grid(axis='both')
@@ -344,34 +373,6 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
     plt.tight_layout()
     plt.show()
 
-    # reconstruct raw signal from filtered bands 
-    """
-    Ysim_grouped = Ysim[:, :numgroups * groupsize] # * feature_correction[:numgroups * groupsize]
-    Ytrue_grouped = Ytrue[:, :numgroups * groupsize] # * feature_correction[:numgroups * groupsize]
-    mse_grouped = mse[:numgroups * groupsize].reshape(groupsize, numgroups)
-    pinksim = Ysim[:, 2*(numgroups * groupsize):]
-    pinktrue = Ytrue[:, 2*(numgroups * groupsize):]
-    f = np.tile(fc, (groupsize,1)).T.flatten()
-    f = np.column_stack((np.log10(f), np.ones(len(f)))).T
-    Ppinksim = np.power(10, pinksim @ f) ** .5
-    Ppinktrue = np.power(10, pinktrue @ f) ** .5
-    Ysim_grouped = Ysim_grouped * Ppinksim
-    Ytrue_grouped = Ytrue_grouped * Ppinktrue
-    """
-    Ysim_grouped = unprocess(Ysim, feature_correction)
-    Yar_grouped = unprocess(Yar, feature_correction)
-    Ytrue_grouped = unprocess(Ytrue, feature_correction)
-    N = numgroups-numgroupsunpaired
-    Ysim_grouped = Ysim_grouped[:, :N*groupsize]
-    Yar_grouped = Yar_grouped[:, :N*groupsize]
-    Ytrue_grouped = Ytrue_grouped[:, :N*groupsize]
-    Ysim_grouped = Ysim_grouped.reshape(-1, N, groupsize)
-    Yar_grouped = Yar_grouped.reshape(-1, N, groupsize)
-    Ytrue_grouped = Ytrue_grouped.reshape(-1, N, groupsize)
-    Ysim_recon = np.sum(Ysim_grouped, axis=-2)
-    Yar_recon = np.sum(Yar_grouped, axis=-2)
-    if Ytrue_recon is None:
-        Ytrue_recon = np.sum(Ytrue_grouped, axis=-2)
     mse_recon = np.mean((Ysim_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
     rho_recon = np.array([ np.corrcoef(Ysim_recon[:,i], Ytrue_recon[:,i])[0,1] for i in range(Ytrue_recon.shape[1]) ])
     mse_recon_ar = np.mean((Yar_recon - Ytrue_recon)**2, axis=0) / (np.mean((Ytrue_recon)**2, axis=0) + np.finfo(float).eps)
@@ -407,7 +408,10 @@ def run_simulation(U, X, Y, Ytrue_recon=None):
         ax.legend()
         ax.grid(axis='both')
     # plot stim input
-    axes[-1].plot(U[:,-1,-1])
+    if dodiff:
+        axes[-1].plot(U[1:,-1,-1])
+    else:
+        axes[-1].plot(U[:,-1,-1])
     axes[-1].set_title("Stimulus Input")
     axes[-1].set_ylabel("Count")
     axes[-1].grid(axis='both')
