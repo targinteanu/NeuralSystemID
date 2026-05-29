@@ -1,3 +1,8 @@
+%% load data 
+load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/SPK_RT_SelectedTimes.mat")
+x = depth_p0496_1.CSPK_AP_T___Central;
+t = seconds(depth_p0496_1.Time);
+
 %% threshold definition 
 
 % identify threshold(s) 
@@ -93,7 +98,7 @@ WFS = WFS(:,1:nPC);
 %% cluster waveforms 
 
 % identify # clusters, k
-krange = 2:ceil(size(WFS,1)/100);
+krange = 2:ceil(size(WFS,1)/10);
 %{
 % Determine the optimal number of clusters using the elbow method
 distances = pdist(WFS, 'euclidean');
@@ -108,12 +113,20 @@ clusterDendrogram = dendrogram(linkageTree, 0);
 CriterionValues = nan(size(krange));
 
 % initial rough search
-parfor ki = round(linspace(1,length(krange),16))
+ksrx = uint16(round(linspace(1,length(krange),16)));
+ctrx = nan(size(ksrx));
+parfor kii = 1:length(ksrx)
     tic
+    ki = ksrx(kii);
     [kidx,kc,kd] = kgmm(WFS, krange(ki));
-    CriterionValues(ki) = mean(silhouette(WFS, kidx));
-    disp(['k = ',num2str(krange(ki)),'; Criterion = ',num2str(CriterionValues(ki))])
+    %CriterionValues(ki) = mean(silhouette(WFS, kidx));
+    ctrx(kii) = mean(silhouette(WFS, kidx));
+    disp(['k = ',num2str(krange(ki)),'; Criterion = ',num2str(ctrx(kii))])
     toc
+end
+for kii = 1:length(ksrx)
+    ki = ksrx(kii);
+    CriterionValues(ki) = ctrx(kii);
 end
 
 % refined search 
@@ -142,7 +155,7 @@ if continuesearch
 end
 end
 
-figure; plot(krange, CriterionValues);
+figure; plot(krange, CriterionValues, 'x');
 [~,ki] = max(CriterionValues); k = krange(ki);
 grid on; hold on; plot(k, CriterionValues(krange==k), 'o');
 xlabel('# clusters (k)'); ylabel('mean Silhouette score');
