@@ -2,15 +2,20 @@
 load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/SPK_RT_SelectedTimes.mat")
 x = depth_p0496_1.CSPK_AP_T___Central;
 t = seconds(depth_p0496_1.Time);
+fs = 1/median(diff(t)); % hz
 
 %% threshold definition 
 
+% filter for detection only, not waveform identification
+BPF = fir1(1024, [300 3000]/(fs/2));
+xf = filtfilt(BPF,1,x);
+
 % identify threshold(s) 
 % alternatively do this based on mean/SD
-[OL, lTH, uTH, mid] = isoutlier(x); 
+[OL, lTH, uTH, mid] = isoutlier(xf); 
 OL = find(OL);
-lOL = OL( x(OL) < mid );
-uOL = OL( x(OL) > mid );
+lOL = OL( xf(OL) < mid );
+uOL = OL( xf(OL) > mid );
 
 % decide whether to use upper or lower threshold 
 % based on count or magnitude 
@@ -34,7 +39,7 @@ end
 %}
 %[~,~,~,Tstat] = ttest2(abs(x(uOL)), abs(x(lOL)), 'Vartype','unequal');
 %if Tstat.tstat > 0
-xu = x(uOL).^2; xl = x(lOL).^2;
+xu = xf(uOL).^2; xl = xf(lOL).^2;
 if mean(xu)/std(xu) > mean(xl)/std(xl)
     TH = uTH; % Set threshold to upper threshold
 else
@@ -45,12 +50,13 @@ end
 if sgn
     TH = -TH;
     x = -x;
+    xf = -xf;
 end
 
 %% spike detection 
 % use findpeaks 
 % alternatively, look for positive thresh crossings 
-[spkVal, spkIdx] = findpeaks(x); 
+[spkVal, spkIdx] = findpeaks(xf); 
 % consider adding minPeakProminence/Distance related to WFlen
 spkSel = spkVal > TH;
 spkIdx = spkIdx(spkSel); % Select indices of detected spikes
@@ -59,12 +65,12 @@ spkVal = spkVal(spkSel); % Select values of detected spikes
 if sgn
     TH = -TH;
     x = -x;
+    xf = -xf;
     spkVal = -spkVal;
 end
 
 %% build waveform list 
-WFdur = 0.004; % full duration, seconds
-fs = 1/median(diff(t)); % hz
+WFdur = 0.002; % full duration, seconds
 WFlen = ceil(WFdur/2 * fs); % half-duration, samples 
 WF = nan(length(spkIdx), 2*WFlen+1);
 for n = 1:length(spkIdx)
@@ -79,7 +85,7 @@ tWF = (-WFlen:WFlen)/fs;
 
 %% reduce dimension 
 maxPC = 200; % max # components to consider 
-thrE = 95; % cumulative %var explained target 
+thrE = 80; % cumulative %var explained target 
 [C,WFS,L,T,E,M] = pca(WF);
 EE = cumsum(E);
 nPC = find(EE > thrE);
