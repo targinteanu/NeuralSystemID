@@ -1,7 +1,10 @@
 %% load data 
-load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/SPK_RT_SelectedTimes.mat")
-x = depth_p0496_1.CSPK_AP_T___Central;
-t = seconds(depth_p0496_1.Time);
+load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat")
+x = depth_p0496_3.CSPK_AP3___Lateral;
+t = seconds(depth_p0496_3.Time);
+if any(diff(t) < 0)
+    error('time must be ascending and uniform.')
+end
 fs = 1/median(diff(t)); % hz
 
 %% threshold definition 
