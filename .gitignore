@@ -40,3 +40,6 @@ eventsraw.csv
 *.data
 *.onnx
 /.vscode
+*.npy
+FreqModPulseTrains_TimeDomain.fig
+FreqModPulseTrains.fig
