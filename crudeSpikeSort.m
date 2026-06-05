@@ -1,7 +1,7 @@
 %% load data 
 load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat")
-x = depth_p0496_3.CSPK_AP3___Lateral;
-t = seconds(depth_p0496_3.Time);
+x = depth_p0496_1.CSPK_AP_T___Central;
+t = seconds(depth_p0496_1.Time);
 if any(diff(t) < 0)
     error('time must be ascending and uniform.')
 end
@@ -187,9 +187,10 @@ figure; plot(krange, dd);
 
 % scatter 
 figure;
+plot3(0,0,0,'*','Color',[.5,.5,.5]); hold on;
 for ki = unique(kidx)'
     WFi = WFS(kidx == ki, 1:3);
-    plot3(WFi(:,1), WFi(:,2), WFi(:,3), '.'); hold on;
+    plot3(WFi(:,1), WFi(:,2), WFi(:,3), '.'); 
 end
 grid on;
 title('Cluster scatterplot in PC space'); 
@@ -219,10 +220,10 @@ xlabel('time (s)');
 
 % ISI histo
 figure; 
-histogram(diff(spkIdx)/fs, 'FaceColor',[.5 .5 .5]); hold on;
+histogram(diff(spkIdx)/fs, 'BinWidth',0.005, 'FaceColor',[.5 .5 .5]); hold on;
 for ki = unique(kidx)'
     spki = spkIdx(kidx == ki);
-    histogram(diff(spki)/fs);
+    histogram(diff(spki)/fs, 'BinWidth',0.005);
 end
 grid on;
 title('Inter-Spike Interval');
