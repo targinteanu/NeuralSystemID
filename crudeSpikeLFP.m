@@ -82,8 +82,61 @@ for ki = 1:length(zkwn)
 end
 
 %% modulated pulse train analysis 
+
 fc = length(spkIdx)/(t(end)-t(1)); % initial est carrier freq = avg spk rate 
 zw = movsum(z,Fs); % est inst freq
+
+% inst freq fourier sine coeffs 
+[fsine, ampsine, phsine, amp0] = FourierSine(zw, Fs, t);
+
+% pulse train fourier exp coeffs 
+wf = mean(WF); %wf = wf-mean(wf); % 0 offset
+Tlen = ceil(fs/fc); % samples 
+wfT = zeros(1,Tlen); wfT(1:length(wf)) = wf; % single period 
+wft = 1:length(wfT); wft = (wft-1)/fs;
+C1 = fc*sum(wfT.*exp(-1i*2*pi*fc*wft))*(1/fs);
+C0 = fc*sum(wfT)*(1/fs);
+
+% C0 component 
+f0 = sum(fsine); 
+q0 = C0*prod(exp(1i*phsine));
+
+% bessel 
+%ampsinesort = sort(ampsine);
+nrange = -30:30;
+J = zeros(length(nrange),length(ampsine));
+for ni = 1:length(nrange)
+    J(ni,:) = besselj(nrange(ni),ampsine);
+end
+% plot heatmap of Bessel matrix J vs nrange
+figure;
+imagesc(ampsine, nrange, J); % x: sorted amplitudes, y: nrange
+axis xy;
+colormap(parula);
+colorbar;
+xlabel('sine amplitudes');
+ylabel('n (Bessel order)');
+title('Bessel J_n(ampsine) vs n and amplitude');
+J(J.^2 < sum(J(:).^2)/numel(J)) = nan;
+
+% C1 component 
+phshift = exp(1i*phsine*nrange)'; 
+fshift = exp(1i*2*pi*fsine*nrange)';
+Q1 = J.*phshift;
+numpk = prod(sum(~isnan(J)));
+q1 = single(Q1(:,1)); f1 = single(fsine(1)*nrange');
+f1 = f1(~isnan(q1))'; q1 = q1(~isnan(q1))';
+for l = 2:length(ampsine)
+    ql = single(Q1(:,l)); fl = single(fsine(l)*nrange');
+    fl = fl(~isnan(ql))'; ql = ql(~isnan(ql))';
+    ff1 = (fl'+f1); f1 = single(ff1(:))';
+    qq1 = ql'*q1; q1 = single(qq1(:))';
+end
+f1=f1+1*fc; q1 = q1*C1;
+
+%% helpers
+
+function [fsine, ampsine, phsine, A0] = FourierSine(zw, Fs, t)
 
 % compute Fourier series approximation of zw as sum of sine waves (with phase shifts)
 % treat zw as real-valued signal sampled at Fs over times t
@@ -117,7 +170,7 @@ phk = phpos - pi/2; % convert complex exponential phase to sine-phase
 
 % reconstruct using a limited number of harmonics for stability (optional)
 % choose K components with largest amplitudes
-K = min(50, numel(Ak)); % limit to 50 components or less
+K = min(8, numel(Ak)); % limit to 50 components or less
 [~,ord] = sort(Ak,'descend');
 sel = sort(ord(1:K));
 Ak = -Ak;
@@ -151,3 +204,5 @@ plot(freqs, angle(Y)); hold on; stem(fsine, phsine + pi/2);
 ylabel('Phase (rad)');
 grid on; xlabel('frequency (Hz)'); 
 xlim([min(fsine), max(fsine)])
+
+end
