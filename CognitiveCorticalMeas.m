@@ -12,8 +12,8 @@ fp = uigetdir;
 FF = dir(fp);
 
 % inst outputs 
-tblElec = [];
-tblRow = [];
+tblElecOutput = [];
+tblRowOutput = [];
 %%
 for F = FF'
 %% obtain segmented, artifact-free data 
@@ -29,6 +29,7 @@ fn = F.name;
 if strcmpi(fe, '.mat') && contains(fn,'_SegmentData')
 load(fullfile(F.folder, F.name));
 subjID = fn(1:8);
+disp(subjID);
 ArtRemoveDone = contains(fn, '_ArtifactRemoveOffline');
 if ArtRemoveDone
     fnOrig = split(fn, '_ArtifactRemoveOffline'); fnOrig = fnOrig{1};
@@ -122,8 +123,8 @@ end
 %PD_Phase_Data = instPhaseFreqTbl(PDdata);
 PD_Channel_Names = PDdata.Properties.VariableNames;
 
-ElecTbl = table('RowNames',PD_Channel_Names(1:63)); % cortical only
-RowTbl = table();
+tblElecSubj = table('RowNames',PD_Channel_Names(1:63)); % cortical only
+tblRowSubj = table();
 
 %% windowed power 
 
@@ -147,22 +148,22 @@ thetaPowerWindowed = powerWindowed(:,:,1);
 gammaPowerWindowed = powerWindowed(:,:,2);
 
 % store THETA
-ElecTbl.([tblName,'_The_MED']) = median(thetaPowerWindowed, 'omitnan')';
-ElecTbl.([tblName,'_The_STD']) = std(thetaPowerWindowed, 'omitnan')';
-ElecTbl.([tblName,'_The_NUM']) = sum(~isnan(thetaPowerWindowed))';
+tblElecSubj.([tblName,'_The_MED']) = median(thetaPowerWindowed, 'omitnan')';
+tblElecSubj.([tblName,'_The_STD']) = std(thetaPowerWindowed, 'omitnan')';
+tblElecSubj.([tblName,'_The_NUM']) = sum(~isnan(thetaPowerWindowed))';
 G = makegrid(thetaPowerWindowed);
-RowTbl.([tblName,'_The_AVG']) = mean(G(:,:,1),2, 'omitnan'); % ** substitute with wavelet transform based image decomposition
-RowTbl.([tblName,'_The_STD']) = rms(G(:,:,2),2, 'omitnan'); % ** substitute?
-RowTbl.([tblName,'_The_NUM']) = sum(~isnan(G(:,:,1)),2);
+tblRowSubj.([tblName,'_The_AVG']) = mean(G(:,:,1),2, 'omitnan'); % ** substitute with wavelet transform based image decomposition
+tblRowSubj.([tblName,'_The_STD']) = rms(G(:,:,2),2, 'omitnan'); % ** substitute?
+tblRowSubj.([tblName,'_The_NUM']) = sum(~isnan(G(:,:,1)),2);
 
 % store GAMMA 
-ElecTbl.([tblName,'_Gam_MED']) = median(gammaPowerWindowed, 'omitnan')';
-ElecTbl.([tblName,'_Gam_STD']) = std(gammaPowerWindowed, 'omitnan')';
-ElecTbl.([tblName,'_Gam_NUM']) = sum(~isnan(gammaPowerWindowed))';
+tblElecSubj.([tblName,'_Gam_MED']) = median(gammaPowerWindowed, 'omitnan')';
+tblElecSubj.([tblName,'_Gam_STD']) = std(gammaPowerWindowed, 'omitnan')';
+tblElecSubj.([tblName,'_Gam_NUM']) = sum(~isnan(gammaPowerWindowed))';
 G = makegrid(gammaPowerWindowed);
-RowTbl.([tblName,'_Gam_AVG']) = mean(G(:,:,1),2, 'omitnan'); % ** substitute with wavelet transform based image decomposition
-RowTbl.([tblName,'_Gam_STD']) = rms(G(:,:,2),2, 'omitnan'); % ** substitute?
-RowTbl.([tblName,'_Gam_NUM']) = sum(~isnan(G(:,:,1)),2);
+tblRowSubj.([tblName,'_Gam_AVG']) = mean(G(:,:,1),2, 'omitnan'); % ** substitute with wavelet transform based image decomposition
+tblRowSubj.([tblName,'_Gam_STD']) = rms(G(:,:,2),2, 'omitnan'); % ** substitute?
+tblRowSubj.([tblName,'_Gam_NUM']) = sum(~isnan(G(:,:,1)),2);
 
 %{
 OLthresh = thetaPowerWindowed > median(thetaPowerWindowed, 'omitnan');
@@ -199,17 +200,17 @@ trimwin = ceil(trimwin/windowSize);
 PACwindowed = PACwindowed((trimwin+1):(end-trimwin),:);
 
 % store PAC 
-ElecTbl.([tblName,'_PAC_MED']) = median(PACwindowed, 'omitnan')';
-ElecTbl.([tblName,'_PAC_STD']) = std(PACwindowed, 'omitnan')';
-ElecTbl.([tblName,'_PAC_NUM']) = sum(~isnan(PACwindowed))';
+tblElecSubj.([tblName,'_PAC_MED']) = median(PACwindowed, 'omitnan')';
+tblElecSubj.([tblName,'_PAC_STD']) = std(PACwindowed, 'omitnan')';
+tblElecSubj.([tblName,'_PAC_NUM']) = sum(~isnan(PACwindowed))';
 G = makegrid(PACwindowed);
-RowTbl.([tblName,'_PAC_AVG']) = mean(G(:,:,1),2, 'omitnan'); % ** substitute with wavelet transform based image decomposition
-RowTbl.([tblName,'_PAC_STD']) = rms(G(:,:,2),2, 'omitnan'); % ** substitute?
-RowTbl.([tblName,'_PAC_NUM']) = sum(~isnan(G(:,:,1)),2);
+tblRowSubj.([tblName,'_PAC_AVG']) = mean(G(:,:,1),2, 'omitnan'); % ** substitute with wavelet transform based image decomposition
+tblRowSubj.([tblName,'_PAC_STD']) = rms(G(:,:,2),2, 'omitnan'); % ** substitute?
+tblRowSubj.([tblName,'_PAC_NUM']) = sum(~isnan(G(:,:,1)),2);
 
 %%
-tblElec = [tblElec, ElecTbl];
-tblRow = [tblRow, RowTbl];
+tblElecOutput = [tblElecOutput, tblElecSubj];
+tblRowOutput = [tblRowOutput, tblRowSubj];
 
 end
 end
@@ -222,7 +223,7 @@ svname = 'AllChans.xlsx';
 svname = inputdlg('Save Channels Data As:', 'Save Channels?', 1, {svname});
 if ~isempty(svname)
     svname = svname{1}; 
-    writetable(tblElec, fullfile(fp,svname));
+    writetable(tblElecOutput, fullfile(fp,svname));
 end
 
 % saving: by rows
@@ -230,7 +231,7 @@ svname = 'Rows.xlsx';
 svname = inputdlg('Save Rows Data As:', 'Save Rows?', 1, {svname});
 if ~isempty(svname)
     svname = svname{1}; 
-    writetable(tblRow, fullfile(fp,svname));
+    writetable(tblRowOutput, fullfile(fp,svname));
 end
 
 %% helper(s) 
