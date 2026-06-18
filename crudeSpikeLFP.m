@@ -86,7 +86,7 @@ end
 fc = length(spkIdx)/(t(end)-t(1)); % initial est carrier freq = avg spk rate 
 zw = movsum(z,Fs); % est inst freq
 
-% inst freq fourier sine coeffs 
+%% inst freq fourier sine coeffs 
 [fsine, ampsine, phsine, amp0] = FourierSine(zw, Fs, t);
 
 % pulse train fourier exp coeffs 
@@ -133,6 +133,10 @@ for l = 2:length(ampsine)
     qq1 = ql'*q1; q1 = single(qq1(:))';
 end
 f1=f1+1*fc; q1 = q1*C1;
+
+figure; 
+pwelch(xn(3e4:4e4),[],[],[],Fs,'power'); hold on;
+plot([f0,f1],20*log10(abs([q0,q1])),'.');
 
 %% helpers
 
