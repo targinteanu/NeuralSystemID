@@ -40,7 +40,9 @@ if ~isempty(lastrun)
                     "ListSize", [300 300]);
                 lastrun = lastrun(lastrunsel);
             end
-            if ~isempty(lastrun)
+            if isempty(lastrun)
+                channelNameRejectPrev = "";
+            else
                 load(fullfile(lastrun.folder, lastrun.name), ...
                     'channelNameRec', 'channelNameStim', 'channelNameTrig', 'channelNameReject', ...
                     'trngBaseline', 'trngTrig', 'trngStimNoTrig', 'trngMisc', 'trngSrl', ...
