@@ -1,3 +1,5 @@
+% comparing AR model versus const freq sinusoid prediction 
+
 % file selection
 thisfilename = mfilename("fullpath");
 [fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Segmented Data File');

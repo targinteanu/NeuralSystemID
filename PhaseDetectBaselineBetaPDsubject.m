@@ -1,3 +1,5 @@
+% comparing constant versus dynamic AR model 
+
 % file selection
 thisfilename = mfilename("fullpath");
 [fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Segmented Data File');
