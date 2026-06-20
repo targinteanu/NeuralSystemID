@@ -51,6 +51,7 @@ plot3(XYZ(:,1), XYZ(:,2), XYZ(:,3), '.r');
 labels = nan(height(XYZ),1);
 sortdone = false; 
 K = length(chnamesu);
+lines = nan(K,width(XYZ),2);
 while ~sortdone
     labelsPlots = cell(K,1);
     for label = 1:K
@@ -62,25 +63,105 @@ while ~sortdone
     if isempty(K)
         K = length(chnamesu); % use default if no input
     end
-    labelsNew = klines(XYZ,K,10000);
+    [labelsNew,linesNew] = klines(XYZ,K,20000,50);
     for l = 1:length(labelsPlots)
         delete(labelsPlots{l});
     end
-    labelsPlots = cell(K,1);
+    labelsPlots = cell(K,4);
     for label = 1:K
+        colr = colorwheel(label/K);
         xyz = XYZ(labelsNew==label,:);
-        labelsPlots{label} = plot3(xyz(:,1),xyz(:,2),xyz(:,3),...
-            'o','Color',colorwheel(label/K));
+        labelsPlots{label,1} = plot3(xyz(:,1),xyz(:,2),xyz(:,3),...
+            'o','Color',colr);
+        linelen = [max(xyz(:,1)), max(xyz(:,2)), max(xyz(:,3))] - ...
+                  [min(xyz(:,1)), min(xyz(:,2)), min(xyz(:,3))];
+        linelen = norm(linelen);
+        linecen = squeeze(linesNew(label,:,1));
+        linedir = squeeze(linesNew(label,:,2)); linedir = linedir*linelen/2;
+        labelsPlots{label,2} = quiver3(linecen(1), linecen(2), linecen(3), ...
+                linedir(1), linedir(2), linedir(3), ...
+                "off", 'Color',colr);
+        linedir = -linedir;
+        labelsPlots{label,3} = quiver3(linecen(1), linecen(2), linecen(3), ...
+                linedir(1), linedir(2), linedir(3), ...
+                "off", 'Color',colr);
+        labelsPlots{label,4} = text(linecen(1),linecen(2),linecen(3), string(label), 'Color',colr);
     end
     sortdone = input("Accept? [y/n] ","s");
     sortdone = strcmpi(sortdone, 'y');
     if sortdone
         labels = labelsNew;
     else
-        for l = 1:length(labelsPlots)
-            delete(labelsPlots{l});
+        for l = 1:height(labelsPlots)
+            for lp = 1:width(labelsPlots)
+                delete(labelsPlots{l,lp});
+            end
         end
     end
 end
 
 lblcount = arrayfun(@(l) sum(labels==l), 1:K);
+countdiff = length(lblcount) - length(chucount);
+if countdiff < 0
+    lblcount = [lblcount, zeros(1,-countdiff)];
+elseif countdiff > 0
+    chucount = [chucount, zeros(1,countdiff)];
+end
+
+%% find the best match between lblcount and chucount 
+
+%{
+% Find permutation of lblcount that minimizes sum of absolute differences with chucount
+n = length(lblcount);
+% For small n use full permutation, otherwise use Hungarian assignment on cost matrix
+if n <= 10
+    permsIdx = perms(1:n); % each row is a permutation
+    bestCost = inf;
+    bestPerm = 1:n;
+    for p = 1:size(permsIdx,1)
+        perm = permsIdx(p,:);
+        cost = sum(abs(lblcount(perm) - chucount));
+        if cost < bestCost
+            bestCost = cost;
+            bestPerm = perm;
+        end
+    end
+else
+    % Construct cost matrix where cost(i,j) = |lblcount(i) - chucount(j)|
+    C = abs(lblcount(:) - chucount(:)');
+    % Use munkres (Hungarian). If not available, use assignprob via builtin matchpairs if present.
+    if exist('matchpairs','file') == 2
+        [pairs, totalCost] = matchpairs(C, Inf);
+        % matchpairs returns pairs as [row,col]
+        bestPerm = zeros(1,n);
+        bestPerm(pairs(:,1)) = pairs(:,2);
+        bestCost = totalCost;
+    else
+        % simple greedy fallback: solve linear assignment via MATLAB's assignment problem using lapjv if available,
+        % otherwise use a heuristic: sort both and map sorted indices.
+        try
+            % attempt to use munkres from File Exchange
+            assign = munkres(C);
+            bestPerm = assign;
+            bestCost = sum(C(sub2ind(size(C), 1:n, bestPerm)));
+        catch
+            % fallback: sort-based mapping
+            [~, sL] = sort(lblcount);
+            [~, sC] = sort(chucount);
+            bestPerm = zeros(1,n);
+            bestPerm(sL) = sC;
+            bestCost = sum(abs(lblcount(bestPerm) - chucount));
+        end
+    end
+end
+
+% Apply permutation to lblcount to get best match
+lblcount_perm = lblcount(bestPerm);
+%}
+
+% may be sufficient to just sort both 
+[lblcount, lblidx] = sort(lblcount);
+[chucount, chuidx] = sort(chucount);
+chnamesu = chnamesu(chuidx);
+lines = lines(lblidx,:,:);
+labels = arrayfun(@(idx) lblidx(idx), labels);

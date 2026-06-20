@@ -1,4 +1,4 @@
-function [labels, lines] = klines(X, K, maxIter)
+function [labels, lines] = klines(X, K, maxIter, gmReplicates)
 
 N = size(X,1);
 ndim = size(X,2);
@@ -7,7 +7,7 @@ ndim = size(X,2);
 %labels = randi(K, N, 1);
 % Initialize using a GMM 
 original_state = warning('off','all');
-GM = fitgmdist(X,K,'CovarianceType','full','Replicates',20);
+GM = fitgmdist(X,K,'CovarianceType','full','Replicates',gmReplicates);
 labels = cluster(GM,X);
 warning(original_state);
 
