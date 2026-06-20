@@ -83,7 +83,9 @@ end
 
 electbl = [];
 for f = ElecXL'
+    original_state = warning('off','all');
     fTbl = readtable([f.folder,filesep,f.name]);
+    warning(original_state);
 
     % interpret coordinates
     if sum(strcmpi(fTbl.Properties.VariableNames, 'coordinates'))
