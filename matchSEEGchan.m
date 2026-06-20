@@ -53,10 +53,10 @@ sortdone = false;
 K = length(chnamesu);
 lines = nan(K,width(XYZ),2);
 while ~sortdone
-    labelsPlots = cell(K,1);
+    labelsPlots = cell(K,4);
     for label = 1:K
         xyz = XYZ(labels==label,:);
-        labelsPlots{label} = plot3(xyz(:,1),xyz(:,2),xyz(:,3),...
+        labelsPlots{label,1} = plot3(xyz(:,1),xyz(:,2),xyz(:,3),...
             'o','Color',colorwheel(label/K));
     end
     K = input("Number of depth electrodes (default "+string(K)+"): ");
@@ -64,8 +64,10 @@ while ~sortdone
         K = length(chnamesu); % use default if no input
     end
     [labelsNew,linesNew] = klines(XYZ,K,20000,50);
-    for l = 1:length(labelsPlots)
-        delete(labelsPlots{l});
+    for l = 1:height(labelsPlots)
+        for lp = 1:width(labelsPlots)
+            delete(labelsPlots{l,lp});
+        end
     end
     labelsPlots = cell(K,4);
     for label = 1:K
