@@ -4,7 +4,10 @@ N = size(X,1);
 ndim = size(X,2);
 
 % Initialize: random assignments
-labels = randi(K, N, 1);
+%labels = randi(K, N, 1);
+% Initialize using a GMM 
+GM = fitgmdist(X,K,'CovarianceType','full','Replicates',20);
+labels = cluster(GM,X);
 
 for iter = 1:maxIter
     
