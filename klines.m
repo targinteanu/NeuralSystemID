@@ -12,7 +12,7 @@ labels = cluster(GM,X);
 for iter = 1:maxIter
     
     % Step 1: fit lines
-    lines = cell(K,1);
+    lines = nan(K,ndim,2);
     for k = 1:K
         pts = X(labels==k,:);
         if size(pts,1) < 2
@@ -23,8 +23,8 @@ for iter = 1:maxIter
         [V,~] = eig(cov(pts));
         dir = V(:,end); % principal direction
         
-        lines{k}.point = mu;
-        lines{k}.dir = dir / norm(dir);
+        lines(k,:,1) = mu;
+        lines(k,:,2) = dir' / norm(dir);
     end
     
     % Step 2: reassign points
@@ -34,10 +34,10 @@ for iter = 1:maxIter
         best_dist = inf;
         
         for k = 1:K
-            if isempty(lines{k}), continue; end
+            if any(isnan(lines(k,:,:)),'all'), continue; end
             
-            p = lines{k}.point';
-            d = lines{k}.dir;
+            p = lines(k,:,1)';
+            d = lines(k,:,2)';
             
             % orthogonal distance to line
             dist = norm((eye(ndim)-d*d')*(x-p));
