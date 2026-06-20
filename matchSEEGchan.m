@@ -22,7 +22,7 @@ coeff = pca(XYZ);
 az = az*180/pi; el = el*180/pi;
 
 % 3D template brain
-figure;
+figbrain = figure;
 [ftver, ftpath] = ft_version;
 load([ftpath filesep 'template/anatomy/surface_pial_left.mat']);
 template_lh = mesh; clear mesh;
@@ -46,35 +46,46 @@ camlight;
 
 plot3(XYZ(:,1), XYZ(:,2), XYZ(:,3), '.r');
 
-%% sort contacts 
-
+% prep to sort contacts (init) 
 labels = nan(height(XYZ),1);
-sortdone = false; 
 K = length(chnamesu);
 lines = nan(K,width(XYZ),2);
+
+%% sort contacts 
+
+sortdone = false; 
 while ~sortdone
-    labelsPlots = cell(K,4);
+    figure(figbrain);
+    labelsPlots = cell(K,3);
     for label = 1:K
+        colr = colorwheel(label/K);
         xyz = XYZ(labels==label,:);
-        labelsPlots{label,1} = plot3(xyz(:,1),xyz(:,2),xyz(:,3),...
-            'o','Color',colorwheel(label/K));
+        txt = char(64+label) + string(1:height(xyz));
+        labelsPlots{label,1} = text(xyz(:,1),xyz(:,2),xyz(:,3),...
+            txt, 'Color',colr, 'FontWeight','bold');
     end
+    sortdone = input("Accept? [y/n] ","s");
+    sortdone = strcmpi(sortdone, 'y');
+    if ~sortdone
     K = input("Number of depth electrodes (default "+string(K)+"): ");
     if isempty(K)
         K = length(chnamesu); % use default if no input
     end
+    disp('(Re-)trying klines. Please wait...');
     [labelsNew,linesNew] = klines(XYZ,K,20000,50);
     for l = 1:height(labelsPlots)
         for lp = 1:width(labelsPlots)
             delete(labelsPlots{l,lp});
         end
     end
-    labelsPlots = cell(K,4);
+    figure(figbrain);
+    labelsPlots = cell(K,3);
     for label = 1:K
         colr = colorwheel(label/K);
         xyz = XYZ(labelsNew==label,:);
-        labelsPlots{label,1} = plot3(xyz(:,1),xyz(:,2),xyz(:,3),...
-            'o','Color',colr);
+        txt = char(64+label) + string(1:height(xyz));
+        labelsPlots{label,1} = text(xyz(:,1),xyz(:,2),xyz(:,3),...
+            txt, 'Color',colr, 'FontWeight','bold');
         linelen = [max(xyz(:,1)), max(xyz(:,2)), max(xyz(:,3))] - ...
                   [min(xyz(:,1)), min(xyz(:,2)), min(xyz(:,3))];
         linelen = norm(linelen);
@@ -87,7 +98,7 @@ while ~sortdone
         labelsPlots{label,3} = quiver3(linecen(1), linecen(2), linecen(3), ...
                 linedir(1), linedir(2), linedir(3), ...
                 "off", 'Color',colr);
-        labelsPlots{label,4} = text(linecen(1),linecen(2),linecen(3), string(label), 'Color',colr);
+        %labelsPlots{label,4} = text(linecen(1),linecen(2),linecen(3), string(label), 'Color',colr);
     end
     sortdone = input("Accept? [y/n] ","s");
     sortdone = strcmpi(sortdone, 'y');
@@ -99,6 +110,7 @@ while ~sortdone
                 delete(labelsPlots{l,lp});
             end
         end
+    end
     end
 end
 
