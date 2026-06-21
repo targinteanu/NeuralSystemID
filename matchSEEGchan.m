@@ -207,6 +207,45 @@ labels = arrayfun(@(lbl) find(lblidx==lbl), labels);
 %lines = fitlines(XYZ,K,labels); % this should not be needed 
 %plotNewLabels(XYZ, K, labels, lines);
 
+%% manually reassign named labels (2)
+
+assigndone = false;
+while ~assigndone
+
+% create a simple UIFigure with K popupmenus to allow selecting chnamesu for each label
+figUI = uifigure('Name','Assign Channel Names','Position',[100 100 300 60+30*K], ...
+    'Scrollable','on');
+popupHandles = gobjects(K,1);
+lblStrings = cellstr(chnamesu); % options
+for k = 1:K
+    colr = colorwheel(k/K);
+    y = 60 + 30*(K-k);
+    uil = uilabel(figUI, 'Position',[10 y 60 22], 'Text', ['Label ',char(64+k)], ...
+        'FontColor',colr, 'FontWeight','bold');
+    popupHandles(k) = uidropdown(figUI, ...
+        'Position',[80 y 200 22], ...
+        'Items', lblStrings, ...
+        'Value', lblStrings{k});
+end
+
+% add Done button to close and collect selections
+btnDone = uibutton(figUI,'push', 'Text','Done', 'Position',[100 10 100 30], ...
+    'ButtonPushedFcn', @(btn,event) uiresume(figUI));
+uiwait(figUI);
+
+% read selections (if figure still valid)
+if isvalid(figUI)
+    chnamesu2 = strings(size(chnamesu));
+    for k = 1:K
+        sel = popupHandles(k).Value;
+        % assign selected name to all channels in this label
+        chnamesu2(k) = string(sel);
+    end
+    close(figUI);
+end
+
+chnamesu = chnamesu2;
+
 %% try assigning named labels 
 
 % get expected dist between channels 
@@ -285,41 +324,14 @@ end
 
 linkprop(figbrainax, {'CameraPosition', 'CameraTarget', 'CameraUpVector'});
 
-%% manually reassign named labels (2)
+disp([XYZname, electbl.AFNI, electbl.JuBrain, electbl.Brainnetome])
 
-% create a simple UIFigure with K popupmenus to allow selecting chnamesu for each label
-figUI = uifigure('Name','Assign Channel Names','Position',[100 100 300 60+30*K], ...
-    'Scrollable','on');
-popupHandles = gobjects(K,1);
-lblStrings = cellstr(chnamesu); % options
-for k = 1:K
-    colr = colorwheel(k/K);
-    y = 60 + 30*(K-k);
-    uil = uilabel(figUI, 'Position',[10 y 60 22], 'Text', sprintf('Label %d:', k), ...
-        'FontColor',colr, 'FontWeight','bold');
-    popupHandles(k) = uidropdown(figUI, ...
-        'Position',[80 y 200 22], ...
-        'Items', lblStrings, ...
-        'Value', lblStrings{k});
+    assigndone = input("Accept final? [y/n] ","s");
+    assigndone = strcmpi(assigndone, 'y');
+
 end
 
-% add Done button to close and collect selections
-btnDone = uibutton(figUI,'push', 'Text','Done', 'Position',[100 10 100 30], ...
-    'ButtonPushedFcn', @(btn,event) uiresume(figUI));
-uiwait(figUI);
-
-% read selections (if figure still valid)
-if isvalid(figUI)
-    chnamesu2 = strings(size(chnamesu));
-    for k = 1:K
-        sel = popupHandles(k).Value;
-        % assign selected name to all channels in this label
-        chnamesu2(k) = string(sel);
-    end
-    close(figUI);
-end
-
-chnamesu = chnamesu2;
+electbl.Electrode = XYZname;
 
 %% helper(s) 
 
