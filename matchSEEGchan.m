@@ -221,109 +221,8 @@ for label = 1:K
 end
 Dmed = median(D); Dstd = std(D);
 
-% initial coord-name mapping 
-%XYZrow = (1:size(XYZ,1))'; 
-XYZname = strings(size(XYZ,1),1);
-missingname = "";
-for label = 1:K
-
-    % get names/IDs from ephys 
-    chnamek = chnamesu(label);
-    chsel = contains(chnames,chnamek);
-    chIDk = chIDs(chsel); chnamenumk = chnames(chsel);
-    chnumk = arrayfun(@(str) getnumfromstr(str), chnamenumk, 'UniformOutput',false);
-    chnumk = string(chnumk);
-    % remove names that contain other names (e.g. LA vs LAH)
-    chnamesk = chnamenumk; 
-    for ch = 1:length(chnamesk)
-        chnamesk_ch = split(chnamenumk(ch), chnumk(ch));
-        chnamesk(ch) = chnamesk_ch(1);
-    end
-    chnumk = str2double(chnumk);
-    chsel = strcmp(chnamesk, chnamek); 
-    chIDk = chIDk(chsel); chnamenumk = chnamenumk(chsel);
-    chnumk = chnumk(chsel); chnamesk = chnamesk(chsel);
-    % sort and handle duplicates
-    idxtf = false(size(chnumk));
-    [chnumk,idx] = unique(chnumk); % treat duplicates as missing
-    idxtf(idx) = true;
-    missingname = [missingname; chnamenumk(~idxtf)'];
-    chnamenumk = chnamenumk(idx); chIDk = chIDk(idx);
-    [chnumk,idx] = sort(chnumk, 'ascend'); % assume numbering is spatial; lowest=deepest
-    chnamenumk = chnamenumk(idx); chIDk = chIDk(idx);
-
-    % get ordered positions 
-    xyz = XYZ(labels==label,:); %r = XYZrow(labels==label,:);
-    linecen = squeeze(lines(label,:,1)); 
-    linedir = squeeze(lines(label,:,2));
-    rightsided = linecen(1) > 0;
-    rightpointing = linedir(1) > 0;
-    outpointing = rightsided == rightpointing;
-    if ~outpointing
-        linedir = -linedir; % force outpointing
-    end
-    d = (xyz-linecen)*linedir'; % lower (more negative) = deeper
-    [d,didx] = sort(d); % order wrt same label elecs
-    r = (xyz-mean(XYZ))./std(XYZ); % diff from all elecs 
-    r = rms(r,2);
-
-    % any channels not seen on imaging?  
-    dd = diff(d); ddout = (dd-Dmed) > 3*Dstd;
-    while length(chnamenumk) > length(d)
-        if any(ddout)
-            [~,ddi] = max(dd);
-            % assume the missing chan was between ddi+1 and ddi
-            missingname = [missingname; chnamenumk(ddi+1)];
-            chnamenumk = chnamenumk([1:ddi, (ddi+2):end]);
-            chnumk = chnumk([1:ddi, (ddi+2):end]);
-            chIDk = chIDk([1:ddi, (ddi+2):end]);
-            % plug ddi so the same index doesn't get flagged again 
-            dd(ddi) = -inf; ddout(ddi) = false;
-        else
-            % assume the missing chan is most superficial
-            missingname = [missingname; chnamenumk(end)];
-            chnamenumk = chnamenumk(1:(end-1));
-            chnumk = chnumk(1:(end-1));
-            chIDk = chIDk(1:(end-1));
-        end
-    end
-
-    % any imaged channels not recorded? 
-    dd = diff(d); ddout = (Dmed-dd) > 3*Dstd;
-    while length(d) > length(chnamenumk)
-        if any(ddout)
-            [~,ddi] = min(dd);
-            % ddi+1 is too close to ddi to be distinct 
-            d = d([1:ddi, (ddi+2):end]); 
-            didx = didx([1:ddi, (ddi+2):end]);
-            dd = diff(d); ddout = (Dmed-dd) > 3*Dstd;
-        else
-            [~,rj] = min(r); % try to put this near the middle 
-            % mark most eccentric elec as unknown 
-            [~,ri] = max(r); rij = ri-rj;
-            sj = ceil(length(chnamenumk)/2); si = sj+rij;
-            if si < 1
-                chnamenumk = ["?",chnamenumk];
-                chnumk = [nan,chnumk]; chIDk = [nan,chIDk];
-            elseif si > length(chnamenumk)
-                chnamenumk = [chnamenumk,"?"];
-                chnumk = [chnumk,nan]; chIDk = [chIDk,nan];
-            else
-                chnamenumk = [chnamenumk(1:(si-1)),"?",chnamenumk((si):end)];
-                chnumk = [chnumk(1:(si-1)),nan,chnumk((si):end)];
-                chIDk = [chIDk(1:(si-1)),nan,chIDk((si):end)];
-            end
-            % plug ri so the same index doesn't get flagged again 
-            r(ri) = nan;
-        end
-    end
-
-    % assign pairs 
-    % everything is now the side of d 
-    labelsk = find(labels==label);
-    labelsk = labelsk(didx);
-    XYZname(labelsk) = chnamenumk';
-end
+% initial auto coord-name mapping 
+[XYZname, missingname] = matchChElec(K, XYZ,labels,lines, chnames,chnamesu, Dmed,Dstd);
 
 % visualize initial results 
 figbrain2 = figure; % fresh figure 
@@ -388,6 +287,39 @@ linkprop(figbrainax, {'CameraPosition', 'CameraTarget', 'CameraUpVector'});
 
 %% manually reassign named labels (2)
 
+% create a simple UIFigure with K popupmenus to allow selecting chnamesu for each label
+figUI = uifigure('Name','Assign Channel Names','Position',[100 100 300 60+30*K], ...
+    'Scrollable','on');
+popupHandles = gobjects(K,1);
+lblStrings = cellstr(chnamesu); % options
+for k = 1:K
+    colr = colorwheel(k/K);
+    y = 60 + 30*(K-k);
+    uil = uilabel(figUI, 'Position',[10 y 60 22], 'Text', sprintf('Label %d:', k), ...
+        'FontColor',colr, 'FontWeight','bold');
+    popupHandles(k) = uidropdown(figUI, ...
+        'Position',[80 y 200 22], ...
+        'Items', lblStrings, ...
+        'Value', lblStrings{k});
+end
+
+% add Done button to close and collect selections
+btnDone = uibutton(figUI,'push', 'Text','Done', 'Position',[100 10 100 30], ...
+    'ButtonPushedFcn', @(btn,event) uiresume(figUI));
+uiwait(figUI);
+
+% read selections (if figure still valid)
+if isvalid(figUI)
+    chnamesu2 = strings(size(chnamesu));
+    for k = 1:K
+        sel = popupHandles(k).Value;
+        % assign selected name to all channels in this label
+        chnamesu2(k) = string(sel);
+    end
+    close(figUI);
+end
+
+chnamesu = chnamesu2;
 
 %% helper(s) 
 
@@ -417,6 +349,112 @@ ndim = size(X,2);
         lines(k,:,2) = dir' / norm(dir);
     end
 end
+
+function [XYZname, missingname] = matchChElec(K, XYZ,labels,lines, chnames,chnamesu, Dmed,Dstd)
+%XYZrow = (1:size(XYZ,1))'; 
+XYZname = strings(size(XYZ,1),1);
+missingname = "";
+for label = 1:K
+
+    % get names/IDs from ephys 
+    chnamek = chnamesu(label);
+    chsel = contains(chnames,chnamek);
+    chnamenumk = chnames(chsel); %chIDk = chIDs(chsel); 
+    chnumk = arrayfun(@(str) getnumfromstr(str), chnamenumk, 'UniformOutput',false);
+    chnumk = string(chnumk);
+    % remove names that contain other names (e.g. LA vs LAH)
+    chnamesk = chnamenumk; 
+    for ch = 1:length(chnamesk)
+        chnamesk_ch = split(chnamenumk(ch), chnumk(ch));
+        chnamesk(ch) = chnamesk_ch(1);
+    end
+    chnumk = str2double(chnumk);
+    chsel = strcmp(chnamesk, chnamek); 
+    chnamenumk = chnamenumk(chsel); %chIDk = chIDk(chsel); 
+    chnumk = chnumk(chsel); chnamesk = chnamesk(chsel);
+    % sort and handle duplicates
+    idxtf = false(size(chnumk));
+    [chnumk,idx] = unique(chnumk); % treat duplicates as missing
+    idxtf(idx) = true;
+    missingname = [missingname; chnamenumk(~idxtf)'];
+    chnamenumk = chnamenumk(idx); %chIDk = chIDk(idx);
+    [chnumk,idx] = sort(chnumk, 'ascend'); % assume numbering is spatial; lowest=deepest
+    chnamenumk = chnamenumk(idx); %chIDk = chIDk(idx);
+
+    % get ordered positions 
+    xyz = XYZ(labels==label,:); %r = XYZrow(labels==label,:);
+    linecen = squeeze(lines(label,:,1)); 
+    linedir = squeeze(lines(label,:,2));
+    rightsided = linecen(1) > 0;
+    rightpointing = linedir(1) > 0;
+    outpointing = rightsided == rightpointing;
+    if ~outpointing
+        linedir = -linedir; % force outpointing
+    end
+    d = (xyz-linecen)*linedir'; % lower (more negative) = deeper
+    [d,didx] = sort(d); % order wrt same label elecs
+    r = (xyz-mean(XYZ))./std(XYZ); % diff from all elecs 
+    r = rms(r,2);
+
+    % any channels not seen on imaging?  
+    dd = diff(d); ddout = (dd-Dmed) > 3*Dstd;
+    while length(chnamenumk) > length(d)
+        if any(ddout)
+            [~,ddi] = max(dd);
+            % assume the missing chan was between ddi+1 and ddi
+            missingname = [missingname; chnamenumk(ddi+1)];
+            chnamenumk = chnamenumk([1:ddi, (ddi+2):end]);
+            chnumk = chnumk([1:ddi, (ddi+2):end]);
+            %chIDk = chIDk([1:ddi, (ddi+2):end]);
+            % plug ddi so the same index doesn't get flagged again 
+            dd(ddi) = -inf; ddout(ddi) = false;
+        else
+            % assume the missing chan is most superficial
+            missingname = [missingname; chnamenumk(end)];
+            chnamenumk = chnamenumk(1:(end-1));
+            chnumk = chnumk(1:(end-1));
+            %chIDk = chIDk(1:(end-1));
+        end
+    end
+
+    % any imaged channels not recorded? 
+    dd = diff(d); ddout = (Dmed-dd) > 3*Dstd;
+    while length(d) > length(chnamenumk)
+        if any(ddout)
+            [~,ddi] = min(dd);
+            % ddi+1 is too close to ddi to be distinct 
+            d = d([1:ddi, (ddi+2):end]); 
+            didx = didx([1:ddi, (ddi+2):end]);
+            dd = diff(d); ddout = (Dmed-dd) > 3*Dstd;
+        else
+            [~,rj] = min(r); % try to put this near the middle 
+            % mark most eccentric elec as unknown 
+            [~,ri] = max(r); rij = ri-rj;
+            sj = ceil(length(chnamenumk)/2); si = sj+rij;
+            if si < 1
+                chnamenumk = ["?",chnamenumk];
+                chnumk = [nan,chnumk]; %chIDk = [nan,chIDk];
+            elseif si > length(chnamenumk)
+                chnamenumk = [chnamenumk,"?"];
+                chnumk = [chnumk,nan]; %chIDk = [chIDk,nan];
+            else
+                chnamenumk = [chnamenumk(1:(si-1)),"?",chnamenumk((si):end)];
+                chnumk = [chnumk(1:(si-1)),nan,chnumk((si):end)];
+                %chIDk = [chIDk(1:(si-1)),nan,chIDk((si):end)];
+            end
+            % plug ri so the same index doesn't get flagged again 
+            r(ri) = nan;
+        end
+    end
+
+    % assign pairs 
+    % everything is now the side of d 
+    labelsk = find(labels==label);
+    labelsk = labelsk(didx);
+    XYZname(labelsk) = chnamenumk';
+end
+end
+
 
 % update the labels/lines/text on figbrain
 function labelsPlots = plotNewLabels(XYZ, K, labelsNew, linesNew)
