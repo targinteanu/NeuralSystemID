@@ -1,8 +1,14 @@
+function electbl = matchSEEGchan(chnames, electbl)
 % Match ephys channel names with SEEG contacts identified on imaging. May
 % also work with ECoG, etc. 
 % 
 % Inputs: 
 %   chnames: list of channel names from ephys recording 
+%   electbl: table of electrode details that has fields x, y, z, AFNI,
+%            JuBrain, Brainnetome 
+% 
+% Outputs: 
+%   electbl with the field Electrode updated to match chnames 
 
 %% interpret channel names from file
 chIDs = 1:length(chnames);
@@ -316,10 +322,26 @@ camlight;
 % show labeled elecs 
 for label = 1:K
     colr = colorwheel(label/K);
+    xyz = XYZ(labels==label,:);
     linecen = squeeze(lines(label,:,1)); 
     chnamek = chnamesu(label);
+    plot3(xyz(:,1),xyz(:,2),xyz(:,3), ...
+        '.', 'Color',colr);
     text(linecen(1),linecen(2),linecen(3), ...
         chnamek, 'Color',colr, 'FontWeight','bold');
+    %{
+    linelen = [max(xyz(:,1)), max(xyz(:,2)), max(xyz(:,3))] - ...
+              [min(xyz(:,1)), min(xyz(:,2)), min(xyz(:,3))];
+    linelen = norm(linelen);
+    linedir = squeeze(lines(label,:,2)); linedir = linedir*linelen/2;
+    quiver3(linecen(1), linecen(2), linecen(3), ...
+            linedir(1), linedir(2), linedir(3), ...
+            "off", 'Color',colr, 'LineWidth',1);
+    linedir = -linedir;
+    quiver3(linecen(1), linecen(2), linecen(3), ...
+            linedir(1), linedir(2), linedir(3), ...
+            "off", 'Color',colr, 'LineWidth',1);
+    %}
 end
 
 linkprop(figbrainax, {'CameraPosition', 'CameraTarget', 'CameraUpVector'});
@@ -332,6 +354,8 @@ disp([XYZname, electbl.AFNI, electbl.JuBrain, electbl.Brainnetome])
 end
 
 electbl.Electrode = XYZname;
+
+end
 
 %% helper(s) 
 
