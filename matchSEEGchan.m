@@ -229,9 +229,21 @@ for label = 1:K
 
     % get names/IDs from ephys 
     chnamek = chnamesu(label);
-    chIDk = chIDs(contains(chnames,chnamek));
-    chnamenumk = chnames(contains(chnames,chnamek));
-    chnumk = arrayfun(@(str) getnumfromstr(str), chnamenumk);
+    chsel = contains(chnames,chnamek);
+    chIDk = chIDs(chsel); chnamenumk = chnames(chsel);
+    chnumk = arrayfun(@(str) getnumfromstr(str), chnamenumk, 'UniformOutput',false);
+    chnumk = string(chnumk);
+    % remove names that contain other names (e.g. LA vs LAH)
+    chnamesk = chnamenumk; 
+    for ch = 1:length(chnamesk)
+        chnamesk_ch = split(chnamenumk(ch), chnumk(ch));
+        chnamesk(ch) = chnamesk_ch(1);
+    end
+    chnumk = str2double(chnumk);
+    chsel = strcmp(chnamesk, chnamek); 
+    chIDk = chIDk(chsel); chnamenumk = chnamenumk(chsel);
+    chnumk = chnumk(chsel); chnamesk = chnamesk(chsel);
+    % sort and handle duplicates
     idxtf = false(size(chnumk));
     [chnumk,idx] = unique(chnumk); % treat duplicates as missing
     idxtf(idx) = true;
@@ -317,6 +329,7 @@ end
 figbrain2 = figure; % fresh figure 
 
 % show brain mesh 
+figbrainax(1) = subplot(1,2,1);
 FaceAlpha = .1; % transparency
 FaceColor = .9*[1,1,1];
 merh = ft_plot_mesh(template_rh);
@@ -346,6 +359,33 @@ missingListStr = missingListStr(3:end); % remove leading comma
 missingListStr = ['Missing: ',missingListStr];
 disp(missingListStr);
 
+% show brain mesh 
+figbrainax(2) = subplot(1,2,2);
+FaceAlpha = .1; % transparency
+FaceColor = .9*[1,1,1];
+merh = ft_plot_mesh(template_rh);
+hold on
+melh = ft_plot_mesh(template_lh);
+merh.FaceColor = FaceColor;
+merh.FaceAlpha = FaceAlpha;
+melh.FaceColor = FaceColor;
+melh.FaceAlpha = FaceAlpha;
+view([az, el]);
+material dull;
+lighting gouraud;
+camlight;
+
+% show labeled elecs 
+for label = 1:K
+    colr = colorwheel(label/K);
+    linecen = squeeze(lines(label,:,1)); 
+    chnamek = chnamesu(label);
+    text(linecen(1),linecen(2),linecen(3), ...
+        chnamek, 'Color',colr, 'FontWeight','bold');
+end
+
+linkprop(figbrainax, {'CameraPosition', 'CameraTarget', 'CameraUpVector'});
+
 %% manually reassign named labels (2)
 
 
@@ -354,7 +394,7 @@ disp(missingListStr);
 function cnum = getnumfromstr(cname)
 cname = char(cname); 
 cnum = cname((cname >= 48) & (cname <= 57)); 
-cnum = str2double(cnum);
+%cnum = str2double(cnum);
 end
 
 % re-fit lines from existing points without re-running klines 
