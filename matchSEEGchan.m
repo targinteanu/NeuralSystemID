@@ -22,6 +22,7 @@ coeff = pca(XYZ);
 az = az*180/pi; el = el*180/pi;
 
 % 3D template brain
+global figbrain
 figbrain = figure;
 [ftver, ftpath] = ft_version;
 load([ftpath filesep 'template/anatomy/surface_pial_left.mat']);
@@ -55,17 +56,11 @@ lines = nan(K,width(XYZ),2);
 
 sortdone = false; 
 while ~sortdone
-    figure(figbrain);
-    labelsPlots = cell(K,3);
-    for label = 1:K
-        colr = colorwheel(label/K);
-        xyz = XYZ(labels==label,:);
-        txt = char(64+label) + string(1:height(xyz));
-        labelsPlots{label,1} = text(xyz(:,1),xyz(:,2),xyz(:,3),...
-            txt, 'Color',colr, 'FontWeight','bold');
-    end
+
+    labelsPlots = plotNewLabels(XYZ, K, labels, lines);
     sortdone = input("Accept? [y/n] ","s");
     sortdone = strcmpi(sortdone, 'y');
+
     if ~sortdone
     K = input("Number of depth electrodes (default "+string(K)+"): ");
     if isempty(K)
@@ -78,30 +73,11 @@ while ~sortdone
             delete(labelsPlots{l,lp});
         end
     end
-    figure(figbrain);
-    labelsPlots = cell(K,3);
-    for label = 1:K
-        colr = colorwheel(label/K);
-        xyz = XYZ(labelsNew==label,:);
-        txt = char(64+label) + string(1:height(xyz));
-        labelsPlots{label,1} = text(xyz(:,1),xyz(:,2),xyz(:,3),...
-            txt, 'Color',colr, 'FontWeight','bold');
-        linelen = [max(xyz(:,1)), max(xyz(:,2)), max(xyz(:,3))] - ...
-                  [min(xyz(:,1)), min(xyz(:,2)), min(xyz(:,3))];
-        linelen = norm(linelen);
-        linecen = squeeze(linesNew(label,:,1));
-        linedir = squeeze(linesNew(label,:,2)); linedir = linedir*linelen/2;
-        labelsPlots{label,2} = quiver3(linecen(1), linecen(2), linecen(3), ...
-                linedir(1), linedir(2), linedir(3), ...
-                "off", 'Color',colr);
-        linedir = -linedir;
-        labelsPlots{label,3} = quiver3(linecen(1), linecen(2), linecen(3), ...
-                linedir(1), linedir(2), linedir(3), ...
-                "off", 'Color',colr);
-        %labelsPlots{label,4} = text(linecen(1),linecen(2),linecen(3), string(label), 'Color',colr);
-    end
+
+    labelsPlots = plotNewLabels(XYZ, K, labelsNew, linesNew);
     sortdone = input("Accept? [y/n] ","s");
     sortdone = strcmpi(sortdone, 'y');
+
     if sortdone
         labels = labelsNew;
     else
@@ -114,6 +90,52 @@ while ~sortdone
     end
 end
 
+%% manually reassign unnamed labels (1) 
+
+% build a checkerboard UI to reassign points between labels
+% Prepare data: for each label, list point indices and coordinates
+ptIdxPerLabel = arrayfun(@(l) find(labels==l), 1:K, 'UniformOutput', false);
+nPerLabel = cellfun(@numel, ptIdxPerLabel);
+maxRows = max(nPerLabel);
+
+% Create figure for checkerboard
+figCB = uifigure('Name','Label Reassignment','NumberTitle','off','MenuBar','none', ...
+    'Scrollable','on', 'UserData',labels);
+t = uitable(figCB, 'Data', cell(maxRows,K), 'ColumnEditable', true(1,K), ...
+    'ColumnName', arrayfun(@(l) char(64+l), 1:K, 'UniformOutput', false), ...
+    'CellSelectionCallback', @cellSel, 'UserData',[]);
+t.Position(3:4) = [min(1200,150+120*K), min(600,40+30*(maxRows+1))];
+
+% Fill table with point identifiers (show point number and original index)
+tbl = strings(maxRows,K);
+for c = 1:K
+    idxs = ptIdxPerLabel{c};
+    for r = 1:numel(idxs)
+        tbl(r,c) = "#"+string(r)+" (elec"+string(idxs(r))+")";
+    end
+end
+t.Data = cellstr(tbl);
+
+% Instruction and buttons
+uicontrol(figCB,'Style','text','String','Select table cells (one or more) then click "Reassign to Label" to move points to a different label.','HorizontalAlignment','left',...
+    'Position',[10, t.Position(2)+t.Position(4)+2, t.Position(3)-20, 20]);
+lblPopup = uicontrol(figCB,'Style','popupmenu','String',arrayfun(@(l) char(64+l), 1:K, 'UniformOutput', false),...
+    'Position',[10,10,120,22]);
+btnReassign = uicontrol(figCB,'Style','pushbutton','String','Reassign to Label','Position',[140,10,140,22],...
+    'Callback',@(s,e) reassignCallback(s,e, XYZ,K));
+btnDone = uicontrol(figCB,'Style','pushbutton','String','Done','Position',[290,10,80,22],...
+    'Callback',@(s,e) uiresume(figCB));
+
+uiwait(figCB); % wait until Done pressed
+
+% After UI closed, update labels based on internal state (if any changes left)
+if isvalid(figCB)
+    labels = figCB.UserData; lines = fitlines(XYZ,K,labels);
+    close(figCB);
+end
+
+%% find the best match between lblcount and chucount 
+
 lblcount = arrayfun(@(l) sum(labels==l), 1:K);
 countdiff = length(lblcount) - length(chucount);
 if countdiff < 0
@@ -121,8 +143,6 @@ if countdiff < 0
 elseif countdiff > 0
     chucount = [chucount, zeros(1,countdiff)];
 end
-
-%% find the best match between lblcount and chucount 
 
 %{
 % Find permutation of lblcount that minimizes sum of absolute differences with chucount
@@ -179,3 +199,136 @@ lblcount_perm = lblcount(bestPerm);
 chnamesu = chnamesu(chuidx);
 lines = lines(lblidx,:,:);
 labels = arrayfun(@(idx) lblidx(idx), labels);
+
+%% manually reassign named labels (2)
+
+%% helper(s) 
+
+% re-fit lines from existing points without re-running klines 
+function lines = fitlines(X,K,labels)
+N = size(X,1);
+ndim = size(X,2);
+    % Step 1: fit lines
+    lines = nan(K,ndim,2);
+    for k = 1:K
+        pts = X(labels==k,:);
+        if size(pts,1) < 2
+            continue;
+        end
+        
+        mu = mean(pts,1);
+        [V,~] = eig(cov(pts));
+        dir = V(:,end); % principal direction
+        
+        lines(k,:,1) = mu;
+        lines(k,:,2) = dir' / norm(dir);
+    end
+end
+
+% update the labels/lines/text on figbrain
+function labelsPlots = plotNewLabels(XYZ, K, labelsNew, linesNew)
+    global figbrain
+    figure(figbrain);
+    labelsPlots = cell(K,3);
+    for label = 1:K
+        colr = colorwheel(label/K);
+        xyz = XYZ(labelsNew==label,:);
+        txt = char(64+label) + string(1:height(xyz));
+        labelsPlots{label,1} = text(xyz(:,1),xyz(:,2),xyz(:,3),...
+            txt, 'Color',colr, 'FontWeight','bold');
+        linelen = [max(xyz(:,1)), max(xyz(:,2)), max(xyz(:,3))] - ...
+                  [min(xyz(:,1)), min(xyz(:,2)), min(xyz(:,3))];
+        linelen = norm(linelen);
+        linecen = squeeze(linesNew(label,:,1));
+        linedir = squeeze(linesNew(label,:,2)); linedir = linedir*linelen/2;
+        labelsPlots{label,2} = quiver3(linecen(1), linecen(2), linecen(3), ...
+                linedir(1), linedir(2), linedir(3), ...
+                "off", 'Color',colr);
+        linedir = -linedir;
+        labelsPlots{label,3} = quiver3(linecen(1), linecen(2), linecen(3), ...
+                linedir(1), linedir(2), linedir(3), ...
+                "off", 'Color',colr);
+        %labelsPlots{label,4} = text(linecen(1),linecen(2),linecen(3), string(label), 'Color',colr);
+    end
+end
+
+
+% Callback: record selected cells
+function cellSel(src, event, selCells)
+    if isempty(event.Indices)
+        selCells = [];
+    else
+        selCells = unique(event.Indices, 'rows');
+    end
+    src.UserData = selCells;
+end
+
+% Callback: perform reassignment of selected points to chosen label
+function reassignCallback(src, evt, XYZ,K)
+    global figbrain
+    labels = src.Parent.UserData;
+    lblPopup = src.Parent.Children(3); % change to tag?
+    t = src.Parent.Children(end); % change to tag?
+    selCells = t.UserData;
+    if isempty(selCells)
+        uialert(src.Parent,'No cells selected.','Warning','Icon','warning');
+        return;
+    end
+    newLabel = lblPopup.Value; % numeric label target
+    % Determine point indices from selected cells: parse strings like "pt3 (#12)"
+    data = srcTableData(t);
+    moved = false;
+    for k = 1:size(selCells,1)
+        r = selCells(k,1); c = selCells(k,2);
+        cellStr = string(data{r,c});
+        if strlength(cellStr)==0
+            continue;
+        end
+        % extract number inside parentheses
+        tok = sscanf(cellStr, '#%u (elec%u)');
+        if isempty(tok), continue; end
+        ptIdx = tok(2);
+        if isnan(ptIdx), continue; end
+        % reassign label array
+        labels(ptIdx) = newLabel;
+        moved = true;
+    end
+    if moved
+        % rebuild table contents to reflect new grouping
+        ptIdxPerLabel = arrayfun(@(l) find(labels==l), 1:K, 'UniformOutput', false);
+        nPerLabel = cellfun(@numel, ptIdxPerLabel);
+        maxRows = max(nPerLabel);
+        tbl = strings(maxRows,K);
+        for cc = 1:K
+            idxs = ptIdxPerLabel{cc};
+            for rr = 1:numel(idxs)
+                tbl(rr,cc) = "#"+string(rr)+" (elec"+string(idxs(rr))+")";
+            end
+        end
+        t.Data = cellstr(tbl);
+        selCells = []; % clear selection
+        t.UserData = selCells;
+        % update labels list 
+        src.Parent.UserData = labels;
+        % rebuild lines 
+        lines = fitlines(XYZ,K,labels);
+        % Also update plot labels on brain figure
+        figure(figbrain);
+        plotNewLabels(XYZ,K,labels,lines); 
+    end
+end
+
+% helper to safely get table data as cell array of strings
+function c = srcTableData(tblHandle)
+    d = tblHandle.Data;
+    if iscell(d)
+        c = d;
+    else
+        % table.Data might be string array; convert to cellstr with possibly empty cells
+        c = cell(size(d));
+        for ii = 1:numel(d)
+            c{ii} = char(d(ii));
+        end
+        c = reshape(c, size(d));
+    end
+end
