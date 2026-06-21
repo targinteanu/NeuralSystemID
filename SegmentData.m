@@ -270,7 +270,11 @@ if strcmp(ElecType, 'sEEG/depth')
         r = find(strcmp(electbl.Electrode, fTbl.Properties.VariableNames{c}));
         if numel(r)
             r = r(1);
-            tbls{SFi}.Properties.VariableDescriptions{c} = electbl.Brainnetome{r};
+            descrip = electbl.Brainnetome{r};
+            if electbl.MatchUncertain(r)
+                descrip = ['?',descrip];
+            end
+            tbls{SFi}.Properties.VariableDescriptions{c} = descrip;
         end
     end
 end

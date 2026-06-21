@@ -276,7 +276,7 @@ while ~assigndone
 % create a simple UIFigure with K popupmenus to allow selecting chnamesu for each label
 figUI = uifigure('Name','Assign Channel Names','Position',[100 100 300 60+30*K], ...
     'Scrollable','on');
-popupHandles = gobjects(K,1);
+popupHandles = gobjects(K,1); cbxHandles = gobjects(K,1);
 lblStrings = cellstr(chnamesu); % options
 for k = 1:K
     colr = colorwheel(k/K);
@@ -287,6 +287,12 @@ for k = 1:K
         'Position',[80 y 200 22], ...
         'Items', lblStrings, ...
         'Value', lblStrings{k});
+    
+    % add a checkbox to the right of the dropdown to allow selecting this label
+    cbxHandles(k) = uicheckbox(figUI, ...
+        'Position',[80+200+10 y 60 22], ... % to the right of the dropdown
+        'Text','Uncertain', ...
+        'Value', false);
 end
 
 % add Done button to close and collect selections
@@ -295,12 +301,14 @@ btnDone = uibutton(figUI,'push', 'Text','Done', 'Position',[100 10 100 30], ...
 uiwait(figUI);
 
 % read selections (if figure still valid)
+chnamesu2 = strings(size(chnamesu));
+markeduncertain = false(size(chnamesu));
 if isvalid(figUI)
-    chnamesu2 = strings(size(chnamesu));
     for k = 1:K
         sel = popupHandles(k).Value;
         % assign selected name to all channels in this label
         chnamesu2(k) = string(sel);
+        markeduncertain(k) = cbxHandles(k).Value;
     end
     close(figUI);
 end
@@ -323,6 +331,7 @@ Dmed = median(D); Dstd = std(D);
 
 % initial auto coord-name mapping 
 [XYZname, missingname] = matchChElec(K, XYZ,labels,lines, chnames,chnamesu, Dmed,Dstd);
+markeduncertaineach = markeduncertain(labels)';
 
 % visualize initial results 
 figbrain2 = figure; % fresh figure 
@@ -408,7 +417,8 @@ disp([XYZname, electbl.AFNI, electbl.JuBrain, electbl.Brainnetome])
 
 end
 
-electbl.Electrode = XYZname;
+electbl.Electrode = XYZname; 
+electbl.MatchUncertain = markeduncertaineach;
 
 end
 end
@@ -509,7 +519,7 @@ for label = 1:K
         end
     end
 
-    % any imaged channels not recorded? 
+    % any imaged "channels" not recorded? 
     dd = diff(d); ddout = (Dmed-dd) > 3*Dstd;
     while length(d) > length(chnamenumk)
         if any(ddout)
@@ -519,6 +529,10 @@ for label = 1:K
             didx = didx([1:ddi, (ddi+2):end]);
             dd = diff(d); ddout = (Dmed-dd) > 3*Dstd;
         else
+            % assume superficial-most contact is incorrect 
+            chnamenumk = [chnamenumk,"?"];
+            chnumk = [chnumk,nan]; %chIDk = [chIDk,nan];
+            %{
             [~,rj] = min(r); % try to put this near the middle 
             % mark most eccentric elec as unknown 
             [~,ri] = max(r); rij = ri-rj;
@@ -536,6 +550,7 @@ for label = 1:K
             end
             % plug ri so the same index doesn't get flagged again 
             r(ri) = nan;
+            %}
         end
     end
 
