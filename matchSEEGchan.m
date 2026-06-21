@@ -47,26 +47,28 @@ camlight;
 
 plot3(XYZ(:,1), XYZ(:,2), XYZ(:,3), '.r');
 
+%% sort contacts 
+
 % prep to sort contacts (init) 
 labels = nan(height(XYZ),1);
 K = length(chnamesu);
 lines = nan(K,width(XYZ),2);
-
-%% sort contacts 
-
 sortdone = false; 
+
 while ~sortdone
 
+    %{
     labelsPlots = plotNewLabels(XYZ, K, labels, lines);
     sortdone = input("Accept? [y/n] ","s");
     sortdone = strcmpi(sortdone, 'y');
+    %}
 
-    if ~sortdone
+    %if ~sortdone
     K = input("Number of depth electrodes (default "+string(K)+"): ");
     if isempty(K)
         K = length(chnamesu); % use default if no input
     end
-    disp('(Re-)trying klines. Please wait...');
+    disp('(Re)trying klines. Please wait...');
     [labelsNew,linesNew] = klines(XYZ,K,20000,50);
     for l = 1:height(labelsPlots)
         for lp = 1:width(labelsPlots)
@@ -75,7 +77,7 @@ while ~sortdone
     end
 
     labelsPlots = plotNewLabels(XYZ, K, labelsNew, linesNew);
-    sortdone = input("Accept? [y/n] ","s");
+    sortdone = input("Accept for now? [y/n] ","s");
     sortdone = strcmpi(sortdone, 'y');
 
     if sortdone
@@ -87,7 +89,7 @@ while ~sortdone
             end
         end
     end
-    end
+    %end
 end
 
 %% manually reassign unnamed labels (1) 
@@ -201,7 +203,7 @@ lines = lines(lblidx,:,:);
 labels = arrayfun(@(idx) lblidx(idx), labels);
 
 %% manually reassign named labels (2)
-
+plotNewLabels(XYZ, K, labels, lines);
 %% helper(s) 
 
 % re-fit lines from existing points without re-running klines 
@@ -229,6 +231,15 @@ end
 function labelsPlots = plotNewLabels(XYZ, K, labelsNew, linesNew)
     global figbrain
     figure(figbrain);
+    figgraphics = gca().Children;
+    for gr = figgraphics'
+        if isprop(gr, 'Type')
+            grType = gr.Type;
+            if strcmpi(grType,'Text') || strcmpi(grType,'Quiver')
+                delete(gr);
+            end
+        end
+    end
     labelsPlots = cell(K,3);
     for label = 1:K
         colr = colorwheel(label/K);
