@@ -105,7 +105,7 @@ figCB = uifigure('Name','Label Reassignment','NumberTitle','off','MenuBar','none
     'Scrollable','on', 'UserData',labels);
 t = uitable(figCB, 'Data', cell(maxRows,K), 'ColumnEditable', true(1,K), ...
     'ColumnName', arrayfun(@(l) char(64+l), 1:K, 'UniformOutput', false), ...
-    'CellSelectionCallback', @cellSel, 'UserData',[]);
+    'CellSelectionCallback', @cellSel, 'UserData',[], 'Tag','t');
 t.Position(3:4) = [min(1200,150+120*K), min(600,40+30*(maxRows+1))];
 
 % Fill table with point identifiers (show point number and original index)
@@ -122,7 +122,7 @@ t.Data = cellstr(tbl);
 uicontrol(figCB,'Style','text','String','Select table cells (one or more) then click "Reassign to Label" to move points to a different label.','HorizontalAlignment','left',...
     'Position',[10, t.Position(2)+t.Position(4)+2, t.Position(3)-20, 20]);
 lblPopup = uicontrol(figCB,'Style','popupmenu','String',arrayfun(@(l) char(64+l), 1:K, 'UniformOutput', false),...
-    'Position',[10,10,120,22]);
+    'Position',[10,10,120,22], 'Tag','lblPopup');
 btnReassign = uicontrol(figCB,'Style','pushbutton','String','Reassign to Label','Position',[140,10,140,22],...
     'Callback',@(s,e) reassignCallback(s,e, XYZ,K));
 btnDone = uicontrol(figCB,'Style','pushbutton','String','Done','Position',[290,10,80,22],...
@@ -201,9 +201,10 @@ lblcount_perm = lblcount(bestPerm);
 chnamesu = chnamesu(chuidx);
 lines = lines(lblidx,:,:);
 labels = arrayfun(@(idx) lblidx(idx), labels);
+lines = fitlines(XYZ,K,labels); % this should not be needed 
 
 %% manually reassign named labels (2)
-plotNewLabels(XYZ, K, labels, lines);
+
 %% helper(s) 
 
 % re-fit lines from existing points without re-running klines 
@@ -278,8 +279,12 @@ end
 function reassignCallback(src, evt, XYZ,K)
     global figbrain
     labels = src.Parent.UserData;
-    lblPopup = src.Parent.Children(3); % change to tag?
-    t = src.Parent.Children(end); % change to tag?
+    %lblPopup = src.Parent.Children(3); % change to tag?
+    %t = src.Parent.Children(end); % change to tag?
+    figgraphics = src.Parent.Children;
+    figgraphicsnames = {figgraphics.Tag};
+    lblPopup = figgraphics(strcmp(figgraphicsnames, 'lblPopup'));
+    t = figgraphics(strcmp(figgraphicsnames, 't'));
     selCells = t.UserData;
     if isempty(selCells)
         uialert(src.Parent,'No cells selected.','Warning','Icon','warning');
