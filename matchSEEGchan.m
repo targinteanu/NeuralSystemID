@@ -1,4 +1,5 @@
-function electbl = matchSEEGchan(chnames, electbl)
+function electbl = matchSEEGchan(chnames, electbl, ...
+    XYZacpc, brainmeshLacpc, brainmeshRacpc)
 % Match ephys channel names with SEEG contacts identified on imaging. May
 % also work with ECoG, etc. 
 % 
@@ -7,8 +8,26 @@ function electbl = matchSEEGchan(chnames, electbl)
 %   electbl: table of electrode details that has fields x, y, z, AFNI,
 %            JuBrain, Brainnetome 
 % 
+% Optional inputs:
+%   XYZacpc: acpc X,Y,Z coordinates (columns=dimensions) in acpc space, or
+%            fieldtrip elec_acpc_f struct 
+%   brainmesh<L/R>acpc: fieldtrip mesh struct for brain R/L hemisphere in
+%            acpc space, or path to .mat file containing "mesh" variable 
+% If the above are blank or omitted, mni space will be used instead, with
+% coordinates from electbl and fieldtrip template brain. 
+% 
 % Outputs: 
 %   electbl with the field Electrode updated to match chnames 
+
+if nargin < 5
+    brainmeshRacpc = [];
+    if nargin < 4
+        brainmeshLacpc = [];
+        if nargin < 3
+            XYZacpc = [];
+        end
+    end
+end
 
 %% interpret channel names from file
 chIDs = 1:length(chnames);
@@ -24,27 +43,62 @@ chnamesu = regexprep(chnamesu, '\d+', '');
 [chnamesu,ia] = unique(chnamesu);
 chucount = diff([ia; length(chnames)+1])';
 
+if ~isempty(chnamesu)
+
 %% view contacts 
-XYZ = [electbl.x, electbl.y, electbl.z];
+if isempty(XYZacpc)
+    XYZ = [electbl.x, electbl.y, electbl.z];
+else
+    XYZ = XYZacpc; % Use provided acpc coordinates if available
+    if isstruct(XYZ)
+        if isfield(XYZ, 'elecpos')
+            XYZ = XYZ.elecpos; % Extract electrode positions if struct
+        else
+            XYZ = XYZ.chanpos;
+        end
+    end
+    if isempty(brainmeshLacpc) || isempty(brainmeshRacpc)
+        warning(['Using template brain in MNI space with provided ' ...
+            'electrode coordinates in unknown space.'])
+    end
+end
 coeff = pca(XYZ);
-[az,el] = cart2sph(coeff(1,1),coeff(2,1),coeff(3,1)); % angle for best viewing
+coeffdir = coeff(1:3,1);
+coeffdirsgn = sign(mean(XYZ)*coeffdir);
+coeffdir = coeffdirsgn*coeffdir;
+[az,el] = cart2sph(coeffdir(1),coeffdir(2),coeffdir(3)); % angle for best viewing
 az = az*180/pi; el = el*180/pi;
 
 % 3D template brain
 global figbrain
 figbrain = figure;
-[ftver, ftpath] = ft_version;
-load([ftpath filesep 'template/anatomy/surface_pial_left.mat']);
-template_lh = mesh; clear mesh;
-load([ftpath filesep 'template/anatomy/surface_pial_right.mat']);
-template_rh = mesh; clear mesh;
+if isempty(brainmeshLacpc) || isempty(brainmeshRacpc)
+    [ftver, ftpath] = ft_version;
+    brainmesh_lh = load([ftpath filesep 'template/anatomy/surface_pial_left.mat'], 'mesh');
+    brainmesh_lh = brainmesh_lh.mesh; 
+    brainmesh_rh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat'], 'mesh');
+    brainmesh_rh = brainmesh_rh.mesh; 
+else
+    brainmesh_lh = brainmeshLacpc; 
+    brainmesh_rh = brainmeshRacpc; 
+    if ischar(brainmesh_lh) || isstring(brainmesh_lh)
+        brainmesh_lh = ft_read_headshape(brainmesh_lh);
+    end
+    if ischar(brainmesh_rh) || isstring(brainmesh_rh)
+        brainmesh_rh = ft_read_headshape(brainmesh_rh);
+    end
+    if isempty(XYZacpc)
+        warning(['Using provided brain mesh in unknown space with XYZ ' ...
+            'coordinates from the table likely in MNI space.'])
+    end
+end
 
 % show brain mesh 
 FaceAlpha = .1; % transparency
 FaceColor = .9*[1,1,1];
-merh = ft_plot_mesh(template_rh);
+merh = ft_plot_mesh(brainmesh_rh);
 hold on
-melh = ft_plot_mesh(template_lh);
+melh = ft_plot_mesh(brainmesh_lh);
 merh.FaceColor = FaceColor;
 merh.FaceAlpha = FaceAlpha;
 melh.FaceColor = FaceColor;
@@ -63,6 +117,7 @@ labels = nan(height(XYZ),1);
 K = length(chnamesu);
 lines = nan(K,width(XYZ),2);
 sortdone = false; 
+labelsPlots = {};
 
 while ~sortdone
 
@@ -211,7 +266,7 @@ chnamesu = chnamesu(chuidx);
 lines = lines(lblidx,:,:);
 labels = arrayfun(@(lbl) find(lblidx==lbl), labels);
 %lines = fitlines(XYZ,K,labels); % this should not be needed 
-%plotNewLabels(XYZ, K, labels, lines);
+plotNewLabels(XYZ, K, labels, lines);
 
 %% manually reassign named labels (2)
 
@@ -276,9 +331,9 @@ figbrain2 = figure; % fresh figure
 figbrainax(1) = subplot(1,2,1);
 FaceAlpha = .1; % transparency
 FaceColor = .9*[1,1,1];
-merh = ft_plot_mesh(template_rh);
+merh = ft_plot_mesh(brainmesh_rh);
 hold on
-melh = ft_plot_mesh(template_lh);
+melh = ft_plot_mesh(brainmesh_lh);
 merh.FaceColor = FaceColor;
 merh.FaceAlpha = FaceAlpha;
 melh.FaceColor = FaceColor;
@@ -307,9 +362,9 @@ disp(missingListStr);
 figbrainax(2) = subplot(1,2,2);
 FaceAlpha = .1; % transparency
 FaceColor = .9*[1,1,1];
-merh = ft_plot_mesh(template_rh);
+merh = ft_plot_mesh(brainmesh_rh);
 hold on
-melh = ft_plot_mesh(template_lh);
+melh = ft_plot_mesh(brainmesh_lh);
 merh.FaceColor = FaceColor;
 merh.FaceAlpha = FaceAlpha;
 melh.FaceColor = FaceColor;
@@ -355,6 +410,7 @@ end
 
 electbl.Electrode = XYZname;
 
+end
 end
 
 %% helper(s) 

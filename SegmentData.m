@@ -2,6 +2,7 @@
 disp('Please select subject folder...')
 folder = uigetdir; 
 [~,pName] = fileparts(folder)
+
 NSfiles = dir([folder,filesep,'*.ns*']);
 NEVfiles = dir([folder,filesep,'*.nev']);
 ElecXL = [dir([folder,filesep,'electrode_data.xls*']); ...
@@ -11,6 +12,57 @@ ElecXL = [dir([folder,filesep,'electrode_data.xls*']); ...
           dir([folder,filesep,pName,filesep,pName,'_electrode_data.xls*']); ...
           dir([folder,filesep,'Imaging',filesep,pName,'_electrode_data.xls*']) ...
           ];
+
+ElecType = questdlg('What type of electrodes?','Electrode Type specification',...
+    'ECoG/Cortex','sEEG/depth','ECoG/Cortex');
+XYZacpc = []; meshLacpc = []; meshRacpc = []; contelecsearch = false;
+if strcmp(ElecType,'ECoG/Cortex')
+    curelecfile = fullfile(folder,[pName,'_elec_acpc_fr.mat']);
+    if exist(curelecfile,'file')
+        XYZacpc = load(curelecfile, 'elec_acpc_fr');
+        XYZacpc = XYZacpc.elec_acpc_fr;
+    else
+        curelecfile = fullfile(folder,'Imaging',[pName,'_elec_acpc_fr.mat']);
+        if exist(curelecfile,'file')
+            XYZacpc = load(curelecfile, 'elec_acpc_fr');
+            XYZacpc = XYZacpc.elec_acpc_fr;
+        else
+            contelecsearch = true;
+        end
+    end
+end
+if contelecsearch || strcmp(ElecType,'sEEG/depth')
+    curelecfile = fullfile(folder,[pName,'_elec_acpc_f.mat']);
+    if exist(curelecfile,'file')
+        XYZacpc = load(curelecfile, 'elec_acpc_f');
+        XYZacpc = XYZacpc.elec_acpc_f;
+    else
+        curelecfile = fullfile(folder,'Imaging',[pName,'_elec_acpc_f.mat']);
+        if exist(curelecfile,'file')
+            XYZacpc = load(curelecfile, 'elec_acpc_f');
+            XYZacpc = XYZacpc.elec_acpc_f;
+        end
+    end
+end
+curelecfile = fullfile(folder,'Imaging','lh.pial.T1');
+if exist(curelecfile,'file')
+    meshLacpc = curelecfile;
+else
+    curelecfile = fullfile(folder,'Imaging','freesurfer','surf','lh.pial.T1');
+    if exist(curelecfile,'file')
+        meshLacpc = curelecfile;
+    end
+end
+curelecfile = fullfile(folder,'Imaging','rh.pial.T1');
+if exist(curelecfile,'file')
+    meshRacpc = curelecfile;
+else
+    curelecfile = fullfile(folder,'Imaging','freesurfer','surf','rh.pial.T1');
+    if exist(curelecfile,'file')
+        meshRacpc = curelecfile;
+    end
+end
+
 thisfilename = mfilename("fullpath");
 
 %% try to load a previous run if available 
@@ -138,7 +190,7 @@ for f = NSfiles'
     timeEnd = max(timeEnd, max(fTbl.Time));
 
     % pair timetable variables with electrode info
-    if ~isempty(electbl)
+    if ~isempty(electbl) && ~strcmp(ElecType, 'sEEG/depth')
     elecname = electbl.Electrode; elecnum = nan(size(elecname));
     for c = 1:length(elecname)
         cname = elecname{c};
@@ -204,6 +256,24 @@ for f = NSfiles'
     catch ME
         warning(ME.message);
     end
+end
+
+% pair timetable variables with electrode info
+for SFi = 1:width(tbls)
+fTbl = tbls{SFi};
+if strcmp(ElecType, 'sEEG/depth')
+    pause(.001); drawnow; pause(.001);
+    electbl = matchSEEGchan(fTbl.Properties.VariableNames, ...
+        electbl,XYZacpc,meshLacpc,meshRacpc);
+    pause(.001); drawnow; pause(.001);
+    for c = 1:width(fTbl)
+        r = find(strcmp(electbl.Electrode, fTbl.Properties.VariableNames{c}));
+        if numel(r)
+            r = r(1);
+            tbls{SFi}.Properties.VariableDescriptions{c} = electbl.Brainnetome{r};
+        end
+    end
+end
 end
 
 % NEV (event data) files
