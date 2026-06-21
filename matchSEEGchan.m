@@ -5,8 +5,11 @@
 %   chnames: list of channel names from ephys recording 
 
 %% interpret channel names from file
+chIDs = 1:length(chnames);
 chnames = string(upper(chnames)); % standardize 
+chIDs = chIDs(~contains(chnames, "AINP")); 
 chnames = chnames(~contains(chnames, "AINP")); % analog inputs not in head
+chIDs = chIDs(~contains(chnames, " BF")); % BFs not visible on CT
 chnames = chnames(~contains(chnames, " BF")); % BFs not visible on CT
 
 % remove all digits from each channel name (works on string array)
@@ -200,12 +203,159 @@ lblcount_perm = lblcount(bestPerm);
 [chucount, chuidx] = sort(chucount);
 chnamesu = chnamesu(chuidx);
 lines = lines(lblidx,:,:);
-labels = arrayfun(@(idx) lblidx(idx), labels);
-lines = fitlines(XYZ,K,labels); % this should not be needed 
+labels = arrayfun(@(lbl) find(lblidx==lbl), labels);
+%lines = fitlines(XYZ,K,labels); % this should not be needed 
+%plotNewLabels(XYZ, K, labels, lines);
+
+%% try assigning named labels 
+
+% get expected dist between channels 
+D = [];
+for label = 1:K
+    xyz = XYZ(labels==label,:);
+    linecen = squeeze(lines(label,:,1)); 
+    linedir = squeeze(lines(label,:,2));
+    d = (xyz-linecen)*linedir';
+    d = diff(sort(d));
+    D = [D; d];
+end
+Dmed = median(D); Dstd = std(D);
+
+% initial coord-name mapping 
+%XYZrow = (1:size(XYZ,1))'; 
+XYZname = strings(size(XYZ,1),1);
+missingname = "";
+for label = 1:K
+
+    % get names/IDs from ephys 
+    chnamek = chnamesu(label);
+    chIDk = chIDs(contains(chnames,chnamek));
+    chnamenumk = chnames(contains(chnames,chnamek));
+    chnumk = arrayfun(@(str) getnumfromstr(str), chnamenumk);
+    idxtf = false(size(chnumk));
+    [chnumk,idx] = unique(chnumk); % treat duplicates as missing
+    idxtf(idx) = true;
+    missingname = [missingname; chnamenumk(~idxtf)'];
+    chnamenumk = chnamenumk(idx); chIDk = chIDk(idx);
+    [chnumk,idx] = sort(chnumk, 'ascend'); % assume numbering is spatial; lowest=deepest
+    chnamenumk = chnamenumk(idx); chIDk = chIDk(idx);
+
+    % get ordered positions 
+    xyz = XYZ(labels==label,:); %r = XYZrow(labels==label,:);
+    linecen = squeeze(lines(label,:,1)); 
+    linedir = squeeze(lines(label,:,2));
+    rightsided = linecen(1) > 0;
+    rightpointing = linedir(1) > 0;
+    outpointing = rightsided == rightpointing;
+    if ~outpointing
+        linedir = -linedir; % force outpointing
+    end
+    d = (xyz-linecen)*linedir'; % lower (more negative) = deeper
+    [d,didx] = sort(d); % order wrt same label elecs
+    r = (xyz-mean(XYZ))./std(XYZ); % diff from all elecs 
+    r = rms(r,2);
+
+    % any channels not seen on imaging?  
+    dd = diff(d); ddout = (dd-Dmed) > 3*Dstd;
+    while length(chnamenumk) > length(d)
+        if any(ddout)
+            [~,ddi] = max(dd);
+            % assume the missing chan was between ddi+1 and ddi
+            missingname = [missingname; chnamenumk(ddi+1)];
+            chnamenumk = chnamenumk([1:ddi, (ddi+2):end]);
+            chnumk = chnumk([1:ddi, (ddi+2):end]);
+            chIDk = chIDk([1:ddi, (ddi+2):end]);
+            % plug ddi so the same index doesn't get flagged again 
+            dd(ddi) = -inf; ddout(ddi) = false;
+        else
+            % assume the missing chan is most superficial
+            missingname = [missingname; chnamenumk(end)];
+            chnamenumk = chnamenumk(1:(end-1));
+            chnumk = chnumk(1:(end-1));
+            chIDk = chIDk(1:(end-1));
+        end
+    end
+
+    % any imaged channels not recorded? 
+    dd = diff(d); ddout = (Dmed-dd) > 3*Dstd;
+    while length(d) > length(chnamenumk)
+        if any(ddout)
+            [~,ddi] = min(dd);
+            % ddi+1 is too close to ddi to be distinct 
+            d = d([1:ddi, (ddi+2):end]); 
+            didx = didx([1:ddi, (ddi+2):end]);
+            dd = diff(d); ddout = (Dmed-dd) > 3*Dstd;
+        else
+            [~,rj] = min(r); % try to put this near the middle 
+            % mark most eccentric elec as unknown 
+            [~,ri] = max(r); rij = ri-rj;
+            sj = ceil(length(chnamenumk)/2); si = sj+rij;
+            if si < 1
+                chnamenumk = ["?",chnamenumk];
+                chnumk = [nan,chnumk]; chIDk = [nan,chIDk];
+            elseif si > length(chnamenumk)
+                chnamenumk = [chnamenumk,"?"];
+                chnumk = [chnumk,nan]; chIDk = [chIDk,nan];
+            else
+                chnamenumk = [chnamenumk(1:(si-1)),"?",chnamenumk((si):end)];
+                chnumk = [chnumk(1:(si-1)),nan,chnumk((si):end)];
+                chIDk = [chIDk(1:(si-1)),nan,chIDk((si):end)];
+            end
+            % plug ri so the same index doesn't get flagged again 
+            r(ri) = nan;
+        end
+    end
+
+    % assign pairs 
+    % everything is now the side of d 
+    labelsk = find(labels==label);
+    labelsk = labelsk(didx);
+    XYZname(labelsk) = chnamenumk';
+end
+
+% visualize initial results 
+figbrain2 = figure; % fresh figure 
+
+% show brain mesh 
+FaceAlpha = .1; % transparency
+FaceColor = .9*[1,1,1];
+merh = ft_plot_mesh(template_rh);
+hold on
+melh = ft_plot_mesh(template_lh);
+merh.FaceColor = FaceColor;
+merh.FaceAlpha = FaceAlpha;
+melh.FaceColor = FaceColor;
+melh.FaceAlpha = FaceAlpha;
+view([az, el]);
+material dull;
+lighting gouraud;
+camlight;
+
+% show labeled elecs 
+for label = 1:K
+    colr = colorwheel(label/K);
+    xyz = XYZ(labels==label,:);
+    chnamenumk = XYZname(labels==label);
+    plot3(xyz(:,1),xyz(:,2),xyz(:,3),'.', 'Color',colr);
+    text(xyz(:,1),xyz(:,2),xyz(:,3), chnamenumk, 'Color',colr, 'FontWeight','bold');
+end
+
+missingListStr = strjoin(missingname, ', ');
+missingListStr = char(missingListStr); 
+missingListStr = missingListStr(3:end); % remove leading comma 
+missingListStr = ['Missing: ',missingListStr];
+disp(missingListStr);
 
 %% manually reassign named labels (2)
 
+
 %% helper(s) 
+
+function cnum = getnumfromstr(cname)
+cname = char(cname); 
+cnum = cname((cname >= 48) & (cname <= 57)); 
+cnum = str2double(cnum);
+end
 
 % re-fit lines from existing points without re-running klines 
 function lines = fitlines(X,K,labels)
@@ -255,11 +405,11 @@ function labelsPlots = plotNewLabels(XYZ, K, labelsNew, linesNew)
         linedir = squeeze(linesNew(label,:,2)); linedir = linedir*linelen/2;
         labelsPlots{label,2} = quiver3(linecen(1), linecen(2), linecen(3), ...
                 linedir(1), linedir(2), linedir(3), ...
-                "off", 'Color',colr);
+                "off", 'Color',colr, 'LineWidth',1);
         linedir = -linedir;
         labelsPlots{label,3} = quiver3(linecen(1), linecen(2), linecen(3), ...
                 linedir(1), linedir(2), linedir(3), ...
-                "off", 'Color',colr);
+                "off", 'Color',colr, 'LineWidth',1);
         %labelsPlots{label,4} = text(linecen(1),linecen(2),linecen(3), string(label), 'Color',colr);
     end
 end
