@@ -140,6 +140,10 @@ for f = ElecXL'
     fTbl = readtable([f.folder,filesep,f.name]);
     warning(original_state);
 
+    disp(['File: ',f.name]);
+    proc = input('Include this file? (Y/N) ', "s");
+    if strcmpi(proc, 'Y')
+
     % interpret coordinates
     if sum(strcmpi(fTbl.Properties.VariableNames, 'coordinates'))
     XYZ = zeros(height(fTbl),3);
@@ -160,6 +164,7 @@ for f = ElecXL'
     fTbl = [fTbl, XYZ];
 
     electbl = [electbl; fTbl];
+    end
 end
 
 clear x y z XYZ xyz f fTbl
@@ -263,10 +268,26 @@ end
 for SFi = 1:width(tbls)
 fTbl = tbls{SFi};
 if strcmp(ElecType, 'sEEG/depth')
-    pause(.001); drawnow; pause(.001);
-    electbl = matchSEEGchan(fTbl.Properties.VariableNames, ...
-        electbl,XYZacpc,meshLacpc,meshRacpc);
-    pause(.001); drawnow; pause(.001);
+    if ~ismember('MatchUncertain', electbl.Properties.VariableNames) 
+        % match has not been run yet
+        pause(.001); drawnow; pause(.001);
+        electbl = matchSEEGchan(fTbl.Properties.VariableNames, ...
+            electbl,XYZacpc,meshLacpc,meshRacpc);
+        pause(.001); drawnow; pause(.001);
+        thisfilever = getFileVersion(thisfilename);
+        % save this for future/other runs 
+        if isempty(ElecXL)
+            electblsvname = ['ElectrodeTable_',thisfilever,'.xlsx'];
+            electblsvname = fullfile(folder, electblsvname);
+        else
+            [~,electblsv] = min([ElecXL.datenum]); % get oldest (original)
+            electblsv = ElecXL(electblsv);
+            [~,electblsvname,electblsvexten] = fileparts(electblsv.name);
+            electblsv = fullfile(electblsv.folder, ...
+                [electblsvname,'_',thisfilever,'.xlsx']);
+        end
+        writetable(electbl, electblsvname);
+    end
     for c = 1:width(fTbl)
         r = find(strcmp(electbl.Electrode, fTbl.Properties.VariableNames{c})); % strcmpi?
         if numel(r)
