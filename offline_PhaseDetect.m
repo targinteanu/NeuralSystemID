@@ -80,6 +80,13 @@ if nargin < 19
     end
 end
 
+ARmdlProvided = isa(ARlen, 'cell');
+if ARmdlProvided
+    ARmdl_unfilt = ARlen{1};
+    ARmdl_filt = ARlen{2};
+    ARlen = size(ARmdl_filt.A,2);
+end
+
 %% Constants: 
 
 
@@ -187,7 +194,9 @@ baselineWin = [1, samplerat*3*ARwin];
 
 % Train the AR model on unfiltered data. 
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
+if ~ARmdlProvided
 ARmdl_unfilt = ar(iddata(dataBaseline1', [], 1/SamplingFreq), ARlen, 'yw');
+end
 
 %% A.3 Band-Pass Filtering setup 
 % Get FIR filter weights, filter the signal, and train another AR model on
@@ -235,7 +244,9 @@ end
 
 % setup filtered AR model
 disp(['Data size is ',num2str(length(dataBaseline1)/ARlen),' times variable size.'])
+if ~ARmdlProvided
 ARmdl_filt = ar(iddata(dataBaseline1', [], 1/downsampledFreq), ARlen, 'yw');
+end
 ARmdl_filt = ARmdl_filt.A;
 
 if useIIR
