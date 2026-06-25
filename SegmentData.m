@@ -291,6 +291,9 @@ for f = NEVfiles'
     fEV = openNEV([f.folder,filesep,f.name], 'nosave');
     EVtbl = nev2table(fEV);
 
+    % ignore Spike events, which should be handled separately: 
+    EVtbl = EVtbl(~contains(EVtbl.EventLabels, "Spike"), :);
+
     disp(['File: ',f.name,...
           ' first event at ',char(min(EVtbl.Time)),' and',...
           ' last event at ',char(max(EVtbl.Time))]);
