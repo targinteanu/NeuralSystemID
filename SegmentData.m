@@ -73,6 +73,7 @@ lastrun = dir(folder); % all files and folders
 lastrun = lastrun(3:end); % exclude '.' and '..'
 lastrun = lastrun([lastrun.isdir]); % folders
 lastrun = lastrun(contains({lastrun.name},[pName,'_SegmentData']));
+channelNameRejectPrev = "";
 if ~isempty(lastrun)
     lastrunsel = listdlg(...
         "PromptString", "Load previous session?", ...
@@ -267,7 +268,7 @@ if strcmp(ElecType, 'sEEG/depth')
         electbl,XYZacpc,meshLacpc,meshRacpc);
     pause(.001); drawnow; pause(.001);
     for c = 1:width(fTbl)
-        r = find(strcmp(electbl.Electrode, fTbl.Properties.VariableNames{c}));
+        r = find(strcmp(electbl.Electrode, fTbl.Properties.VariableNames{c})); % strcmpi?
         if numel(r)
             r = r(1);
             descrip = electbl.Brainnetome{r};
@@ -279,6 +280,8 @@ if strcmp(ElecType, 'sEEG/depth')
     end
 end
 end
+
+% need to remove fieldtrip-20250318/external/... from path?
 
 % NEV (event data) files
 disp('  - event data...')
@@ -325,7 +328,8 @@ for SFi = 1:width(tbls)
 end
 chnames = unique(chnames); chnames = string(chnames);
 
-clear f fNS fEV fTbl EVtbl c r cname cnum proc varnames sortind
+clear f fNS fEV fTbl EVtbl NEVtbl c r cname cnum proc varnames sortind
+clear electbl XYZacpc meshRacpc meshLacpc
 
 if isempty(tbls) || isempty(chnames)
     error('Something went wrong.')
@@ -514,7 +518,7 @@ for iwind = 1:height(OLwinds)
     OLwinds(iwind) = OLwinds(iwind)/seconds(t2-t1);
 end
 
-clear t1 t2 numOL io trng iwind
+clear t1 t2 numOL io trng iwind OLtbls
 
 %% user confirms baseline 
 disp('Please confirm baseline condition...')
@@ -669,7 +673,7 @@ end
 
 pause(.01); drawnow; pause(.01);
 
-clear showas xl
+clear showas xl io BaselineData BaselineData_inan
 
 %% inspect and reject noisy channels 
 disp('Please inspect and specify noisy channels to reject...')
@@ -686,7 +690,7 @@ end
 % rejection 
 channelIndexReject = listdlg_chsel("REJECT Channel(s)",chnames,channelNameRejectPrev);
 channelNameReject = [channelNameReject, chnames(channelIndexReject)];
-MainTable = removevars(MainTable, channelNameReject);
+MainTable = removevars(MainTable, channelNameReject); % to do: fix if any are duplicate or already removed
 tblBaselineMain = removevars(tblBaselineMain, channelNameReject);
 tbls = cellfun(@(tbl) myRemoveVars(tbl, channelNameReject), ...
     tbls, 'UniformOutput',false);
