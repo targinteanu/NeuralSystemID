@@ -461,6 +461,15 @@ SamplingFreq = inputdlg('Select main frequency to resample:', ...
 SamplingFreq = eval(SamplingFreq{1});
 [~,SFi] = min(abs(SampleRates-SamplingFreq));
 MainTable = tbls{SFi};
+
+% check expected data size 
+datanumel = seconds(timeEnd-timeBegin)*SamplingFreq*width(MainTable);
+if 8*datanumel > 2^32
+    warning(['This script is not well suited for large recordings or ' ...
+        'multiple sessions over different days. Consider running on ' ...
+        'individual recordings separately instead.'])
+end
+
 MainTable = myRetime(MainTable, SampleRates(SFi), nan);
 MainTable = retime(MainTable, 'regular', 'nearest', 'SampleRate',SamplingFreq);
 SFj = true(size(SampleRates)); SFj(SFi) = false; SFj = find(SFj);
