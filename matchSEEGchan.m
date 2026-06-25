@@ -30,18 +30,18 @@ if nargin < 5
 end
 
 %% interpret channel names from file
-chIDs = 1:length(chnames);
-chnames = string(upper(chnames)); % standardize 
-chIDs = chIDs(~contains(chnames, "AINP")); 
+%chIDs = 1:length(chnames);
+chnames = sort(string(upper(chnames))); % standardize 
+%chIDs = chIDs(~contains(chnames, "AINP")); 
 chnames = chnames(~contains(chnames, "AINP")); % analog inputs not in head
-chIDs = chIDs(~contains(chnames, " BF")); % BFs not visible on CT
+%chIDs = chIDs(~contains(chnames, " BF")); % BFs not visible on CT
 chnames = chnames(~contains(chnames, " BF")); % BFs not visible on CT
 
 % remove all digits from each channel name (works on string array)
 chnamesu = regexprep(chnames, '-REF', '');
 chnamesu = regexprep(chnamesu, '\d+', '');
 [chnamesu,ia] = unique(chnamesu);
-chucount = diff([ia; length(chnames)+1])';
+chucount = diff([sort(ia); length(chnames)+1])';
 
 if ~isempty(chnamesu)
 
@@ -206,8 +206,10 @@ lblcount = arrayfun(@(l) sum(labels==l), 1:K);
 countdiff = length(lblcount) - length(chucount);
 if countdiff < 0
     lblcount = [lblcount, zeros(1,-countdiff)];
+    lines = [lines; nan(-countdiff,size(lines,2),size(lines,3))];
 elseif countdiff > 0
     chucount = [chucount, zeros(1,countdiff)];
+    chnamesu = [chnamesu, strings(1,countdiff)];
 end
 
 %{
