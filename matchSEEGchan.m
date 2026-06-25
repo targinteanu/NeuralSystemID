@@ -31,14 +31,14 @@ end
 
 %% interpret channel names from file
 %chIDs = 1:length(chnames);
-chnames = sort(string(upper(chnames))); % standardize 
+chnames = sort(string((chnames))); % standardize 
 %chIDs = chIDs(~contains(chnames, "AINP")); 
-chnames = chnames(~contains(chnames, "AINP")); % analog inputs not in head
+chnames = chnames(~contains(upper(chnames), "AINP")); % analog inputs not in head
 %chIDs = chIDs(~contains(chnames, " BF")); % BFs not visible on CT
-chnames = chnames(~contains(chnames, " BF")); % BFs not visible on CT
+chnames = chnames(~contains(upper(chnames), " BF")); % BFs not visible on CT
 
 % remove all digits from each channel name (works on string array)
-chnamesu = regexprep(chnames, '-REF', '');
+chnamesu = regexprep(upper(chnames), '-REF', '');
 chnamesu = regexprep(chnamesu, '\d+', '');
 [chnamesu,ia] = unique(chnamesu);
 chucount = diff([sort(ia); length(chnames)+1])';
