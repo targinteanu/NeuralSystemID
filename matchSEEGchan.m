@@ -29,6 +29,11 @@ if nargin < 5
     end
 end
 
+% fieldtrip setup 
+ft_defaults;
+[ftver, ftpath] = ft_version;
+addpath(genpath(ftpath));
+
 %% interpret channel names from file
 %chIDs = 1:length(chnames);
 chnames = sort(string((chnames))); % standardize 
@@ -73,7 +78,6 @@ az = az*180/pi; el = el*180/pi;
 global figbrain
 figbrain = figure;
 if isempty(brainmeshLacpc) || isempty(brainmeshRacpc)
-    [ftver, ftpath] = ft_version;
     brainmesh_lh = load([ftpath filesep 'template/anatomy/surface_pial_left.mat'], 'mesh');
     brainmesh_lh = brainmesh_lh.mesh; 
     brainmesh_rh = load([ftpath filesep 'template/anatomy/surface_pial_right.mat'], 'mesh');
@@ -423,6 +427,11 @@ electbl.Electrode = XYZname;
 electbl.MatchUncertain = markeduncertaineach;
 
 end
+
+% make sure ft external and its contents are removed from path
+rmpath(genpath(ftpath));
+addpath(ftpath);
+
 end
 
 %% helper(s) 

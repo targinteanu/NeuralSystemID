@@ -282,6 +282,12 @@ end
 end
 
 % need to remove fieldtrip-20250318/external/... from path?
+try
+    [ftver, ftpath] = ft_version;
+    rmpath(genpath([ftpath,filesep,'external']));
+catch MEft
+    warning(MEft.message)
+end
 
 % NEV (event data) files
 disp('  - event data...')
