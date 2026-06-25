@@ -496,6 +496,10 @@ for itrig = 1:length(trigstart_)
     candwinds = [candwinds; t1, t2];
 end
 candwindslong = (candwinds(:,2) - candwinds(:,1)) >= minutes(3); % MIN DURATION
+if ~any(candwindslong)
+    warning('Suggested baseline does not meet minimum duration requirement!')
+    [~,candwindslong] = max((candwinds(:,2) - candwinds(:,1)));
+end
 candwinds = candwinds(candwindslong,:);
 
 clear trigstart_ trigend_ t1 t2 disci d discont
