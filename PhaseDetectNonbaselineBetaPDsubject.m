@@ -47,9 +47,9 @@ ARmdls = cell(2,width(dtaBL));
 for c = 1:width(dtaBL)
     disp(['Fitting baseline AR ',num2str(c),' of ',num2str(width(dtaBL))])
     xBLc = dtaBL{:,c};
-    ARmdls{1,c} = ar(iddata(xBLc,[],1/Fs),ARord,'yw');
+    ARmdls{1,c} = ar(iddata(xBLc(1:ceil(3*ARwin)),[],1/Fs),ARord,'yw');
     xBLc = filtfilt(BPF,1,xBLc);
-    ARmdls{2,c} = ar(iddata(xBLc,[],1/Fs),ARord,'yw');
+    ARmdls{2,c} = ar(iddata(xBLc(1:ceil(3*ARwin)),[],1/Fs),ARord,'yw');
 end
 
 %% non-baseline data 
@@ -58,11 +58,11 @@ tblsToTest = [tblsMisc(:,1); tblsSrl(:,1)];
 
 tblsToTestDescs = cellfun(@(T) ...
     string(T.Properties.Description)+": "+trngstr(T), tblsToTest);
-[selidx,selmade] = listdlg("ListString",tblsToOrganizeDescs, ...
+[selidx,selmade] = listdlg("ListString",tblsToTestDescs, ...
     "SelectionMode","multiple", "ListSize",[500,300], ...
     "PromptString","Select Test Conditions");
 if selmade
-    tblsToTest{2,1} = tblsToTest(selidx);
+    tblsToTest = tblsToTest(selidx);
 end
 
 tblsToTest2 = {};
@@ -104,7 +104,7 @@ dta = tblsToTest2{Ti};
 disp([' ***** ',num2str(Ti),' of ',num2str(length(tblsToTest2)),': '...
     dta.Properties.Description,' ***** '])
 
-for c = 1:1:width(dta)
+for c = 1:1:length(chselName)
 
 chtoplot = chselName{c}
 
@@ -113,7 +113,7 @@ for p = 1:length(phTargets)
 phTarget = phTargets(p)
 
 prog = (c-1)*length(phTargets) + p;
-prog = prog/(length(phTargets)*width(dta));
+prog = prog/(length(phTargets)*length(chselName));
 disp([' ========== PROGRESS: ',num2str(round(100*prog)),'% ========== ']);
 
 % run phase detection 
