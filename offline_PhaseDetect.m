@@ -84,7 +84,7 @@ ARmdlProvided = isa(ARlen, 'cell');
 if ARmdlProvided
     ARmdl_unfilt = ARlen{1};
     ARmdl_filt = ARlen{2};
-    ARlen = size(ARmdl_filt.A,2);
+    ARlen = size(ARmdl_filt.A,2)-1;
 end
 
 %% Constants: 
