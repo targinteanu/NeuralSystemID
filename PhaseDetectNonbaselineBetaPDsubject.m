@@ -63,6 +63,8 @@ tblsToTestDescs = cellfun(@(T) ...
     "PromptString","Select Test Conditions");
 if selmade
     tblsToTest = tblsToTest(selidx);
+else
+    error('No data selected.')
 end
 
 tblsToTest2 = {};
