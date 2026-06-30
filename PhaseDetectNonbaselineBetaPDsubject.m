@@ -70,6 +70,10 @@ end
 tblsToTest2 = {};
 for Ti = 1:length(tblsToTest)
     tblsToTest_Ti = tblsToTest{Ti};
+    if any(contains(tblsToTest_Ti.Properties.Events.EventLabels, "Trigger"))
+        % this may contain stimulation/artifact; what to do? 
+        keyboard
+    end
     inan_Ti = isnan(tblsToTest_Ti.Variables);
     inan_Ti = sum(inan_Ti,2);
     if sum(inan_Ti)
