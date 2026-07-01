@@ -1,13 +1,15 @@
-DURDYN = []; DURCON = []; INFO = [];
-ERR = {}; NUM = {}; TRG = {};
-% dim 1: target phase
-% dim 2: channel 
-% dim 3: const vs dynamic AR model 
-
 %% load data from all files
 
 files = dir(fullfile('AdaptAR','*_PhaseDetect*.mat'));
-for f = files'
+DURDYN = []; DURCON = []; 
+INFO = [];
+ERR = {}; NUM = {}; 
+% dim 1: target phase
+% dim 2: subject/condition 
+% dim 3: const vs dynamic AR model 
+
+for fi = 1:length(files)
+    f = files(fi);
 
     filedata = load(fullfile(f.folder,f.name));
     DURDYN = [DURDYN,filedata.durDyn];
@@ -35,21 +37,27 @@ for f = files'
         ifoCond = "Baseline";
     end
 
+    fErr = filedata.errResults; fNum = filedata.numResults;
     dims = size(filedata.errResults);
-    if length(dims) > 3
-        for cond = 1:dims(4)
-            ifo.Cond = ifoCond(cond);
-            INFO = [INFO, repmat(ifo,1,dims(2))];
-            ERR = cat(2,ERR,filedata.errResults(:,:,:,cond));
-            NUM = cat(2,NUM,filedata.numResults(:,:,:,cond));
-            TRG = cat(2,TRG,filedata.trgResults(:,:,:,cond));
+    if length(dims) < 4
+        dims(4)=1;
+    end
+    for cond = 1:dims(4)
+        ifo.Cond = ifoCond(cond);
+        INFO = [INFO, ifo];
+        % avg/sum across channels for this subj/cond
+        fErrCond = fErr(:,:,:,cond); fNumCond = fNum(:,:,:,cond);
+        fErrCond_ = cell(size(fErr,1),1,size(fErr,3)); fNumCond_ = fErrCond_;
+        for m = 1:size(fErr,3)
+            fErrCond_(:,:,m) = arrayfun(@(r)...
+                circ_mean(cell2mat(fErrCond(r,:,m))'), ...
+                1:height(fErr), 'UniformOutput',false);
+            fNumCond_(:,:,m) = arrayfun(@(r)...
+                sum(cell2mat(fNum(r,:,m)')), ...
+                1:height(fNum), 'UniformOutput',false);
         end
-    else
-        ifo.Cond = ifoCond;
-        INFO = [INFO, repmat(ifo,1,dims(2))];
-        ERR = cat(2,ERR,filedata.errResults);
-        NUM = cat(2,NUM,filedata.numResults);
-        TRG = cat(2,TRG,filedata.trgResults);
+        ERR = cat(2,ERR,fErrCond_);
+        NUM = cat(2,NUM,fNumCond_);
     end
 
 end
@@ -100,7 +108,9 @@ for c = 1:width(ERR2)
     for r = 1:height(ERR2)
         for rr = (r+1):height(ERR2)
             %P(r,rr,c) = circ_kuipertest(ERR2{r,c}',ERR2{rr,c}');
-            [~,P(r,rr,c)] = circ_ztest(ERR2{r,c}',ERR2{rr,c}');
+            %[~,P(r,rr,c)] = circ_ztest(ERR2{r,c}',ERR2{rr,c}');
+            %[~,P(r,rr,c)] = kstest2((ERR2{r,c}.^2)', (ERR2{rr,c}.^2)');
+            [~,P(r,rr,c)] = ttest2((ERR2{r,c}.^2)', (ERR2{rr,c}.^2)', 'VarType','unequal');
         end
     end
 end
@@ -115,7 +125,8 @@ for c = 1:width(ERR2)
         hold on;
     end
     legend(string(phTargets));
-    [p,ptbl] = circ_wwtest(ERR3{1,c}', GRP3{1,c}');
+    %[p,ptbl] = circ_wwtest(ERR3{1,c}', GRP3{1,c}');
+    p = wanova((ERR3{1,c}.^2)', (GRP3{1,c})');
     title(['Anova p value: ',num2str(p)]);
 end
 
