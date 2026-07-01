@@ -107,10 +107,10 @@ P = nan([height(ERR2),height(ERR2),width(ERR2)]);
 for c = 1:width(ERR2)
     for r = 1:height(ERR2)
         for rr = (r+1):height(ERR2)
-            %P(r,rr,c) = circ_kuipertest(ERR2{r,c}',ERR2{rr,c}');
+            P(r,rr,c) = circ_kuipertest(ERR2{r,c}',ERR2{rr,c}');
             %[~,P(r,rr,c)] = circ_ztest(ERR2{r,c}',ERR2{rr,c}');
             %[~,P(r,rr,c)] = kstest2((ERR2{r,c}.^2)', (ERR2{rr,c}.^2)');
-            [~,P(r,rr,c)] = ttest2((ERR2{r,c}.^2)', (ERR2{rr,c}.^2)', 'VarType','unequal');
+            %[~,P(r,rr,c)] = ttest2((ERR2{r,c}.^2)', (ERR2{rr,c}.^2)', 'VarType','unequal');
         end
     end
 end
@@ -125,9 +125,8 @@ for c = 1:width(ERR2)
         hold on;
     end
     legend(string(phTargets));
-    %[p,ptbl] = circ_wwtest(ERR3{1,c}', GRP3{1,c}');
-    p = wanova((ERR3{1,c}.^2)', (GRP3{1,c})');
-    title(['Anova p value: ',num2str(p)]);
+    [p,ptbl] = circ_wwtest(ERR3{1,c}', GRP3{1,c}');
+    title(['ww p value: ',num2str(p)]);
 end
 
 % histogram of squared error 
@@ -152,13 +151,14 @@ for r = 1:size(ERR2,1)
         %ERR2mv(r,c,1) = mean(ERR2{r,c}*180/pi);
         %ERR2mv(r,c,2) = tinv(.995,N-1)*std(ERR2{r,c}*180/pi)/sqrt(N);
         ERR2mv(r,c,1) = circ_mean(ERR2{r,c}');
-        ERR2mv(r,c,2) = circ_zconf(ERR2{r,c}', .05);
+        ERR2mv(r,c,2) = circ_confmean(ERR2{r,c}', .05);
         %ERR2mv(r,c,2) = circ_std(ERR2{r,c}');
         %N = length(NUM2{r,c});
         %NUM2mv(r,c,1) = mean(NUM2{r,c});
         %NUM2mv(r,c,2) = tinv(.995,N-1)*std(NUM2{r,c})/sqrt(N);
     end
 end
+ERR2mv = ERR2mv*180/pi;
 
 % cartesian bar plot of mean+errorbar
 figure;
@@ -188,8 +188,9 @@ legend( ...
     ['Constant - RMSE ',num2str(rms(ERR3{1}))], ... 
     ['Dynamic - RMSE ',num2str(rms(ERR3{2}))], ...
     'Location','northoutside');
-[~,p] = ttest2(ERR3{1}.^2, ERR3{2}.^2, 'tail', 'right');
+%[~,p] = ttest2(ERR3{1}.^2, ERR3{2}.^2, 'tail', 'right');
 %[~,p] = circ_ztest(ERR3{1}', ERR3{2}');
+p = circ_kuipertest(ERR3{1}', ERR3{2}');
 subtitle(['p = ',num2str(p)])
 
 % pie by cycle of extra/missing 
