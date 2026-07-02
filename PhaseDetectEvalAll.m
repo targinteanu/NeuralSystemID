@@ -1,12 +1,19 @@
 %% load data from all files
+mdlnames = {'Constant', 'Dynamic'};
 
 files = dir(fullfile('AdaptAR','*_PhaseDetect*.mat'));
 DURDYN = []; DURCON = []; 
 INFO = [];
-ERR = {}; NUM = {}; 
+ERR = []; 
 % dim 1: target phase
 % dim 2: subject/condition 
 % dim 3: const vs dynamic AR model 
+% dim 4: mean, SD
+NUM = [];
+% dim 1: target phase
+% dim 2: subject/condition 
+% dim 3: const vs dynamic AR model 
+% dim 4: extra/missing/correct
 
 for fi = 1:length(files)
     f = files(fi);
@@ -47,14 +54,19 @@ for fi = 1:length(files)
         INFO = [INFO, ifo];
         % avg/sum across channels for this subj/cond
         fErrCond = fErr(:,:,:,cond); fNumCond = fNum(:,:,:,cond);
-        fErrCond_ = cell(size(fErr,1),1,size(fErr,3)); fNumCond_ = fErrCond_;
+        fErrCond_ = nan(size(fErr,1),1,size(fErr,3),2); 
+        fNumCond_ = nan(size(fNum,1),1,size(fNum,3),length(fNum{1}));
         for m = 1:size(fErr,3)
-            fErrCond_(:,:,m) = arrayfun(@(r)...
+            fErrCond_(:,:,m,1) = arrayfun(@(r)...
                 circ_mean(cell2mat(fErrCond(r,:,m))'), ...
-                1:height(fErr), 'UniformOutput',false);
-            fNumCond_(:,:,m) = arrayfun(@(r)...
+                1:height(fErr), 'UniformOutput',true);
+            fErrCond_(:,:,m,2) = arrayfun(@(r)...
+                circ_std(cell2mat(fErrCond(r,:,m))'), ...
+                1:height(fErr), 'UniformOutput',true);
+            fNumCond__ = arrayfun(@(r)...
                 sum(cell2mat(fNum(r,:,m)')), ...
                 1:height(fNum), 'UniformOutput',false);
+            fNumCond_(:,:,m,:) = cell2mat(fNumCond__');
         end
         ERR = cat(2,ERR,fErrCond_);
         NUM = cat(2,NUM,fNumCond_);
@@ -63,7 +75,10 @@ for fi = 1:length(files)
 end
 
 phTargets = filedata.phTargets;
-phTargets = phTargets*180/pi;
+%phTargets = phTargets*180/pi;
+
+clear fi f filedata ifo ifoCond dims cond m
+clear fErr fNum fErrCond fNumCond fErrCond_ fNumCond_ fNumCond__
 
 %% computation time 
 figure; 
@@ -79,90 +94,90 @@ disp(['Median time dynamic: ',num2str(median(DURDYN))])
 
 %% analysis by tgt phase 
 
-% cat across chans/subjs
-ERR2 = cell(size(ERR,1), size(ERR,3));
-NUM2 = cell(size(NUM,1), size(NUM,3));
-for r = 1:size(ERR,1)
-    for c = 1:size(ERR,3)
-        ERR2{r,c} = cell2mat(ERR(r,:,c));
-        NUM2{r,c} = cell2mat(NUM(r,:,c)');
+clr = {[0.0660    0.4430    0.7450], ... blue 
+       [0.8660    0.3290         0], ... red 
+       [0.2310    0.6660    0.1960], ... green
+       [0.5210    0.0860    0.8190], ... purple
+       [0.6193    0.4627    0.0833], ... gold
+       ...[0.9290    0.6940    0.1250], ... yellow
+       [0.2588    0.5294    0.4471], ... teal
+       [0.8190    0.0150    0.5450]  ... dark red
+       };
+
+% ANOVA(-like) test : assign groups 
+ERR3 = ERR(:,:,:,1); % ignore SD within subj/cond
+GRP3 = (1:size(ERR3,1))' * ones(1,size(ERR3,2));
+GRP3 = repmat(GRP3,[1,1,size(ERR3,3)]);
+
+% calc errorbar values 
+ERR2mv = nan([size(ERR3,1),size(ERR3,3),2]); 
+for r = 1:size(ERR3,1)
+    for c = 1:size(ERR3,3)
+        ERR3rc = squeeze(ERR3(r,:,c))';
+        N = length(ERR3(r,:,c));
+        %ERR2mv(r,c,1) = mean(ERR3rc);
+        %ERR2mv(r,c,2) = tinv(.995,N-1)*std(ERR3rc)/sqrt(N);
+        ERR2mv(r,c,1) = circ_mean(ERR3rc);
+        ERR2mv(r,c,2) = circ_confmean(ERR3rc, .05);
+        %ERR2mv(r,c,2) = circ_std(ERR3rc);
     end
 end
 
-% ANOVA test 
-% cat across tgt phases 
-ERR3 = cell(1, size(ERR,3));
-NUM3 = cell(1, size(NUM,3));
-GRP3 = cell(1, size(ERR,3));
+% polar box-like plot 
+figure;
 for c = 1:size(ERR,3)
-    ERR3{1,c} = cell2mat(ERR2(:,c)');
-    NUM3{1,c} = sum(cell2mat(NUM2(:,c)));
-    for r = 1:height(ERR2)
-        GRP3{1,c} = [GRP3{1,c}, r*ones(size(ERR2{r,c}))];
+    subplot(1,size(ERR,3),c);
+    ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
+    for r = 1:size(ERR,1)
+        phTgt = phTargets(r);
+        polarplot(phTgt,1,'o', 'LineWidth',4, 'Color',clr{r}, 'MarkerSize',10);
+        hold on; 
+        polarplot(phTgt+ERR2mv(r,c,1),1,'s', 'LineWidth',4, 'Color',clr{r}, 'MarkerSize',10);
+        polarplot(phTgt+ERR2mv(r,c,1)+[-1,1]*ERR2mv(r,c,2), [1,1], ...
+            '-', 'LineWidth',3, 'Color',clr{r});
     end
+    [p,ptbl] = circ_wwtest(ERR3c(:), GRP3c(:));
+    title([mdlnames{c},': stim vs target phase']);
+    subtitle(['Watson-Williams p value: ',num2str(p)]);
+    legend('Target Phase for Stim', 'Mean Phase of Stim', '95% C.I.', ...
+        'Location','northoutside');
 end
-
-% kuiper test 
-P = nan([height(ERR2),height(ERR2),width(ERR2)]);
-for c = 1:width(ERR2)
-    for r = 1:height(ERR2)
-        for rr = (r+1):height(ERR2)
-            P(r,rr,c) = circ_kuipertest(ERR2{r,c}',ERR2{rr,c}');
-            %[~,P(r,rr,c)] = circ_ztest(ERR2{r,c}',ERR2{rr,c}');
-            %[~,P(r,rr,c)] = kstest2((ERR2{r,c}.^2)', (ERR2{rr,c}.^2)');
-            %[~,P(r,rr,c)] = ttest2((ERR2{r,c}.^2)', (ERR2{rr,c}.^2)', 'VarType','unequal');
-        end
-    end
-end
-P
 
 % polar histogram of distributions 
 figure;
-for c = 1:width(ERR2)
-    subplot(1,width(ERR2),c);
-    for r = 1:height(ERR2)
-        polarhistogram(ERR2{r,c},36);
+for c = 1:size(ERR,3)
+    subplot(1,size(ERR,3),c);
+    ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
+    for r = 1:size(ERR,1)
+        polarhistogram(ERR3c(r,:), 36);
         hold on;
     end
-    legend(string(phTargets));
-    [p,ptbl] = circ_wwtest(ERR3{1,c}', GRP3{1,c}');
-    title(['ww p value: ',num2str(p)]);
+    legend(string(phTargets*180/pi));
+    [p,ptbl] = circ_wwtest(ERR3c(:), GRP3c(:));
+    title([mdlnames{c},' phase error by target phase']);
+    subtitle(['Watson-Williams p value: ',num2str(p)]);
 end
 
 % histogram of squared error 
 figure;
 for c = 1:width(ERR2)
-    subplot(1,width(ERR2),c);
-    for r = 1:height(ERR2)
-        histogram(ERR2{r,c}.^2,36);
+    subplot(1,size(ERR,3),c);
+    ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
+    for r = 1:size(ERR,1)
+        histogram(ERR3c(r,:).^2, 36);
         hold on;
     end
-    legend(string(phTargets));
-    p = wanova((ERR3{1,c}.^2)', GRP3{1,c}');
-    title(['Anova p value: ',num2str(p)]);
+    legend(string(phTargets*180/pi));
+    p = wanova(ERR3c(:).^2, GRP3c(:));
+    title([mdlnames{c},' Phase squared error by target phase']);
+    subtitle(['ANOVA p value: ',num2str(p)]);
+    xlabel('squared error (rad^2)'); ylabel('count');
 end
 
-% calc errorbar values (CIs)
-ERR2mv = nan([size(ERR2),2]); 
-%NUM2mv = nan([size(NUM2),2]);
-for r = 1:size(ERR2,1)
-    for c = 1:size(ERR2,2)
-        N = length(ERR2{r,c});
-        %ERR2mv(r,c,1) = mean(ERR2{r,c}*180/pi);
-        %ERR2mv(r,c,2) = tinv(.995,N-1)*std(ERR2{r,c}*180/pi)/sqrt(N);
-        ERR2mv(r,c,1) = circ_mean(ERR2{r,c}');
-        ERR2mv(r,c,2) = circ_confmean(ERR2{r,c}', .05);
-        %ERR2mv(r,c,2) = circ_std(ERR2{r,c}');
-        %N = length(NUM2{r,c});
-        %NUM2mv(r,c,1) = mean(NUM2{r,c});
-        %NUM2mv(r,c,2) = tinv(.995,N-1)*std(NUM2{r,c})/sqrt(N);
-    end
-end
 ERR2mv = ERR2mv*180/pi;
-
 % cartesian bar plot of mean+errorbar
 figure;
-b = bar(phTargets,ERR2mv(:,:,1)', 'LineWidth',1);
+b = bar(phTargets*180/pi,ERR2mv(:,:,1)', 'LineWidth',1);
 set(gca, 'FontSize',12)
 xlabel('Target phase (deg)', 'FontSize',14); 
 ylabel('Stim Phase Error (causal - offline) (deg)', 'FontSize',14)
