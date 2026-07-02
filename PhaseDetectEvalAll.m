@@ -144,17 +144,21 @@ for c = 1:size(ERR,3)
 end
 
 % polar histogram of distributions 
+nbin = 48;
+bedge = linspace(0,2*pi,nbin);
+bedge = bedge - mean(bedge(1:2)); % center 0
 figure;
 for c = 1:size(ERR,3)
     subplot(1,size(ERR,3),c);
     ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
     for r = 1:size(ERR,1)
-        polarhistogram(ERR3c(r,:), 36);
+        polarhistogram(ERR3c(r,:), 'BinEdges',bedge, 'FaceColor',clr{r});
         hold on;
     end
-    legend(string(phTargets*180/pi));
+    legend("Target: "+string(phTargets*180/pi)+"°", ...
+        'Location','northoutside');
     [p,ptbl] = circ_wwtest(ERR3c(:), GRP3c(:));
-    title([mdlnames{c},' phase error by target phase']);
+    title([mdlnames{c},' Model: mean phase error by target phase']);
     subtitle(['Watson-Williams p value: ',num2str(p)]);
 end
 
@@ -164,7 +168,7 @@ for c = 1:width(ERR2)
     subplot(1,size(ERR,3),c);
     ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
     for r = 1:size(ERR,1)
-        histogram(ERR3c(r,:).^2, 36);
+        histogram(ERR3c(r,:).^2, 36, 'FaceColor',clr{r});
         hold on;
     end
     legend(string(phTargets*180/pi));
@@ -180,7 +184,7 @@ figure;
 b = bar(phTargets*180/pi,ERR2mv(:,:,1)', 'LineWidth',1);
 set(gca, 'FontSize',12)
 xlabel('Target phase (deg)', 'FontSize',14); 
-ylabel('Stim Phase Error (causal - offline) (deg)', 'FontSize',14)
+ylabel('Stim Mean Phase Error (°)', 'FontSize',14)
 title('Accuracy vs Target Phase', 'FontSize',18)
 xticks(0:90:360)
 hold on; grid on; 
@@ -189,8 +193,29 @@ for c = 1:length(b)
         ERR2mv(:,c,2), ERR2mv(:,c,2), ...
         '.', 'Color',b(c).EdgeColor, 'LineWidth',2, 'CapSize',8);
 end
-legend('Constant', 'Dynamic', '95% C.I.', '95% C.I.',... '±1SD', '±1SD', ...
+legend('Constant Model', 'Dynamic Model', '95% C.I.', '95% C.I.',... '±1SD', '±1SD', ...
     'Location','northoutside', 'FontSize',14, 'Orientation','horizontal')
+
+%% analysis by band 
+selBeta = strcmp({INFO.Band}, "Beta");% & strcmp([INFO.Cond], "Baseline");
+selTheta = strcmp({INFO.Band}, "Theta");% & strcmp([INFO.Cond], "Baseline");
+ERRbnd  = {ERR(:,selBeta,:,1), ERR(:,selTheta,:,1)}; 
+INFObnd = {INFO(selBeta),      INFO(selTheta)};
+figure;
+for m = 1:size(ERR,3)
+    subplot(1,size(ERR,3),m);
+    ERRb = cell(size(ERRbnd));
+    for b = 1:length(ERRbnd)
+        ERRbm = ERRbnd{b}(:,:,m);
+        ERRb{b} = ERRbm(:);
+        polarhistogram(ERRbm(:), 'BinEdges',bedge, 'FaceColor',clr{b+2}); 
+        hold on;
+    end
+    p = circ_kuipertest(ERRb{1}, ERRb{2});
+    title([mdlnames{m},' Model: mean phase error by band']);
+    subtitle(['Kuiper p value: ',num2str(p)]);
+    legend("Beta", "Theta", 'Location','northoutside');
+end
 
 %% analysis of all 
 
@@ -219,12 +244,6 @@ pie(ax2, NUM3{2});
 title('Num. Stim. - Dynamic');
 lgd = legend({'Missing', 'Extra', 'Correct'});
 lgd.Layout.Tile = 'east';
-
-%%
-[~,p] = ttest2(ERR3{1}.^2, ERR3{2}.^2, 'tail', 'right')
-[~,p] = circ_ztest(ERR3{1}', ERR3{2}')
-[circ_mean(ERR3{1}'), mean(ERR3{1}'), median(ERR3{1}'), circ_zconf(ERR3{1}',.05), circ_confmean(ERR3{1}',.05)] *180/pi
-[circ_mean(ERR3{2}'), mean(ERR3{2}'), median(ERR3{2}'), circ_zconf(ERR3{2}',.05), circ_confmean(ERR3{2}',.05)] *180/pi
 
 %% helper(s) 
 
