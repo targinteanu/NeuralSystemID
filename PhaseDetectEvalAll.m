@@ -1,5 +1,6 @@
 %% load data from all files
 mdlnames = {'Constant', 'Dynamic'};
+bndnames = {'Beta', 'Theta'};
 
 files = dir(fullfile('AdaptAR','*_PhaseDetect*.mat'));
 DURDYN = []; DURCON = []; 
@@ -215,6 +216,51 @@ for m = 1:size(ERR,3)
     title([mdlnames{m},' Model: mean phase error by band']);
     subtitle(['Kuiper p value: ',num2str(p)]);
     legend("Beta", "Theta", 'Location','northoutside');
+end
+
+%% analysis by cond 
+
+figure;
+for m = 1:size(ERR,3)
+    for b = 1:length(ERRbnd)
+        subplot(length(ERRbnd),size(ERR,3), (b-1)*length(ERRbnd) +m);
+        ERRbm = ERRbnd{b}(:,:,m);
+        INFOb = INFObnd{b}; INFObCond = lower([INFOb.Cond]);
+
+        selTask = (...
+            contains(INFObCond, "task") | ...
+            contains(INFObCond, "testing") | ...
+            contains(INFObCond, "sternberg") | ...
+            contains(INFObCond, "exam") | ...
+            contains(INFObCond, "serialdigitalio") ) & ...
+            ~contains(INFObCond, "baseline") ;
+        selBaseline = strcmp(INFObCond, "baseline");
+        selOther = (~selBaseline) & (~selTask);
+        ERRbln = ERRbm(:,selBaseline); ERRbln = ERRbln(:);
+        ERRtsk = ERRbm(:,selTask);     ERRtsk = ERRtsk(:);
+        ERRoth = ERRbm(:,selOther);    ERRoth = ERRoth(:);
+
+        ERRbmmv = [circ_mean(ERRbln), circ_confmean(ERRbln); ...
+                   circ_mean(ERRtsk), circ_confmean(ERRtsk); ...
+                   circ_mean(ERRoth), circ_confmean(ERRoth)];
+        ERRbmmv = ERRbmmv*180/pi;
+
+        p1a = circ_kuipertest(ERRbln, ERRtsk);
+        p2a = circ_kuipertest(ERRbln, ERRoth);
+        [~,p1b] = ttest2(ERRbln.^2, ERRtsk.^2, 'tail','left', 'Vartype','unequal');
+        [~,p2b] = ttest2(ERRbln.^2, ERRoth.^2, 'tail','left', 'Vartype','unequal');
+
+        polarhistogram(ERRbln, 'BinEdges',bedge, 'FaceColor',clr{3}); hold on;
+        polarhistogram(ERRtsk, 'BinEdges',bedge, 'FaceColor',clr{4});
+        polarhistogram(ERRoth, 'BinEdges',bedge, 'FaceColor',clr{5});
+        title({[mdlnames{m},' Model, ',bndnames{b},' band']; ...
+               'phase error by condition'});
+        legend(["Baseline"; "Task"; "Other"]...
+            +", "+string(ERRbmmv(:,1))+"±"+string(ERRbmmv(:,2)), ...
+            'Location','eastoutside');
+        subtitle({['p1a=',num2str(p1a),' | p1b=',num2str(p1b)]; ...
+                  ['p2a=',num2str(p2a),' | p2b=',num2str(p2b)]});
+    end
 end
 
 %% analysis of all 
