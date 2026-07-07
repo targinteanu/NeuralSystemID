@@ -121,7 +121,7 @@ GRP3 = (1:size(ERR3,1))' * ones(1,size(ERR3,2));
 GRP3 = repmat(GRP3,[1,1,size(ERR3,3)]);
 
 % calc errorbar values 
-ERR2mv = nan([size(ERR3,1),size(ERR3,3),2]); 
+ERR2mv = nan([size(ERR3,1),size(ERR3,3),3]); 
 for r = 1:size(ERR3,1)
     for c = 1:size(ERR3,3)
         ERR3rc = squeeze(ERR3(r,:,c))';
@@ -130,7 +130,7 @@ for r = 1:size(ERR3,1)
         %ERR2mv(r,c,2) = tinv(.995,N-1)*std(ERR3rc)/sqrt(N);
         ERR2mv(r,c,1) = circ_mean(ERR3rc);
         ERR2mv(r,c,2) = circ_confmean(ERR3rc, .05);
-        %ERR2mv(r,c,2) = circ_std(ERR3rc);
+        ERR2mv(r,c,3) = circ_std(ERR3rc);
     end
 end
 
@@ -172,30 +172,47 @@ for c = 1:size(ERR,3)
 end
 %}
 
+
 % polar histogram of distributions with conf bars
 figure('Position',[1 1 1125 825], 'WindowStyle','normal', ...
     'Theme','light', 'Color','w');
+tiledlayout(1,size(ERR,3),'TileSpacing','compact');
+
 for c = 1:size(ERR,3)
-    subplot(1,size(ERR,3),c);
+    ax2(c) = nexttile;
     ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
-    %R=0;
+    R = zeros(1,size(ERR,1));
     for r = 1:size(ERR,1)
         phTgt = phTargets(r);
         ph = polarhistogram(ERR3c(r,:)+phTgt, 'BinEdges',bedge, 'FaceColor',clr{r}, ...
             'EdgeColor','none', 'FaceAlpha',0.4);
         hold on; %R = max(R, max(ph.Values));
-        R = max(ph.Values);
-        polarregion(phTgt+ERR2mv(r,c,1)+[-1,1]*ERR2mv(r,c,2), .5*[-1,1]+1.1*R, ...
-            "FaceColor",clr{r}, "FaceAlpha",0.8, "EdgeColor",'k');
+        R(r) = max(ph.Values);
     end
-    lgd = "Target: "+string(phTargets*180/pi)+"°";
-    lgd = [lgd; repmat("mean ± 95% C.I.", size(lgd))];
-    legend(lgd(:), ...
-        'Location','northoutside');
+    R = 1.1*R;
+    for r = 1:size(ERR,1)
+        phTgt = phTargets(r);
+        polarboxplot(phTgt + ERR2mv(r,c,1), ERR2mv(r,c,2), ERR2mv(r,c,3), ...
+            R(r), max(R), clr{r});
+    end
     [p,ptbl] = circ_wwtest(ERR3c(:), GRP3c(:));
-    title([mdlnames{c},' Model: mean phase error by target phase']);
-    subtitle(['Watson-Williams p value: ',num2str(p)]);
+
+    ax2(c)=gca(); ax2(c).FontSize = 12;
+    ax2(c).ThetaTick = 0:45:360;
+    for ax2cti = 1:2:length(ax2(c).ThetaTickLabel)
+        ax2(c).ThetaTickLabel{ax2cti} = '';
+    end
+    ax2(c).RTick = round(ax2(c).RTick(end)*[0.5,1]);
+    title([mdlnames{c},' Model'], 'FontSize',16);
+    subtitle(['Watson-Williams p value: ',num2str(p)], 'FontSize',14);
 end
+    lgd = "Target: "+string(phTargets*180/pi)+"°";
+    %lgd = [lgd; repmat("mean ± 95% C.I.", size(lgd))];
+    %legend(lgd(:), 'Location','northoutside');
+    lgd = legend(lgd(:), 'FontSize',18);
+    lgd.Layout.Tile = 'east';
+sgtitle('Mean phase error by target phase', 'FontSize',20);
+
 
 % histogram of squared error 
 figure;
@@ -285,9 +302,9 @@ for b = 1:length(ERRbnd)
         [~,p2b] = ttest2(ERRbln.^2, ERRoth.^2, 'tail','left', 'Vartype','unequal');
 
         %%{
-        ERRbmmv = [circ_mean(ERRbln), circ_confmean(ERRbln), rms(ERRbln); ...
-                   circ_mean(ERRtsk), circ_confmean(ERRtsk), rms(ERRtsk); ...
-                   circ_mean(ERRoth), circ_confmean(ERRoth), rms(ERRoth)];
+        ERRbmmv = [circ_mean(ERRbln), circ_confmean(ERRbln), circ_std(ERRbln), rms(ERRbln); ...
+                   circ_mean(ERRtsk), circ_confmean(ERRtsk), circ_std(ERRtsk), rms(ERRtsk); ...
+                   circ_mean(ERRoth), circ_confmean(ERRoth), circ_std(ERRoth), rms(ERRoth)];
 
         ph = polarhistogram(ERRbln, 'BinEdges',bedge, 'FaceColor',clr{3}, ...
             'EdgeColor','none', 'FaceAlpha',0.4); 
@@ -298,16 +315,22 @@ for b = 1:length(ERRbnd)
         ph = polarhistogram(ERRoth, 'BinEdges',bedge, 'FaceColor',clr{5}, ...
             'EdgeColor','none', 'FaceAlpha',0.4);
         R = max(R, max(ph.Values)); R = 1.25*R;
+        %{
         polarregion(ERRbmmv(1,1) + [-1,1]*ERRbmmv(1,2), .5*[-1,1]+R, ...
             "FaceColor",clr{3}, "FaceAlpha",0.8, "EdgeColor",'k');
         polarregion(ERRbmmv(2,1) + [-1,1]*ERRbmmv(2,2), .5*[-1,1]+R, ...
             "FaceColor",clr{4}, "FaceAlpha",0.8, "EdgeColor",'k');
         polarregion(ERRbmmv(3,1) + [-1,1]*ERRbmmv(3,2), .5*[-1,1]+R, ...
             "FaceColor",clr{5}, "FaceAlpha",0.8, "EdgeColor",'k');
+        %}
+        for r = 1:3
+            polarboxplot(ERRbmmv(r,1), ERRbmmv(r,2), ERRbmmv(r,3), ...
+                R, R, clr{r+2});
+        end
 
         ERRbmmv = ERRbmmv*180/pi;
         disp(['Model ',mdlnames{m},', Band ',bndnames{b},...
-            ' - circmean, 95CI, rmse (deg): BL; task; other'])
+            ' - circmean, 95CI, std, rmse (deg): BL; task; other'])
         disp(ERRbmmv)
         %{
         lgd = [["Baseline"; "Task"; "Other"]; ...
@@ -381,18 +404,23 @@ for b = 1:(length(bndnames)+1)
         hold on;
         R = max(R, max(ph.Values));
     end
-    R = 1*R + 0.5*[-1,1];
+    %R = 1*R + 0.5*[-1,1];
     p1 = circ_kuipertest(ERRbm{1}, ERRbm{2});
     [~,p2] = ttest2(ERRbm{1}.^2, ERRbm{2}.^2, 'tail', 'right');
 
     ERRbstats = [cellfun(@circ_mean, ERRbm), ...
                  cellfun(@circ_confmean, ERRbm), ...
+                 cellfun(@circ_std, ERRbm), ...
                  cellfun(@rms, ERRbm)];
-    disp(['Band ',bndname,' circmean, 95CI, rmse (deg):'])
+    disp(['Band ',bndname,' circmean, 95CI, std, rmse (deg):'])
     disp(ERRbstats*180/pi);
     for m = 1:length(mdlnames)
+        %{
         polarregion(ERRbstats(m,1) + [-1,1]*ERRbstats(m,2), R, ...
             "FaceColor",clr{m}, "FaceAlpha",0.8, "EdgeColor",'k');
+        %}
+        polarboxplot(ERRbstats(m,1), ERRbstats(m,2), ERRbstats(m,3), ...
+            R, R, clr{m});
     end
 
     ax1(b)=gca(); ax1(b).FontSize = 12;
@@ -455,6 +483,24 @@ end
 sgtitle('Number of Stimulations', 'FontSize',20)
 
 %% helper(s) 
+
+function polarboxplot(thetaC, thetaW1, thetaW2, rC, rMax, colr)
+rW = rMax/20; 
+% central polar box 
+polarregion(thetaC + [-1,1]*thetaW1, rC + [-1,1]*rW, ...
+    "FaceColor",colr, "EdgeColor",colr, "FaceAlpha",0.2, "LineWidth",2);
+hold on;
+% polar whiskers 
+polarregion(thetaC + [-1,1]*thetaW2, [rC,rC], ...
+    "FaceColor","None", "EdgeColor",colr, "LineWidth",2);
+% whisker vertical indicators 
+polarregion(thetaC - [1,1]*thetaW2, rC + [-1,1]*rW, ...
+    "FaceColor","None", "EdgeColor",colr, "LineWidth",2);
+polarregion(thetaC + [1,1]*thetaW2, rC + [-1,1]*rW, ...
+    "FaceColor","None", "EdgeColor",colr, "LineWidth",2);
+polarregion(thetaC + [0,0], rC + [-1,1]*rW, ...
+    "FaceColor","None", "EdgeColor",colr, "LineWidth",2);
+end
 
 function [thetaAvg, thetaErb] = advPolHist(thetas, colr, binarg)
 
