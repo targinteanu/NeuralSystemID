@@ -246,16 +246,33 @@ for m = 1:size(ERR,3)
         [~,p2b] = ttest2(ERRbln.^2, ERRoth.^2, 'tail','left', 'Vartype','unequal');
 
         %%{
-        ERRbmmv = [circ_mean(ERRbln), circ_confmean(ERRbln); ...
-                   circ_mean(ERRtsk), circ_confmean(ERRtsk); ...
-                   circ_mean(ERRoth), circ_confmean(ERRoth)];
-        polarhistogram(ERRbln, 'BinEdges',bedge, 'FaceColor',clr{3}); hold on;
-        polarhistogram(ERRtsk, 'BinEdges',bedge, 'FaceColor',clr{4});
-        polarhistogram(ERRoth, 'BinEdges',bedge, 'FaceColor',clr{5});
+        ERRbmmv = [circ_mean(ERRbln), circ_confmean(ERRbln), circ_std(ERRbln); ...
+                   circ_mean(ERRtsk), circ_confmean(ERRtsk), circ_std(ERRtsk); ...
+                   circ_mean(ERRoth), circ_confmean(ERRoth), circ_std(ERRoth)];
+        ph = polarhistogram(ERRbln, 'BinEdges',bedge, 'FaceColor',clr{3}, ...
+            'EdgeColor','none', 'FaceAlpha',0.4); 
+        hold on; R = max(ph.Values);
+        ph = polarhistogram(ERRtsk, 'BinEdges',bedge, 'FaceColor',clr{4}, ...
+            'EdgeColor','none', 'FaceAlpha',0.4);
+        R = max(R, max(ph.Values));
+        ph = polarhistogram(ERRoth, 'BinEdges',bedge, 'FaceColor',clr{5}, ...
+            'EdgeColor','none', 'FaceAlpha',0.4);
+        R = max(R, max(ph.Values)); R = 1.25*R;
+        polarregion(ERRbmmv(1,1) + [-1,1]*ERRbmmv(1,2), .5*[-1,1]+R, ...
+            "FaceColor",clr{3}, "FaceAlpha",0.8, "EdgeColor",'k');
+        polarregion(ERRbmmv(2,1) + [-1,1]*ERRbmmv(2,2), .5*[-1,1]+R, ...
+            "FaceColor",clr{4}, "FaceAlpha",0.8, "EdgeColor",'k');
+        polarregion(ERRbmmv(3,1) + [-1,1]*ERRbmmv(3,2), .5*[-1,1]+R, ...
+            "FaceColor",clr{5}, "FaceAlpha",0.8, "EdgeColor",'k');
         ERRbmmv = ERRbmmv*180/pi;
+        lgd = [["Baseline"; "Task"; "Other"]; ...
+            string(ERRbmmv(:,1))+"±"+string(ERRbmmv(:,2))]';
+        legend(lgd(:), 'Location','eastoutside');
+        %{
         legend(["Baseline"; "Task"; "Other"]...
             +", "+string(ERRbmmv(:,1))+"±"+string(ERRbmmv(:,2)), ...
             'Location','eastoutside');
+        %}
         %}
         %{
         ERRbmmv = nan(3,2);
@@ -300,7 +317,7 @@ legend( ...
 p = circ_kuipertest(ERR3{1}', ERR3{2}');
 subtitle(['p = ',num2str(p)])
 
-% pie by cycle of extra/missing 
+%% pie by cycle of extra/missing 
 figure; 
 tiledlayout(1,2,'TileSpacing','compact');
 ax1 = nexttile;
@@ -361,9 +378,13 @@ if isempty(colr)
     colr = ph.FaceColor;
 end
 hold on; 
+polarregion(thetaAvg + [-1,1]*thetaErb, [0,R], ...
+    'FaceColor',colr)
+%{
 polarplot(thetaAvg, R, 'o', 'Color',colr, 'LineWidth',3, 'MarkerSize',8);
 polarplot(thetaAvg + [-1,1]*thetaErb, [R,R], ...
     '-', 'Color',colr, 'LineWidth',3, 'MarkerSize',8);
+%}
 
 end
 
