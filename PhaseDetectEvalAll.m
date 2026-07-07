@@ -10,11 +10,18 @@ clr = {[0.0660    0.4430    0.7450], ... blue
        [0.8660    0.3290         0], ... red 
        [0.2310    0.6660    0.1960], ... green
        [0.5210    0.0860    0.8190], ... purple
-       [0.6193    0.4627    0.0833], ... gold
+       ...[0.6193    0.4627    0.0833], ... gold
+       [0.6110    0.4660    0.1250], ... gold
        ...[0.9290    0.6940    0.1250], ... yellow
-       [0.2588    0.5294    0.4471], ... teal
-       [0.8190    0.0150    0.5450]  ... dark red
+       ...[0.2588    0.4471    0.5294], ... teal
+       [     0    0.6390    0.6390], ... teal
+       [0.8190    0.0150    0.5450], ... pink
+       [0.3720    0.1050    0.0310], ... brown
+       [0.7170    0.1920    0.1720], ... dark red
+       [0.0070    0.3450    0.0540], ... dark green
+       [0.0620    0.2580    0.5010] ... dark blue 
        };
+FaceAlpha = 0.6;
 
 %% load data from all files
 
@@ -104,8 +111,9 @@ clear fErr fNum fErrCond fNumCond fErrCond_ fNumCond_ fNumCond__
 %% computation time 
 figure('Position',[1 1 675 380], 'WindowStyle','normal', ...
     'Theme','light', 'Color','w'); 
-histogram(DURCON(~isoutlier(DURCON)), 50); hold on; grid on; 
-histogram(DURDYN(~isoutlier(DURDYN)), 50);
+histogram(DURCON(~isoutlier(DURCON)), 50, "FaceColor",clr{1}, 'FaceAlpha',FaceAlpha); 
+hold on; grid on; 
+histogram(DURDYN(~isoutlier(DURDYN)), 50, "FaceColor",clr{2}, 'FaceAlpha',FaceAlpha);
 set(gca, 'FontSize',12)
 xlabel('duration (s)', 'FontSize',14); ylabel('count', 'FontSize',14);
 title('Computation Time (single loop)', 'FontSize',18);
@@ -144,11 +152,11 @@ for c = 1:size(ERR,3)
     ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
     for r = 1:size(ERR,1)
         phTgt = phTargets(r);
-        polarplot(phTgt,1,'o', 'LineWidth',4, 'Color',clr{r}, 'MarkerSize',10);
+        polarplot(phTgt,1,'o', 'LineWidth',4, 'Color',clr{r+2}, 'MarkerSize',10);
         hold on; 
-        polarplot(phTgt+ERR2mv(r,c,1),1,'s', 'LineWidth',4, 'Color',clr{r}, 'MarkerSize',10);
+        polarplot(phTgt+ERR2mv(r,c,1),1,'s', 'LineWidth',4, 'Color',clr{r+2}, 'MarkerSize',10);
         polarplot(phTgt+ERR2mv(r,c,1)+[-1,1]*ERR2mv(r,c,2), [1,1], ...
-            '-', 'LineWidth',3, 'Color',clr{r});
+            '-', 'LineWidth',3, 'Color',clr{r+2});
     end
     [p,ptbl] = circ_wwtest(ERR3c(:), GRP3c(:));
     title([mdlnames{c},': stim vs target phase']);
@@ -163,7 +171,7 @@ for c = 1:size(ERR,3)
     subplot(1,size(ERR,3),c);
     ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
     for r = 1:size(ERR,1)
-        polarhistogram(ERR3c(r,:), 'BinEdges',bedge, 'FaceColor',clr{r});
+        polarhistogram(ERR3c(r,:), 'BinEdges',bedge, 'FaceColor',clr{r+2});
         hold on;
     end
     legend("Target: "+string(phTargets*180/pi)+"°", ...
@@ -186,8 +194,8 @@ for c = 1:size(ERR,3)
     R = zeros(1,size(ERR,1));
     for r = 1:size(ERR,1)
         phTgt = phTargets(r);
-        ph = polarhistogram(ERR3c(r,:)+phTgt, 'BinEdges',bedge, 'FaceColor',clr{r}, ...
-            'EdgeColor','none', 'FaceAlpha',0.4);
+        ph = polarhistogram(ERR3c(r,:)+phTgt, 'BinEdges',bedge, 'FaceColor',clr{r+2}, ...
+            'EdgeColor','none', 'FaceAlpha',FaceAlpha);
         hold on; %R = max(R, max(ph.Values));
         R(r) = max(ph.Values);
     end
@@ -195,7 +203,7 @@ for c = 1:size(ERR,3)
     for r = 1:size(ERR,1)
         phTgt = phTargets(r);
         polarboxplot(phTgt + ERR2mv(r,c,1), ERR2mv(r,c,2), ERR2mv(r,c,3), ...
-            R(r), max(R), clr{r});
+            R(r), max(R), clr{r+2});
     end
     [p,ptbl] = circ_wwtest(ERR3c(:), GRP3c(:));
 
@@ -222,7 +230,7 @@ for c = 1:size(ERR,3)
     subplot(1,size(ERR,3),c);
     ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
     for r = 1:size(ERR,1)
-        histogram(ERR3c(r,:).^2, 36, 'FaceColor',clr{r});
+        histogram(ERR3c(r,:).^2, 36, 'FaceColor',clr{r+2});
         hold on;
     end
     legend(string(phTargets*180/pi));
@@ -236,7 +244,8 @@ ERR2mv = ERR2mv*180/pi;
 % cartesian bar plot of mean+errorbar
 figure('Position',[272 297 715 400], 'WindowStyle','normal', ...
     'Theme','light', 'Color','w');
-b = bar(phTargets*180/pi,ERR2mv(:,:,1)', 'LineWidth',1);
+b = bar(phTargets*180/pi,ERR2mv(:,:,1)', 'LineWidth',1, ...
+    'FaceAlpha',FaceAlpha);%, 'FaceColor',clr(1:2));
 set(gca, 'FontSize',12)
 xlabel('Target phase (deg)', 'FontSize',14); 
 ylabel('Stim Mean Phase Error (°)', 'FontSize',14)
@@ -308,26 +317,26 @@ for b = 1:length(ERRbnd)
                    circ_mean(ERRtsk), circ_confmean(ERRtsk), circ_std(ERRtsk), rms(ERRtsk); ...
                    circ_mean(ERRoth), circ_confmean(ERRoth), circ_std(ERRoth), rms(ERRoth)];
 
-        ph = polarhistogram(ERRbln, 'BinEdges',bedge, 'FaceColor',clr{3}, ...
-            'EdgeColor','none', 'FaceAlpha',0.4); 
+        ph = polarhistogram(ERRbln, 'BinEdges',bedge, 'FaceColor',clr{9}, ...
+            'EdgeColor','none', 'FaceAlpha',FaceAlpha); 
         hold on; R = max(ph.Values);
-        ph = polarhistogram(ERRtsk, 'BinEdges',bedge, 'FaceColor',clr{4}, ...
-            'EdgeColor','none', 'FaceAlpha',0.4);
+        ph = polarhistogram(ERRtsk, 'BinEdges',bedge, 'FaceColor',clr{10}, ...
+            'EdgeColor','none', 'FaceAlpha',FaceAlpha);
         R = max(R, max(ph.Values));
-        ph = polarhistogram(ERRoth, 'BinEdges',bedge, 'FaceColor',clr{5}, ...
-            'EdgeColor','none', 'FaceAlpha',0.4);
+        ph = polarhistogram(ERRoth, 'BinEdges',bedge, 'FaceColor',clr{11}, ...
+            'EdgeColor','none', 'FaceAlpha',FaceAlpha);
         R = max(R, max(ph.Values)); R = 1.25*R;
         %{
         polarregion(ERRbmmv(1,1) + [-1,1]*ERRbmmv(1,2), .5*[-1,1]+R, ...
-            "FaceColor",clr{3}, "FaceAlpha",0.8, "EdgeColor",'k');
+            "FaceColor",clr{9}, "FaceAlpha",0.8, "EdgeColor",'k');
         polarregion(ERRbmmv(2,1) + [-1,1]*ERRbmmv(2,2), .5*[-1,1]+R, ...
-            "FaceColor",clr{4}, "FaceAlpha",0.8, "EdgeColor",'k');
+            "FaceColor",clr{10}, "FaceAlpha",0.8, "EdgeColor",'k');
         polarregion(ERRbmmv(3,1) + [-1,1]*ERRbmmv(3,2), .5*[-1,1]+R, ...
-            "FaceColor",clr{5}, "FaceAlpha",0.8, "EdgeColor",'k');
+            "FaceColor",clr{11}, "FaceAlpha",0.8, "EdgeColor",'k');
         %}
         for r = 1:3
             polarboxplot(ERRbmmv(r,1), ERRbmmv(r,2), ERRbmmv(r,3), ...
-                R, R, clr{r+2});
+                R, R, clr{r+8});
         end
 
         ERRbmmv = ERRbmmv*180/pi;
@@ -347,9 +356,9 @@ for b = 1:length(ERRbnd)
         %}
         %{
         ERRbmmv = nan(3,2);
-        [ERRbmmv(1,1), ERRbmmv(1,2)] = advPolHist(ERRbln, clr{3}, bedge);
-        [ERRbmmv(2,1), ERRbmmv(2,2)] = advPolHist(ERRtsk, clr{4}, bedge);
-        [ERRbmmv(3,1), ERRbmmv(3,2)] = advPolHist(ERRoth, clr{5}, bedge);
+        [ERRbmmv(1,1), ERRbmmv(1,2)] = advPolHist(ERRbln, clr{9}, bedge);
+        [ERRbmmv(2,1), ERRbmmv(2,2)] = advPolHist(ERRtsk, clr{10}, bedge);
+        [ERRbmmv(3,1), ERRbmmv(3,2)] = advPolHist(ERRoth, clr{11}, bedge);
         ERRbmmv = ERRbmmv*180/pi;
         lgd = ["Baseline", "Task", "Other"]+" "+[""; "mean"; "95% C.I."];
         legend(lgd(:), 'Location','eastoutside');
@@ -357,10 +366,10 @@ for b = 1:length(ERRbnd)
         %{
         for c = 1:height(ERRbmmv)
             polarplot(ERRbmmv(c,1), 1, 'o', ...
-                'LineWidth',4, 'Color',clr{c+2}, 'MarkerSize',10);
+                'LineWidth',4, 'Color',clr{c+8}, 'MarkerSize',10);
             hold on;
             polarplot(ERRbmmv(c,1)+[-1,1]*ERRbmmv(c,2), [1,1], ...
-                'LineWidth',4, 'Color',clr{c+2});
+                'LineWidth',4, 'Color',clr{c+8});
         end
         lgd = ["Baseline", "Task", "Other"]+" "+["mean"; "95% C.I."];
         legend(lgd(:), 'Location','eastoutside');
@@ -402,7 +411,7 @@ for b = 1:(length(bndnames)+1)
         ERRbm_ = ERRb(:,:,m,1);
         ERRbm{m} = ERRbm_(:);
         ph = polarhistogram(ERRbm_, 'BinEdges',bedge, 'FaceColor',clr{m}, ...
-            'EdgeColor','none', 'FaceAlpha',0.4);
+            'EdgeColor','none', 'FaceAlpha',FaceAlpha);
         hold on;
         R = max(R, max(ph.Values));
     end
