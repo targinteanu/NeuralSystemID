@@ -1,6 +1,22 @@
-%% load data from all files
-mdlnames = {'Constant', 'Dynamic'};
+%% display params
+
+mdlnames = {'Constant', 'Adaptive'};
 bndnames = {'Beta', 'Theta'};
+nbin = 48;
+bedge = linspace(0,2*pi,nbin);
+bedge = bedge - mean(bedge(1:2)); % center 0
+
+clr = {[0.0660    0.4430    0.7450], ... blue 
+       [0.8660    0.3290         0], ... red 
+       [0.2310    0.6660    0.1960], ... green
+       [0.5210    0.0860    0.8190], ... purple
+       [0.6193    0.4627    0.0833], ... gold
+       ...[0.9290    0.6940    0.1250], ... yellow
+       [0.2588    0.5294    0.4471], ... teal
+       [0.8190    0.0150    0.5450]  ... dark red
+       };
+
+%% load data from all files
 
 files = dir(fullfile('AdaptAR','*_PhaseDetect*.mat'));
 DURDYN = []; DURCON = []; 
@@ -20,6 +36,10 @@ for fi = 1:length(files)
     f = files(fi);
 
     filedata = load(fullfile(f.folder,f.name));
+    if ~((filedata.ARord==50) && (filedata.ARwin==1000) && ...
+            (filedata.learnrate==0.05) && (filedata.packetSize)==20)
+        warning('AR settings not consistent between files!')
+    end
     DURDYN = [DURDYN,filedata.durDyn];
     DURCON = [DURCON,filedata.durConst];
 
@@ -95,16 +115,6 @@ disp(['Median time dynamic: ',num2str(median(DURDYN))])
 
 %% analysis by tgt phase 
 
-clr = {[0.0660    0.4430    0.7450], ... blue 
-       [0.8660    0.3290         0], ... red 
-       [0.2310    0.6660    0.1960], ... green
-       [0.5210    0.0860    0.8190], ... purple
-       [0.6193    0.4627    0.0833], ... gold
-       ...[0.9290    0.6940    0.1250], ... yellow
-       [0.2588    0.5294    0.4471], ... teal
-       [0.8190    0.0150    0.5450]  ... dark red
-       };
-
 % ANOVA(-like) test : assign groups 
 ERR3 = ERR(:,:,:,1); % ignore SD within subj/cond
 GRP3 = (1:size(ERR3,1))' * ones(1,size(ERR3,2));
@@ -124,6 +134,7 @@ for r = 1:size(ERR3,1)
     end
 end
 
+%{
 % polar box-like plot 
 figure;
 for c = 1:size(ERR,3)
@@ -145,9 +156,6 @@ for c = 1:size(ERR,3)
 end
 
 % polar histogram of distributions 
-nbin = 48;
-bedge = linspace(0,2*pi,nbin);
-bedge = bedge - mean(bedge(1:2)); % center 0
 figure;
 for c = 1:size(ERR,3)
     subplot(1,size(ERR,3),c);
@@ -155,6 +163,32 @@ for c = 1:size(ERR,3)
     for r = 1:size(ERR,1)
         polarhistogram(ERR3c(r,:), 'BinEdges',bedge, 'FaceColor',clr{r});
         hold on;
+    end
+    legend("Target: "+string(phTargets*180/pi)+"°", ...
+        'Location','northoutside');
+    [p,ptbl] = circ_wwtest(ERR3c(:), GRP3c(:));
+    title([mdlnames{c},' Model: mean phase error by target phase']);
+    subtitle(['Watson-Williams p value: ',num2str(p)]);
+end
+%}
+
+% polar histogram of distributions with conf bars
+figure('Position',[1 1 1125 825], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w');
+for c = 1:size(ERR,3)
+    subplot(1,size(ERR,3),c);
+    ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
+    R=0;
+    for r = 1:size(ERR,1)
+        phTgt = phTargets(r);
+        ph = polarhistogram(ERR3c(r,:)+phTgt, 'BinEdges',bedge, 'FaceColor',clr{r}, ...
+            'EdgeColor','none', 'FaceAlpha',0.4);
+        hold on; R = max(R, max(ph.Values));
+    end
+    for r = 1:size(ERR,1)
+        phTgt = phTargets(r);
+        polarregion(phTgt+ERR2mv(r,c,1)+[-1,1]*ERR2mv(r,c,2), .5*[-1,1]+1.1*R, ...
+            "FaceColor",clr{r}, "FaceAlpha",0.8, "EdgeColor",'k');
     end
     legend("Target: "+string(phTargets*180/pi)+"°", ...
         'Location','northoutside');
@@ -181,7 +215,8 @@ end
 
 ERR2mv = ERR2mv*180/pi;
 % cartesian bar plot of mean+errorbar
-figure;
+figure('Position',[272 297 715 400], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w');
 b = bar(phTargets*180/pi,ERR2mv(:,:,1)', 'LineWidth',1);
 set(gca, 'FontSize',12)
 xlabel('Target phase (deg)', 'FontSize',14); 
@@ -223,9 +258,11 @@ end
 
 figure('Position',[1 1 1125 825], 'WindowStyle','normal', ...
     'Theme','light', 'Color','w');
-for m = 1:size(ERR,3)
-    for b = 1:length(ERRbnd)
-        subplot(length(ERRbnd),size(ERR,3), (b-1)*length(ERRbnd) +m);
+tiledlayout(length(ERRbnd),size(ERR,3),'TileSpacing','compact');
+
+for b = 1:length(ERRbnd)
+    for m = 1:size(ERR,3)
+        ax3(b,m) = nexttile;
         ERRbm = ERRbnd{b}(:,:,m);
         INFOb = INFObnd{b}; INFObCond = lower([INFOb.Cond]);
 
@@ -248,9 +285,10 @@ for m = 1:size(ERR,3)
         [~,p2b] = ttest2(ERRbln.^2, ERRoth.^2, 'tail','left', 'Vartype','unequal');
 
         %%{
-        ERRbmmv = [circ_mean(ERRbln), circ_confmean(ERRbln), circ_std(ERRbln); ...
-                   circ_mean(ERRtsk), circ_confmean(ERRtsk), circ_std(ERRtsk); ...
-                   circ_mean(ERRoth), circ_confmean(ERRoth), circ_std(ERRoth)];
+        ERRbmmv = [circ_mean(ERRbln), circ_confmean(ERRbln), rms(ERRbln); ...
+                   circ_mean(ERRtsk), circ_confmean(ERRtsk), rms(ERRtsk); ...
+                   circ_mean(ERRoth), circ_confmean(ERRoth), rms(ERRoth)];
+
         ph = polarhistogram(ERRbln, 'BinEdges',bedge, 'FaceColor',clr{3}, ...
             'EdgeColor','none', 'FaceAlpha',0.4); 
         hold on; R = max(ph.Values);
@@ -266,10 +304,16 @@ for m = 1:size(ERR,3)
             "FaceColor",clr{4}, "FaceAlpha",0.8, "EdgeColor",'k');
         polarregion(ERRbmmv(3,1) + [-1,1]*ERRbmmv(3,2), .5*[-1,1]+R, ...
             "FaceColor",clr{5}, "FaceAlpha",0.8, "EdgeColor",'k');
+
         ERRbmmv = ERRbmmv*180/pi;
+        disp(['Model ',mdlnames{m},', Band ',bndnames{b},...
+            ' - circmean, 95CI, rmse (deg): BL; task; other'])
+        disp(ERRbmmv)
+        %{
         lgd = [["Baseline"; "Task"; "Other"]; ...
             string(ERRbmmv(:,1))+"±"+string(ERRbmmv(:,2))]';
         legend(lgd(:), 'Location','eastoutside');
+        %}
         %{
         legend(["Baseline"; "Task"; "Other"]...
             +", "+string(ERRbmmv(:,1))+"±"+string(ERRbmmv(:,2)), ...
@@ -296,12 +340,22 @@ for m = 1:size(ERR,3)
         lgd = ["Baseline", "Task", "Other"]+" "+["mean"; "95% C.I."];
         legend(lgd(:), 'Location','eastoutside');
         %}
-        title({[mdlnames{m},' Model, ',bndnames{b},' band']; ...
-               'phase error by condition'});
-        subtitle({['p1a=',num2str(p1a),' | p1b=',num2str(p1b)]; ...
-                  ['p2a=',num2str(p2a),' | p2b=',num2str(p2b)]});
+        ax3(b,m) = gca(); ax3(b,m).FontSize = 12;
+        ax3(b,m).ThetaTick = 0:45:360;
+        for ax1bti = 1:2:length(ax3(b,m).ThetaTickLabel)
+            ax3(b,m).ThetaTickLabel{ax1bti} = '';
+        end
+        ax3(b,m).RTick = round(ax3(b,m).RTick(end)*[0.5,1]);
+        title([mdlnames{m},' Model, ',bndnames{b},' band'], 'FontSize',16);
+        subtitle({['p1 = ',num2str(p1a),' | ',num2str(p1b)]; ...
+                  ['p2 = ',num2str(p2a),' | ',num2str(p2b)]}, ...
+                  'FontSize',14);
     end
 end
+
+sgtitle('Phase error by condition', 'FontSize',20);
+lgd = legend({'Baseline', 'Task', 'Other'}, 'FontSize',18);
+%lgd.Layout.Tile = 'eastoutside';
 
 %% analysis of all 
 
@@ -346,7 +400,7 @@ for b = 1:(length(bndnames)+1)
     for ax1bti = 1:2:length(ax1(b).ThetaTickLabel)
         ax1(b).ThetaTickLabel{ax1bti} = '';
     end
-    ax1(b).RTick = ax1(b).RTick(end)*[0.5,1];
+    ax1(b).RTick = round(ax1(b).RTick(end)*[0.5,1]);
     title([bndname,' band'], 'FontSize',16);
     subtitle(['p = ',num2str(p1),' | ',num2str(p2)], 'FontSize',14)
 end
