@@ -24,12 +24,12 @@ INFO = [];
 ERR = []; 
 % dim 1: target phase
 % dim 2: subject/condition 
-% dim 3: const vs dynamic AR model 
+% dim 3: const vs adaptive AR model 
 % dim 4: mean, SD
 NUM = [];
 % dim 1: target phase
 % dim 2: subject/condition 
-% dim 3: const vs dynamic AR model 
+% dim 3: const vs adaptive AR model 
 % dim 4: extra/missing/correct
 
 for fi = 1:length(files)
@@ -102,16 +102,18 @@ clear fi f filedata ifo ifoCond dims cond m
 clear fErr fNum fErrCond fNumCond fErrCond_ fNumCond_ fNumCond__
 
 %% computation time 
-figure; 
-histogram(DURCON); hold on; grid on; histogram(DURDYN);
+figure('Position',[1 1 675 380], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+histogram(DURCON(~isoutlier(DURCON)), 50); hold on; grid on; 
+histogram(DURDYN(~isoutlier(DURDYN)), 50);
 set(gca, 'FontSize',12)
 xlabel('duration (s)', 'FontSize',14); ylabel('count', 'FontSize',14);
 title('Computation Time (single loop)', 'FontSize',18);
-legend('Constant', 'Dynamic', 'location','northoutside', ...
+legend(string(mdlnames)+" Model", 'location','northoutside', ...
     'Orientation','horizontal', 'FontSize',14);
 
 disp(['Median time constant: ',num2str(median(DURCON))])
-disp(['Median time dynamic: ',num2str(median(DURDYN))])
+disp(['Median time adaptive: ',num2str(median(DURDYN))])
 
 %% analysis by tgt phase 
 
@@ -246,7 +248,7 @@ for c = 1:length(b)
         ERR2mv(:,c,2), ERR2mv(:,c,2), ...
         '.', 'Color',b(c).EdgeColor, 'LineWidth',2, 'CapSize',8);
 end
-legend('Constant Model', 'Dynamic Model', '95% C.I.', '95% C.I.',... '±1SD', '±1SD', ...
+legend([string(mdlnames)+" Model", "95% C.I.", "95% C.I."],... 
     'Location','northoutside', 'FontSize',14, 'Orientation','horizontal')
 
 %% analysis by band 
