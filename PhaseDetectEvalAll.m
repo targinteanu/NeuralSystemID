@@ -165,7 +165,7 @@ end
 
 % histogram of squared error 
 figure;
-for c = 1:width(ERR2)
+for c = 1:size(ERR,3)
     subplot(1,size(ERR,3),c);
     ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
     for r = 1:size(ERR,1)
@@ -240,24 +240,45 @@ for m = 1:size(ERR,3)
         ERRtsk = ERRbm(:,selTask);     ERRtsk = ERRtsk(:);
         ERRoth = ERRbm(:,selOther);    ERRoth = ERRoth(:);
 
-        ERRbmmv = [circ_mean(ERRbln), circ_confmean(ERRbln); ...
-                   circ_mean(ERRtsk), circ_confmean(ERRtsk); ...
-                   circ_mean(ERRoth), circ_confmean(ERRoth)];
-        ERRbmmv = ERRbmmv*180/pi;
-
         p1a = circ_kuipertest(ERRbln, ERRtsk);
         p2a = circ_kuipertest(ERRbln, ERRoth);
         [~,p1b] = ttest2(ERRbln.^2, ERRtsk.^2, 'tail','left', 'Vartype','unequal');
         [~,p2b] = ttest2(ERRbln.^2, ERRoth.^2, 'tail','left', 'Vartype','unequal');
 
+        %%{
+        ERRbmmv = [circ_mean(ERRbln), circ_confmean(ERRbln); ...
+                   circ_mean(ERRtsk), circ_confmean(ERRtsk); ...
+                   circ_mean(ERRoth), circ_confmean(ERRoth)];
         polarhistogram(ERRbln, 'BinEdges',bedge, 'FaceColor',clr{3}); hold on;
         polarhistogram(ERRtsk, 'BinEdges',bedge, 'FaceColor',clr{4});
         polarhistogram(ERRoth, 'BinEdges',bedge, 'FaceColor',clr{5});
-        title({[mdlnames{m},' Model, ',bndnames{b},' band']; ...
-               'phase error by condition'});
+        ERRbmmv = ERRbmmv*180/pi;
         legend(["Baseline"; "Task"; "Other"]...
             +", "+string(ERRbmmv(:,1))+"±"+string(ERRbmmv(:,2)), ...
             'Location','eastoutside');
+        %}
+        %{
+        ERRbmmv = nan(3,2);
+        [ERRbmmv(1,1), ERRbmmv(1,2)] = advPolHist(ERRbln, clr{3}, bedge);
+        [ERRbmmv(2,1), ERRbmmv(2,2)] = advPolHist(ERRtsk, clr{4}, bedge);
+        [ERRbmmv(3,1), ERRbmmv(3,2)] = advPolHist(ERRoth, clr{5}, bedge);
+        ERRbmmv = ERRbmmv*180/pi;
+        lgd = ["Baseline", "Task", "Other"]+" "+[""; "mean"; "95% C.I."];
+        legend(lgd(:), 'Location','eastoutside');
+        %}
+        %{
+        for c = 1:height(ERRbmmv)
+            polarplot(ERRbmmv(c,1), 1, 'o', ...
+                'LineWidth',4, 'Color',clr{c+2}, 'MarkerSize',10);
+            hold on;
+            polarplot(ERRbmmv(c,1)+[-1,1]*ERRbmmv(c,2), [1,1], ...
+                'LineWidth',4, 'Color',clr{c+2});
+        end
+        lgd = ["Baseline", "Task", "Other"]+" "+["mean"; "95% C.I."];
+        legend(lgd(:), 'Location','eastoutside');
+        %}
+        title({[mdlnames{m},' Model, ',bndnames{b},' band']; ...
+               'phase error by condition'});
         subtitle({['p1a=',num2str(p1a),' | p1b=',num2str(p1b)]; ...
                   ['p2a=',num2str(p2a),' | p2b=',num2str(p2b)]});
     end
@@ -292,6 +313,61 @@ lgd = legend({'Missing', 'Extra', 'Correct'});
 lgd.Layout.Tile = 'east';
 
 %% helper(s) 
+
+function [thetaAvg, thetaErb] = advPolHist(thetas, colr, binarg)
+
+% Make a polar histogram of thetas that also indicates the circular mean
+% and 95% CI above the histogram. 
+% Optional second input dictates bin edges. If scalar, it will be
+% considered #bins; otherwise, bin edges. 
+% Optional third input determines color. 
+if nargin < 3
+    binarg = [];
+    if nargin < 2
+        colr = [];
+    end
+end
+isbinedge = length(binarg) > 1;
+
+% histogram 
+if isempty(colr)
+    if isempty(binarg)
+        ph = polarhistogram(thetas);
+    else
+        if isbinedge
+            ph = polarhistogram(thetas, "BinEdges",binarg);
+        else
+            ph = polarhistogram(thetas, binarg);
+        end
+    end
+else
+    if isempty(binarg)
+        ph = polarhistogram(thetas, 'FaceColor',colr);
+    else
+        if isbinedge
+            ph = polarhistogram(thetas, "BinEdges",binarg, 'FaceColor',colr);
+        else
+            ph = polarhistogram(thetas, binarg, 'FaceColor',colr);
+        end
+    end
+end
+
+% summary stats 
+R = 1.25 * max(ph.Values);
+thetaAvg = circ_mean(thetas);
+%thetaErb = circ_confmean(thetas, .05);
+thetaErb = circ_std(thetas);
+if isempty(colr)
+    colr = ph.FaceColor;
+end
+hold on; 
+polarplot(thetaAvg, R, 'o', 'Color',colr, 'LineWidth',3, 'MarkerSize',8);
+polarplot(thetaAvg + [-1,1]*thetaErb, [R,R], ...
+    '-', 'Color',colr, 'LineWidth',3, 'MarkerSize',8);
+
+end
+
+
 
 function CI = circ_zconf(x, p)
 Z = norminv(1-(p/2));
