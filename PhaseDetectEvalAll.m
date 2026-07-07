@@ -178,19 +178,19 @@ figure('Position',[1 1 1125 825], 'WindowStyle','normal', ...
 for c = 1:size(ERR,3)
     subplot(1,size(ERR,3),c);
     ERR3c = ERR3(:,:,c); GRP3c = GRP3(:,:,c);
-    R=0;
+    %R=0;
     for r = 1:size(ERR,1)
         phTgt = phTargets(r);
         ph = polarhistogram(ERR3c(r,:)+phTgt, 'BinEdges',bedge, 'FaceColor',clr{r}, ...
             'EdgeColor','none', 'FaceAlpha',0.4);
-        hold on; R = max(R, max(ph.Values));
-    end
-    for r = 1:size(ERR,1)
-        phTgt = phTargets(r);
+        hold on; %R = max(R, max(ph.Values));
+        R = max(ph.Values);
         polarregion(phTgt+ERR2mv(r,c,1)+[-1,1]*ERR2mv(r,c,2), .5*[-1,1]+1.1*R, ...
             "FaceColor",clr{r}, "FaceAlpha",0.8, "EdgeColor",'k');
     end
-    legend("Target: "+string(phTargets*180/pi)+"°", ...
+    lgd = "Target: "+string(phTargets*180/pi)+"°";
+    lgd = [lgd; repmat("mean ± 95% C.I.", size(lgd))];
+    legend(lgd(:), ...
         'Location','northoutside');
     [p,ptbl] = circ_wwtest(ERR3c(:), GRP3c(:));
     title([mdlnames{c},' Model: mean phase error by target phase']);
