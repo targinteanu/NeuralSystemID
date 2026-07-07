@@ -200,6 +200,7 @@ legend('Constant Model', 'Dynamic Model', '95% C.I.', '95% C.I.',... 'Â±1SD', 'Â
 %% analysis by band 
 selBeta = strcmp({INFO.Band}, "Beta");% & strcmp([INFO.Cond], "Baseline");
 selTheta = strcmp({INFO.Band}, "Theta");% & strcmp([INFO.Cond], "Baseline");
+selBnd = {selBeta, selTheta};
 ERRbnd  = {ERR(:,selBeta,:,1), ERR(:,selTheta,:,1)}; 
 INFObnd = {INFO(selBeta),      INFO(selTheta)};
 figure;
@@ -220,7 +221,8 @@ end
 
 %% analysis by cond 
 
-figure;
+figure('Position',[1 1 1125 825], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w');
 for m = 1:size(ERR,3)
     for b = 1:length(ERRbnd)
         subplot(length(ERRbnd),size(ERR,3), (b-1)*length(ERRbnd) +m);
@@ -303,31 +305,100 @@ end
 
 %% analysis of all 
 
-% polar histo with p value 
-figure; 
-polarhistogram(ERR3{1}, 36);% 256, 'EdgeColor','none'); 
-hold on; polarhistogram(ERR3{2}, 36);% 256, 'EdgeColor','none');
-title('Stim error (causal - offline)'); 
-legend( ...
-    ['Constant - RMSE ',num2str(rms(ERR3{1}))], ... 
-    ['Dynamic - RMSE ',num2str(rms(ERR3{2}))], ...
-    'Location','northoutside');
-%[~,p] = ttest2(ERR3{1}.^2, ERR3{2}.^2, 'tail', 'right');
-%[~,p] = circ_ztest(ERR3{1}', ERR3{2}');
-p = circ_kuipertest(ERR3{1}', ERR3{2}');
-subtitle(['p = ',num2str(p)])
+figure('Position',[1 1 1125 425], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+tiledlayout(1,length(bndnames)+1,'TileSpacing','compact');
+
+% beta/theta/all
+for b = 1:(length(bndnames)+1)
+    ax1(b) = nexttile;
+    if b > length(bndnames)
+        bndname = 'Both'; ERRb = ERR;
+    else
+        bndname = bndnames{b}; ERRb = ERR(:,selBnd{b},:,:);
+    end
+
+    ERRbm = cell(length(mdlnames),1); R = 0;
+    for m = 1:length(mdlnames)
+        ERRbm_ = ERRb(:,:,m,1);
+        ERRbm{m} = ERRbm_(:);
+        ph = polarhistogram(ERRbm_, 'BinEdges',bedge, 'FaceColor',clr{m}, ...
+            'EdgeColor','none', 'FaceAlpha',0.4);
+        hold on;
+        R = max(R, max(ph.Values));
+    end
+    R = 1*R + 0.5*[-1,1];
+    p1 = circ_kuipertest(ERRbm{1}, ERRbm{2});
+    [~,p2] = ttest2(ERRbm{1}.^2, ERRbm{2}.^2, 'tail', 'right');
+
+    ERRbstats = [cellfun(@circ_mean, ERRbm), ...
+                 cellfun(@circ_confmean, ERRbm), ...
+                 cellfun(@rms, ERRbm)];
+    disp(['Band ',bndname,' circmean, 95CI, rmse (deg):'])
+    disp(ERRbstats*180/pi);
+    for m = 1:length(mdlnames)
+        polarregion(ERRbstats(m,1) + [-1,1]*ERRbstats(m,2), R, ...
+            "FaceColor",clr{m}, "FaceAlpha",0.8, "EdgeColor",'k');
+    end
+
+    ax1(b)=gca(); ax1(b).FontSize = 12;
+    ax1(b).ThetaTick = 0:45:360;
+    for ax1bti = 1:2:length(ax1(b).ThetaTickLabel)
+        ax1(b).ThetaTickLabel{ax1bti} = '';
+    end
+    ax1(b).RTick = ax1(b).RTick(end)*[0.5,1];
+    title([bndname,' band'], 'FontSize',16);
+    subtitle(['p = ',num2str(p1),' | ',num2str(p2)], 'FontSize',14)
+end
+
+sgtitle('Phase Error', 'FontSize',20)
+lgd = legend(string(mdlnames), 'FontSize',18);
+lgd.Layout.Tile = 'east';
 
 %% pie by cycle of extra/missing 
-figure; 
-tiledlayout(1,2,'TileSpacing','compact');
-ax1 = nexttile;
-pie(ax1, NUM3{1});
-title('Num. Stim. - Constant');
-ax2 = nexttile;
-pie(ax2, NUM3{2});
-title('Num. Stim. - Dynamic');
-lgd = legend({'Missing', 'Extra', 'Correct'});
-lgd.Layout.Tile = 'east';
+
+figure('Position',[1 1 875 625], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+tiledlayout(length(mdlnames),length(bndnames)+1,'TileSpacing','compact');
+
+for m = 1:length(mdlnames)
+    NUMm = NUM(:,:,m,:);
+    NUMm = sum(NUMm,1);
+    
+    % beta/theta
+    for b = 1:length(bndnames)
+        ax(m,b) = nexttile;
+        NUMmb = NUMm(:,selBnd{b},:);
+        NUMmb = sum(NUMmb,2);
+        NUMmb = squeeze(NUMmb);
+        hp = pie(ax(m,b), NUMmb);
+        hpType = arrayfun(@(G) string(G.Type), hp);
+        htxt = hp(strcmp(hpType, 'text'));
+        for ht = htxt
+            ht.FontSize = 14;
+        end
+        title([mdlnames{m},' model'], 'FontSize',16); 
+        subtitle([bndnames{b},' band'], 'FontSize',16);
+    end
+
+    % all bnd
+    ax(m,b+1) = nexttile;
+    NUMm = sum(NUMm,2);
+    NUMm = squeeze(NUMm);
+    hp = pie(ax(m,b+1), NUMm);
+    hpType = arrayfun(@(G) string(G.Type), hp);
+    htxt = hp(strcmp(hpType, 'text'));
+    for ht = htxt
+        ht.FontSize = 14;
+    end
+    title([mdlnames{m},' model'], 'FontSize',16);
+    subtitle('Both bands', 'FontSize',16);
+
+end
+    lgd = legend({'Missing', 'Extra', 'Correct'}, 'FontSize',18);
+    lgd.Layout.Tile = 'east';
+
+sgtitle('Number of Stimulations', 'FontSize',20)
 
 %% helper(s) 
 
