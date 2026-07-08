@@ -212,7 +212,9 @@ for c = 1:size(ERR,3)
     for ax2cti = 1:2:length(ax2(c).ThetaTickLabel)
         ax2(c).ThetaTickLabel{ax2cti} = '';
     end
-    ax2(c).RTick = round(ax2(c).RTick(end)*[0.5,1]);
+    ax2(c).RTick = round(max(R)*[0.5,1]);
+    ax2(c).RLim = [0 1.1*max(R)];
+    ax2(c).RTickLabelRotation = 80;
     title([mdlnames{c},' Model'], 'FontSize',16);
     subtitle(['Watson-Williams p value: ',num2str(p)], 'FontSize',14);
 end
@@ -386,7 +388,9 @@ for b = 1:length(ERRbnd)
         for ax1bti = 1:2:length(ax3(b,m).ThetaTickLabel)
             ax3(b,m).ThetaTickLabel{ax1bti} = '';
         end
-        ax3(b,m).RTick = round(ax3(b,m).RTick(end)*[0.5,1]);
+        ax3(b,m).RTick = round(max(R)*[0.5,1]);
+        ax3(b,m).RLim = [0 1.1*max(R)];
+        ax3(b,m).RTickLabelRotation = 80;
         title([mdlnames{m},' Model, ',bndnames{b},' band'], 'FontSize',16);
         subtitle({['p1 = ',num2str(p1a),' | ',num2str(p1b)]; ...
                   ['p2 = ',num2str(p2a),' | ',num2str(p2b)]}, ...
@@ -448,7 +452,9 @@ for b = 1:(length(bndnames)+1)
     for ax1bti = 1:2:length(ax1(b).ThetaTickLabel)
         ax1(b).ThetaTickLabel{ax1bti} = '';
     end
-    ax1(b).RTick = round(ax1(b).RTick(end)*[0.5,1]);
+    ax1(b).RTick = round(max(R)*[0.5,1]);
+    ax1(b).RLim = [0 1.1*max(R)];
+    ax1(b).RTickLabelRotation = 80;
     title([bndname,' band'], 'FontSize',16);
     subtitle(['p = ',num2str(p1),' | ',num2str(p2)], 'FontSize',14)
 end
