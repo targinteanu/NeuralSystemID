@@ -141,6 +141,9 @@ for r = 1:size(ERR3,1)
         ERR2mv(r,c,1) = circ_mean(ERR3rc);
         ERR2mv(r,c,2) = circ_confmean(ERR3rc, .05);
         ERR2mv(r,c,3) = circ_std(ERR3rc);
+        ERR2mv(r,c,4) = rms(ERR3rc);
+        disp(['Model ',mdlnames{c},' circmean, 95CI, std, rmse (deg); ph target'])
+        disp(squeeze(ERR2mv(:,c,:))*180/pi)
     end
 end
 
