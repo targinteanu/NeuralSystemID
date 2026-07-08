@@ -322,26 +322,28 @@ for b = 1:length(ERRbnd)
                    circ_mean(ERRtsk), circ_confmean(ERRtsk), circ_std(ERRtsk), rms(ERRtsk); ...
                    circ_mean(ERRoth), circ_confmean(ERRoth), circ_std(ERRoth), rms(ERRoth)];
 
+        R = zeros(1,3);
         ph = polarhistogram(ERRbln, 'BinEdges',bedge, 'FaceColor',clr{9}, ...
             'EdgeColor','none', 'FaceAlpha',FaceAlpha); 
-        hold on; R = max(ph.Values);
+        hold on; R(1) = max(ph.Values);
         ph = polarhistogram(ERRtsk, 'BinEdges',bedge, 'FaceColor',clr{10}, ...
             'EdgeColor','none', 'FaceAlpha',FaceAlpha);
-        R = max(R, max(ph.Values));
+        R(2) = max(ph.Values);
         ph = polarhistogram(ERRoth, 'BinEdges',bedge, 'FaceColor',clr{11}, ...
             'EdgeColor','none', 'FaceAlpha',FaceAlpha);
-        R = max(R, max(ph.Values)); R = 1.25*R;
+        R(3) = max(ph.Values); 
+        R = 1.1*R; R = fixspacing(R);
         %{
-        polarregion(ERRbmmv(1,1) + [-1,1]*ERRbmmv(1,2), .5*[-1,1]+R, ...
+        polarregion(ERRbmmv(1,1) + [-1,1]*ERRbmmv(1,2), .5*[-1,1]+R(1), ...
             "FaceColor",clr{9}, "FaceAlpha",0.8, "EdgeColor",'k');
-        polarregion(ERRbmmv(2,1) + [-1,1]*ERRbmmv(2,2), .5*[-1,1]+R, ...
+        polarregion(ERRbmmv(2,1) + [-1,1]*ERRbmmv(2,2), .5*[-1,1]+R(2), ...
             "FaceColor",clr{10}, "FaceAlpha",0.8, "EdgeColor",'k');
-        polarregion(ERRbmmv(3,1) + [-1,1]*ERRbmmv(3,2), .5*[-1,1]+R, ...
+        polarregion(ERRbmmv(3,1) + [-1,1]*ERRbmmv(3,2), .5*[-1,1]+R(3), ...
             "FaceColor",clr{11}, "FaceAlpha",0.8, "EdgeColor",'k');
         %}
         for r = 1:3
             polarboxplot(ERRbmmv(r,1), ERRbmmv(r,2), ERRbmmv(r,3), ...
-                R, R, clr{r+8});
+                R(r), max(R), clr{r+8});
         end
 
         ERRbmmv = ERRbmmv*180/pi;
@@ -411,16 +413,18 @@ for b = 1:(length(bndnames)+1)
         bndname = bndnames{b}; ERRb = ERR(:,selBnd{b},:,:);
     end
 
-    ERRbm = cell(length(mdlnames),1); R = 0;
+    ERRbm = cell(length(mdlnames),1); 
+    R = zeros(1,length(mdlnames));
     for m = 1:length(mdlnames)
         ERRbm_ = ERRb(:,:,m,1);
         ERRbm{m} = ERRbm_(:);
         ph = polarhistogram(ERRbm_, 'BinEdges',bedge, 'FaceColor',clr{m}, ...
             'EdgeColor','none', 'FaceAlpha',FaceAlpha);
         hold on;
-        R = max(R, max(ph.Values));
+        R(m) = max(ph.Values);
     end
     %R = 1*R + 0.5*[-1,1];
+    R = 1.1*R; R = fixspacing(R);
     p1 = circ_kuipertest(ERRbm{1}, ERRbm{2});
     [~,p2] = ttest2(ERRbm{1}.^2, ERRbm{2}.^2, 'tail', 'right');
 
@@ -436,7 +440,7 @@ for b = 1:(length(bndnames)+1)
             "FaceColor",clr{m}, "FaceAlpha",0.8, "EdgeColor",'k');
         %}
         polarboxplot(ERRbstats(m,1), ERRbstats(m,2), ERRbstats(m,3), ...
-            R, R, clr{m});
+            R(m), max(R), clr{m});
     end
 
     ax1(b)=gca(); ax1(b).FontSize = 12;
@@ -499,6 +503,18 @@ end
 sgtitle('Number of Stimulations', 'FontSize',20)
 
 %% helper(s) 
+
+function y = fixspacing(x)
+minspacing = max(x)/5;
+[z,xi] = sort(x, 'ascend'); % z = x(xi)
+for zi = 2:length(z)
+    if z(zi)-z(zi-1) < minspacing
+        z(zi) = z(zi-1) + minspacing;
+    end
+end
+zj = arrayfun(@(i) find(xi==i), 1:length(xi));
+y = z(zj);
+end
 
 function polarboxplot(thetaC, thetaW1, thetaW2, rC, rMax, colr)
 rW = rMax/20; 
