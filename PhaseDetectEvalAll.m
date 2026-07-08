@@ -334,9 +334,12 @@ for b = 1:length(ERRbnd)
         ph = polarhistogram(ERRtsk, 'BinEdges',bedge, 'FaceColor',clr{10}, ...
             'EdgeColor','none', 'FaceAlpha',FaceAlpha);
         R(2) = max(ph.Values);
+        %{
         ph = polarhistogram(ERRoth, 'BinEdges',bedge, 'FaceColor',clr{11}, ...
             'EdgeColor','none', 'FaceAlpha',FaceAlpha);
         R(3) = max(ph.Values); 
+        %}
+        R = R(1:2); ERRbmmv = ERRbmmv(1:2,:);
         R = 1.1*R; R = fixspacing(R);
         %{
         polarregion(ERRbmmv(1,1) + [-1,1]*ERRbmmv(1,2), .5*[-1,1]+R(1), ...
@@ -346,7 +349,7 @@ for b = 1:length(ERRbnd)
         polarregion(ERRbmmv(3,1) + [-1,1]*ERRbmmv(3,2), .5*[-1,1]+R(3), ...
             "FaceColor",clr{11}, "FaceAlpha",0.8, "EdgeColor",'k');
         %}
-        for r = 1:3
+        for r = 1:height(ERRbmmv)
             polarboxplot(ERRbmmv(r,1), ERRbmmv(r,2), ERRbmmv(r,3), ...
                 R(r), max(R), clr{r+8});
         end
@@ -395,14 +398,18 @@ for b = 1:length(ERRbnd)
         ax3(b,m).RLim = [0 1.1*max(R)];
         ax3(b,m).RTickLabelRotation = 80;
         title([mdlnames{m},' Model, ',bndnames{b},' band'], 'FontSize',16);
+        %{
         subtitle({['p1 = ',num2str(p1a),' | ',num2str(p1b)]; ...
                   ['p2 = ',num2str(p2a),' | ',num2str(p2b)]}, ...
                   'FontSize',14);
+        %}
+        subtitle(['p = ',num2str(p1a),' | ',num2str(p1b)], 'FontSize',14);
     end
 end
 
 sgtitle('Phase error by condition', 'FontSize',20);
-lgd = legend({'Baseline', 'Task', 'Other'}, 'FontSize',18);
+%lgd = legend({'Baseline', 'Task', 'Other'}, 'FontSize',18);
+lgd = legend({'Baseline', 'Task'}, 'FontSize',18);
 %lgd.Layout.Tile = 'eastoutside';
 
 %% analysis of all 
