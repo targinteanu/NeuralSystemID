@@ -422,10 +422,17 @@ tiledlayout(1,length(bndnames)+1,'TileSpacing','compact');
 for b = 1:(length(bndnames)+1)
     ax1(b) = nexttile;
     if b > length(bndnames)
-        bndname = 'Both'; ERRb = ERR;
+        bndname = 'Both'; ERRb = ERR; INFOb = INFO;
     else
-        bndname = bndnames{b}; ERRb = ERR(:,selBnd{b},:,:);
+        bndname = bndnames{b}; ERRb = ERR(:,selBnd{b},:,:); INFOb = INFO(selBnd{b});
     end
+
+    %{
+    % analyze baseline only
+    INFObCond = lower([INFOb.Cond]);
+    selBaseline = strcmp(INFObCond, "baseline");
+    ERRb = ERRb(:,selBaseline,:,:);
+    %}
 
     ERRbm = cell(length(mdlnames),1); 
     R = zeros(1,length(mdlnames));
