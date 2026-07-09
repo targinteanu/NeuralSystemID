@@ -62,14 +62,26 @@ for fi = 1:length(files)
     if contains(f.name, 'Nonbaseline')
         ifoCond = filedata.tblsToTest2Descs;
         dims = length(ifoCond);
-        ifoCond = split(ifoCond, ":");
+        ifoCond = split(ifoCond, ": ");
         if dims == 1
+            ifoDur = ifoCond(2:end);
             ifoCond = ifoCond(1);
+            ifoDur = split(ifoDur, " - ");
+            ifoDur = datetime(ifoDur); ifoDur = diff(ifoDur);
         else
+            ifoDur = ifoCond(:,2:end);
             ifoCond = ifoCond(:,1);
+            ifoDur = split(ifoDur, " - ");
+            ifoDur = datetime(ifoDur); ifoDur = diff(ifoDur,[],2);
         end
     else
         ifoCond = "Baseline";
+        fnOrig = split(f.name, '_');
+        fnOrig = join(fnOrig(1:3), '_');
+        fnOrig = [fnOrig{1},'.mat'];
+        filedataOrig = load(fullfile(f.folder,fnOrig), 'tblsBaseline');
+        filedataOrig = filedataOrig.tblsBaseline{1};
+        ifoDur = filedataOrig.Time(end)-filedataOrig.Time(1);
     end
 
     fErr = filedata.errResults; fNum = filedata.numResults;
@@ -78,7 +90,7 @@ for fi = 1:length(files)
         dims(4)=1;
     end
     for cond = 1:dims(4)
-        ifo.Cond = ifoCond(cond);
+        ifo.Cond = ifoCond(cond); ifo.Dur = ifoDur(cond);
         INFO = [INFO, ifo];
         % avg/sum across channels for this subj/cond
         fErrCond = fErr(:,:,:,cond); fNumCond = fNum(:,:,:,cond);
@@ -105,7 +117,7 @@ end
 phTargets = filedata.phTargets;
 %phTargets = phTargets*180/pi;
 
-clear fi f filedata ifo ifoCond dims cond m
+clear fi f fnOrig filedata filedataOrig ifo ifoCond ifoDur dims cond m
 clear fErr fNum fErrCond fNumCond fErrCond_ fNumCond_ fNumCond__
 
 %% computation time 
@@ -447,7 +459,7 @@ for b = 1:(length(bndnames)+1)
     %R = 1*R + 0.5*[-1,1];
     R = 1.1*R; R = fixspacing(R);
     p1 = circ_kuipertest(ERRbm{1}, ERRbm{2});
-    [~,p2] = ttest2(ERRbm{1}.^2, ERRbm{2}.^2, 'tail', 'right');
+    [~,p2] = ttest2(ERRbm{1}.^2, ERRbm{2}.^2, 'tail','right', 'Vartype','unequal');
 
     ERRbstats = [cellfun(@circ_mean, ERRbm), ...
                  cellfun(@circ_confmean, ERRbm), ...
@@ -477,7 +489,7 @@ for b = 1:(length(bndnames)+1)
 end
 
 sgtitle('Phase Error', 'FontSize',20)
-lgd = legend(string(mdlnames), 'FontSize',18);
+lgd = legend(string(mdlnames)+" Model", 'FontSize',18);
 lgd.Layout.Tile = 'east';
 
 %% pie by cycle of extra/missing 
@@ -524,6 +536,101 @@ end
     lgd.Layout.Tile = 'east';
 
 sgtitle('Number of Stimulations', 'FontSize',20)
+
+%% analysis by individual subject
+
+% table of each subject/recording 
+subjtbl = struct2table(INFO);
+ERRrms = squeeze(rms(ERR(:,:,:,1),1));
+ERRs = nan(size(ERR,2),size(ERR,3),3);
+for c = 1:size(ERR,2)
+    for m = 1:size(ERR,3)
+        ERRs(c,m,1) = circ_mean(ERR(:,c,m,1));
+        ERRs(c,m,2) = circ_std(ERR(:,c,m,1));
+        ERRs(c,m,3) = circ_confmean(ERR(:,c,m,1));
+    end
+end
+
+% representative example 
+fi = 3; ch = 4;
+subjname = files(fi).name(1:8);
+
+% polar histogram 
+filedata = load(fullfile(files(fi).folder, files(fi).name));
+chname = filedata.chselName{ch};
+%for ch = 1:18
+figure('Position',[150 100 485 490], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+R = zeros(1, size(filedata.errResults,3));
+for m = 1:size(filedata.errResults,3)
+    x = filedata.errResults{1,ch,m}';
+    ph = polarhistogram(x, 'BinEdges',bedge, 'FaceColor',clr{m}, ...
+            'EdgeColor','none', 'FaceAlpha',FaceAlpha);
+    hold on; R(m) = max(ph.Values);
+end
+R = 1.25*R; R = fixspacing(R);
+for m = 1:length(R)
+    x = filedata.errResults{1,ch,m}';
+    polarboxplot(circ_mean(x), circ_confmean(x), circ_std(x), ...
+        R(m), max(R), clr{m});
+end
+[~,p1] = circ_ztest(filedata.errResults{1,ch,1}', filedata.errResults{1,ch,1}');
+[~,p2] = ttest2((filedata.errResults{1,ch,1}').^2, (filedata.errResults{1,ch,2}').^2, ...
+    'tail','left', 'Vartype','unequal');
+    ax4 = gca(); ax4.FontSize = 14;
+    ax4.ThetaTick = 0:45:360;
+    for ax4ti = 1:2:length(ax4.ThetaTickLabel)
+        ax4.ThetaTickLabel{ax4ti} = '';
+    end
+    ax4.RTick = round(max(R)*[0.5,1]);
+    ax4.RLim = [0 1.1*max(R)];
+    ax4.RTickLabelRotation = 80;
+title('Phase Error', 'FontSize',16);
+subtitle({['Subject ',subjname]; ['p=',num2str(p1),'|',num2str(p2)]}, 'FontSize',16);
+legend(string(mdlnames)+" Model", 'location','southoutside', 'FontSize',16);
+%end
+
+% time-plot 
+fnOrig = split(files(fi).name, '_');
+fnOrig = join(fnOrig(1:3), '_');
+fnOrig = [fnOrig{1},'.mat'];
+filedataOrig = load(fullfile(files(fi).folder,fnOrig));
+tblBL = filedataOrig.tblsBaseline{1};
+%%
+x = tblBL.(chname); tx = tblBL.Time; 
+t0 = datetime('16-Jun-2022 15:21:10', 'TimeZone',tx.TimeZone);
+tx = tx-t0; tx = seconds(tx);
+Fs = tblBL.Properties.SampleRate;
+if isnan(Fs)
+    Fs = 1/median(seconds(diff(tx)));
+end
+BPF = buildFIRBPF(Fs,13,30);
+x = filtfilt(BPF,1,x); 
+[~,xbar] = midcross(envelope(x(1:ceil(3*Fs)))); % rms or mean?
+figure('Position',[1 1 1200 375], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+plot(tx, x, 'k', 'LineWidth',2); hold on; 
+[xx,ttx] = findpeaks(x,tx);
+ttx = ttx(xx > xbar); xx = xx(xx > xbar);
+stem(ttx,xx,'^k','LineWidth',1.5);
+mkr = {'s','o'};
+for m = 1:size(filedata.trgResults,3)
+    ttx = filedata.trgResults{1,ch,m}; ttx = ttx-t0; ttx = seconds(ttx);
+    iix = nan(size(ttx));
+    for ti = 1:length(ttx)
+        [~,iix(ti)] = min(abs(tx-ttx(ti)));
+    end
+    %stem(ttx, xbar*ones(size(ttx)), 'Color',clr{m}, 'LineWidth',1.5);
+    stem(tx(iix), x(iix), mkr{m}, 'Color',clr{m}, 'LineWidth',1.5);
+end
+xlim(([0 2])); ylim([-120 100]);
+ax5 = gca(); ax5.FontSize = 14;
+legend(["ECoG","Target", string(mdlnames)+" Model"], 'FontSize',16, ...
+    'location','northoutside', 'Orientation','horizontal');
+xlabel('Time (s)', 'FontSize',16); 
+ylabel('Signal (\muV)', 'FontSize',16);
+title('Phase-Dependent Stimulation Example', 'FontSize',16);
+subtitle(['Subject ',subjname], 'FontSize',16);
 
 %% helper(s) 
 
