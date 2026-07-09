@@ -598,8 +598,8 @@ filedataOrig = load(fullfile(files(fi).folder,fnOrig));
 tblBL = filedataOrig.tblsBaseline{1};
 %%
 x = tblBL.(chname); tx = tblBL.Time; 
-t0 = datetime('16-Jun-2022 15:21:10', 'TimeZone',tx.TimeZone);
-tx = tx-t0; tx = seconds(tx);
+t0 = datetime('16-Jun-2022 15:21:10', 'TimeZone',tx.TimeZone); 
+tx = tx-t0; tx = seconds(tx); [~,i0] = min(abs(tx));
 Fs = tblBL.Properties.SampleRate;
 if isnan(Fs)
     Fs = 1/median(seconds(diff(tx)));
@@ -616,10 +616,7 @@ stem(ttx,xx,'^k','LineWidth',1.5);
 mkr = {'s','o'};
 for m = 1:size(filedata.trgResults,3)
     ttx = filedata.trgResults{1,ch,m}; ttx = ttx-t0; ttx = seconds(ttx);
-    iix = nan(size(ttx));
-    for ti = 1:length(ttx)
-        [~,iix(ti)] = min(abs(tx-ttx(ti)));
-    end
+    iix = round(Fs*ttx) + i0;
     %stem(ttx, xbar*ones(size(ttx)), 'Color',clr{m}, 'LineWidth',1.5);
     stem(tx(iix), x(iix), mkr{m}, 'Color',clr{m}, 'LineWidth',1.5);
 end
