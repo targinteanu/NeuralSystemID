@@ -421,7 +421,7 @@ end
 
 sgtitle('Phase error by condition', 'FontSize',20);
 %lgd = legend({'Baseline', 'Task', 'Other'}, 'FontSize',18);
-lgd = legend({'Baseline', 'Task'}, 'FontSize',18);
+%lgd = legend({'Baseline', 'Task'}, 'FontSize',18);
 %lgd.Layout.Tile = 'eastoutside';
 
 %% analysis of all 
@@ -550,8 +550,13 @@ for c = 1:size(ERR,2)
         ERRs(c,m,3) = circ_confmean(ERR(:,c,m,1));
     end
 end
+subjtblmeas = [ERRrms, ERRs(:,:,1), ERRs(:,:,2), ERRs(:,:,3)];
+subjtblmeasnames = ["RMS","AVG","STD","CI95"]+["const";"adapt"];
+subjtblmeas = array2table(subjtblmeas, "VariableNames",subjtblmeasnames(:));
+subjtbl = [subjtbl, subjtblmeas];
+subjtblBL = subjtbl(strcmp(subjtbl.Cond, "Baseline"),:);
 
-% representative example 
+%% representative example 
 fi = 3; ch = 4;
 subjname = files(fi).name(1:8);
 
@@ -596,7 +601,6 @@ fnOrig = join(fnOrig(1:3), '_');
 fnOrig = [fnOrig{1},'.mat'];
 filedataOrig = load(fullfile(files(fi).folder,fnOrig));
 tblBL = filedataOrig.tblsBaseline{1};
-%%
 x = tblBL.(chname); tx = tblBL.Time; 
 t0 = datetime('16-Jun-2022 15:21:10', 'TimeZone',tx.TimeZone); 
 tx = tx-t0; tx = seconds(tx); [~,i0] = min(abs(tx));
@@ -620,14 +624,24 @@ for m = 1:size(filedata.trgResults,3)
     %stem(ttx, xbar*ones(size(ttx)), 'Color',clr{m}, 'LineWidth',1.5);
     stem(tx(iix), x(iix), mkr{m}, 'Color',clr{m}, 'LineWidth',1.5);
 end
-xlim(([0 2])); ylim([-120 100]);
+xlim(([0 2.1])); ylim([-120 100]);
 ax5 = gca(); ax5.FontSize = 14;
 legend(["ECoG","Target", string(mdlnames)+" Model"], 'FontSize',16, ...
     'location','northoutside', 'Orientation','horizontal');
-xlabel('Time (s)', 'FontSize',16); 
+xlabel(' time (s)', 'FontSize',16, ...
+    'Units','Normalized', 'Position',[1,0.5], ...
+    'HorizontalAlignment','left', 'VerticalAlignment','middle'); 
 ylabel('Signal (\muV)', 'FontSize',16);
 title('Phase-Dependent Stimulation Example', 'FontSize',16);
 subtitle(['Subject ',subjname], 'FontSize',16);
+ax5.Box = false;
+ax5.XAxisLocation = 'origin';
+ax5.XAxis.TickLength = [.05 .025];
+ax5.XTick = [1 2];
+ax5.XTickLabels = {'1','2'};
+ax5.XAxis.TickDirection = 'both';
+ax5.YTick = [-100 0 100];
+ax5.YAxis.TickDirection = 'both';
 
 %% helper(s) 
 
