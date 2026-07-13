@@ -100,7 +100,7 @@ data = cell(length(subjnames), 4);
 bandnames = unique(tblEphProp(3,:));
 vnames =["VT", "VT"; 
          "BL", "Rest Baseline"; 
-         "BL2", "Rest After Task"; 
+         "BL2", "Other"; 
          "NB", "Task"];
 vnamesdict = containers.Map(vnames(:,1), vnames(:,2));
 
@@ -169,6 +169,9 @@ legend(anatHCP.Properties.VariableNames, 'Location','eastoutside');
 
 %% Power/PAC vs VT: all in one 
 
+datasubj = zeros(length(bandnames), length(subjnames));
+% # of data series that can be scatter-plotted 
+
 for b = 1:length(bandnames)
 bandname = bandnames{b};
 
@@ -191,7 +194,8 @@ for s = 1:length(subjnames)
         for v = 2:height(vnames)
             g = 1 + 2*(v-2)/3; % gamma color brightness adjustment
             D = data{s,v};
-            if ~isempty(D)
+            if ~isempty(D) && any(~isnan(D),"all")
+                datasubj(b,s) = datasubj(b,s)+1;
                 D = D(anatsel,b,:);
                 Derr = D(:,2); D = D(:,1);
                 errorbar(VT, D, Derr, -Derr, '.', ...
@@ -332,6 +336,7 @@ for b = 1:length(bandnames)
 bandname = bandnames{b};
 
 for s = 1:length(subjnames)
+if datasubj(b,s) > 1
 figure; 
 lgd = [];
 alignR = true;
@@ -344,7 +349,7 @@ alignR = true;
         for v = 2:4
             g = 1 + 2*(v-2)/3; % gamma color brightness adjustment
             D = data{s,v};
-            if ~isempty(D)
+            if ~isempty(D) && any(~isnan(D),"all")
                 D = D(anatsel,b,:);
                 Derr = D(:,2); D = D(:,1);
                 %{
@@ -393,5 +398,6 @@ legend(lgd, 'Location','eastoutside')
 xl = xlim; 
 xl = xl + [-1,1]*diff(xl)*0.25;
 xlim(xl);
+end
 end
 end
