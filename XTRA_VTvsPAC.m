@@ -126,7 +126,7 @@ for s = 1:length(subjnames)
                 cV = find(strcmp(tblEphProp_svb(4,:), 'STD'));
                 cN = find(strcmp(tblEphProp_svb(4,:), 'NUM'));
                 X = tblEph_svb(:,cX); V = tblEph_svb(:,cV); N = tblEph_svb(:,cN);
-                V = tinv(.975, N-1).*(V./sqrt(N)); % STD -> 95% CI
+                %V = tinv(.975, N-1).*(V./sqrt(N)); % STD -> 95% CI
                 if ~isempty(X)
                     data_sv(:,b,1) = X; % Store average values
                 end
@@ -156,18 +156,18 @@ for s = 1:length(subjnames)
     aHCP = anatHCP{:,s}; 
     aAH = anatAH{:,s};
     if ~isempty(VT)
-        %plot3(aHCP, aAH, VT, 's', 'Color',clr{s}, 'LineWidth',1.5);
-        plot(.5*(aHCP+aAH), VT, 's', 'Color',clr{s}, 'LineWidth',1.5);
+        plot3(aHCP, aAH, VT, 's', 'Color',clr{s}, 'LineWidth',1.5);
+        %plot(.5*(aHCP+aAH), VT, 's', 'Color',clr{s}, 'LineWidth',1.5);
         hold on;
     end
 end
 grid on;
-%xlabel('HCP'); ylabel('Al-Hakim'); zlabel('XTRA VT');
-xlabel('anatomy'); ylabel('XTRA VT');
+xlabel('HCP'); ylabel('Al-Hakim'); zlabel('XTRA VT');
+%xlabel('anatomy'); ylabel('XTRA VT');
 title('Anatomy-VT Comparison');
 legend(anatHCP.Properties.VariableNames, 'Location','eastoutside');
 
-%% Power vs VT: all in one 
+%% Power/PAC vs VT: all in one 
 
 for b = 1:length(bandnames)
 bandname = bandnames{b};
@@ -196,6 +196,10 @@ for s = 1:length(subjnames)
                 Derr = D(:,2); D = D(:,1);
                 errorbar(VT, D, Derr, -Derr, '.', ...
                     'Marker', mkr{1,v-1}, 'Color', clr{s}.^g, 'LineWidth',1.5); 
+                %{
+                plot(VT, D, '.', ...
+                    'Marker', mkr{1,v-1}, 'Color', clr{s}.^g, 'LineWidth',1.5); 
+                %}
                 hold on;
                 lgd = [lgd, subj+":", vnames(v,2)];
                 %if sum(VTsel)
@@ -241,7 +245,10 @@ legend(lgd, 'Location','eastoutside')
 
 end
 
-%% Power vs VT: baseline all subjects 
+%% Power/PAC vs VT: baseline all subjects 
+
+for b = 1:length(bandnames)
+bandname = bandnames{b};
 
 figure; 
 alignR = true;
@@ -256,7 +263,12 @@ for s = 1:length(subjnames)
         v = 2; % baseline 
         D = data{s,v};
         if ~isempty(D)
-            D = D(anatsel);
+            D = D(anatsel,b,:);
+            Derr = D(:,2); D = D(:,1);
+            %{
+            errorbar(VT, D, Derr, -Derr, '.', ...
+                'Marker', mkr{1,v-1}, 'Color', clr{s}, 'LineWidth',1.5); 
+            %}
             plot(VT, D, '.', ...
                 'Marker', mkr{1,v-1}, 'Color', clr{s}, 'LineWidth',1.5); 
             hold on;
@@ -275,7 +287,7 @@ for s = 1:length(subjnames)
         v = 2; % baseline 
         D = data{s,v};
         if ~isempty(D)
-            D = D(anatsel);
+            D = D(anatsel,b,1);
 
 Vsel_vals = D; VTsel_vals = VT;
 [p, fiteval] = polyfit(VTsel_vals, Vsel_vals, 1);
@@ -312,8 +324,12 @@ xlabel('\it x\rm = XTRA VT'); ylabel(['\it y\rm = ',bandname]);
 xlim([6 24]);
 legend(anatHCP.Properties.VariableNames, 'Location','eastoutside')
 title('Baseline All Subjects')
+end
 
 %% Power vs VT: all cond each subject
+
+for b = 1:length(bandnames)
+bandname = bandnames{b};
 
 for s = 1:length(subjnames)
 figure; 
@@ -329,7 +345,12 @@ alignR = true;
             g = 1 + 2*(v-2)/3; % gamma color brightness adjustment
             D = data{s,v};
             if ~isempty(D)
-                D = D(anatsel);
+                D = D(anatsel,b,:);
+                Derr = D(:,2); D = D(:,1);
+                %{
+                errorbar(VT, D, Derr, -Derr, '.', ...
+                    'Marker', mkr{1,v-1}, 'Color', clr{s}.^g, 'LineWidth',1.5); 
+                %}
                 plot(VT, D, '.', ...
                     'Marker', mkr{1,v-1}, 'Color', clr{s}.^g, 'LineWidth',1.5); 
                 hold on;
@@ -372,4 +393,5 @@ legend(lgd, 'Location','eastoutside')
 xl = xlim; 
 xl = xl + [-1,1]*diff(xl)*0.25;
 xlim(xl);
+end
 end
