@@ -85,8 +85,10 @@ end
 
 fc = length(spkIdx)/(t(end)-t(1)); % initial est carrier freq = avg spk rate 
 zw = movsum(z,Fs); % est inst freq
+f0 = mean(zw); zw = zw-f0; % different from carrier freq?
+r = f0/fc; % "repetition rate"
 
-%% inst freq fourier sine coeffs 
+% inst freq fourier sine coeffs 
 [fsine, ampsine, phsine, amp0] = FourierSine(zw, Fs, t);
 
 % pulse train fourier exp coeffs 
@@ -97,16 +99,20 @@ wft = 1:length(wfT); wft = (wft-1)/fs;
 C1 = fc*sum(wfT.*exp(-1i*2*pi*fc*wft))*(1/fs);
 C0 = fc*sum(wfT)*(1/fs);
 
-% C0 component 
-f0 = sum(fsine); 
-q0 = C0*prod(exp(1i*phsine));
+% k=0 component 
+%{
+f0 = 2*pi*fsine'; f0 = [-fliplr(f0),0,f0];
+q0 = [flipud(ampsine).*exp(-1i*flipud(phsine)); fc; ampsine.*exp(1i*phsine)]';
+%}
+f0 = [0;  fsine]';
+q0 = [fc; ampsine.*exp(1i*phsine)/(2*r)]';
 
 % bessel 
 %ampsinesort = sort(ampsine);
 nrange = -30:30;
 J = zeros(length(nrange),length(ampsine));
 for ni = 1:length(nrange)
-    J(ni,:) = besselj(nrange(ni),ampsine);
+    J(ni,:) = besselj(nrange(ni),ampsine./(r*fsine)); % for k=1
 end
 % plot heatmap of Bessel matrix J vs nrange
 figure;
@@ -119,24 +125,46 @@ ylabel('n (Bessel order)');
 title('Bessel J_n(ampsine) vs n and amplitude');
 J(J.^2 < sum(J(:).^2)/numel(J)) = nan;
 
-% C1 component 
+% k=1 component 
 phshift = exp(1i*phsine*nrange)'; 
-fshift = exp(1i*2*pi*fsine*nrange)';
-Q1 = J.*phshift;
+phsh2 = exp(1i*1*ampsine.*sin(phsine)./(r*fsine)); phsh2 = prod(phsh2);
+Q1 = J.*phshift*phsh2;
 numpk = prod(sum(~isnan(J)));
 q1 = single(Q1(:,1)); f1 = single(fsine(1)*nrange');
 f1 = f1(~isnan(q1))'; q1 = q1(~isnan(q1))';
+if isempty(q1)
+    f1 = 0; q1 = 1;
+end
 for l = 2:length(ampsine)
     ql = single(Q1(:,l)); fl = single(fsine(l)*nrange');
     fl = fl(~isnan(ql))'; ql = ql(~isnan(ql))';
     ff1 = (fl'+f1); f1 = single(ff1(:))';
     qq1 = ql'*q1; q1 = single(qq1(:))';
 end
-f1=f1+1*fc; q1 = q1*C1;
+f1=f1+1*fc; q1 = q1*fc;
+fshift = [-flipud(fsine);fsine]';
+Q1b = [flipud(ampsine).*exp(-1i*phsine); ampsine.*exp(1i*phsine)]';
+Q1b = reshape(Q1b,[1,1,length(Q1b)]); fshift = reshape(fshift,[1,1,length(fshift)]);
+Q1b = Q1b.*Q1; F1b = (fsine*nrange)'.*fshift;
+q1b = single(Q1b(:,1,:)); q1b = q1b(:);
+f1b = single(F1b(:,1,:)); f1b = f1b(:);
+f1b = f1b(~isnan(q1b))'; q1b = q1b(~isnan(q1b))';
+if isempty(q1b)
+    f1b = 0; q1b = 1;
+end
+for l = 2:length(ampsine)
+    ql = single(Q1b(:,l,:)); fl = single(F1b(:,1,:)); ql = ql(:); fl = fl(:);
+    fl = fl(~isnan(ql)); ql = ql(~isnan(ql))';
+    if ~isempty(ql)
+        ff1 = (fl+f1b); f1b = single(ff1(:))';
+        qq1 = ql'*q1b; q1b = single(qq1(:))';
+    end
+end
+f1b=f1b+1*fc; q1b = q1b/(2*r);
 
 figure; 
-pwelch(xn(3e4:4e4),[],[],[],Fs,'power'); hold on;
-plot([f0,f1],20*log10(abs([q0,q1])),'.');
+pwelch(xn,[],[],[],Fs,'power'); hold on;
+plot([f0,f1,f1b],20*log10(abs([q0,q1,q1b])),'.');
 
 %% helpers
 
