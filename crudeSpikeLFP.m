@@ -83,23 +83,27 @@ end
 
 %% modulated pulse train analysis 
 
-[px,frange] = pwelch(xn,[],[],[],Fs,'power');
+xwin = xn(1:Fs); zwin = z(1:Fs); twin = t(1:Fs);
+xwin = x; zwin = z; twin = t;
+
+[px,frange] = pwelch(xwin,[],[],[],Fs,'power');
+X = complex(zeros(size(frange)));
+addCompAtFreq = @(fnew,Y,fY,fX) interp1(fY+fnew, Y, fX);
 
 fc = length(spkIdx)/(t(end)-t(1)); % initial est carrier freq = avg spk rate 
-zw = movsum(z,Fs); % est inst freq
+zw = movsum(zwin,Fs); % est inst freq
 zw0 = mean(zw); zw = zw-zw0; % different from carrier freq?
 r = zw0/fc; % "repetition rate"
 
 % inst freq fourier sine coeffs 
-[fsine, ampsine, phsine, amp0] = FourierSine(zw, Fs, t);
+[fsine, ampsine, phsine, amp0] = FourierSine(zw, Fs, twin);
 
 % pulse train fourier coeffs 
 wf = mean(WF); %wf = wf-mean(wf); % 0 offset
-Tlen = ceil(fs/fc); % samples 
-wfT = zeros(1,Tlen); wfT(1:length(wf)) = wf; % single period 
-wft = 1:length(wfT); wft = (wft-1)/fs;
-C0 = fc*sum(wfT)*(1/fs);
-Ck = @(k) fc*sum(wfT.*exp(-1i*k*2*pi*fc*wft))*(1/fs);
+wfFT = fftshift(fft(wf)); % kernel for conv 
+%wfFTres = fs/(length(wfFT)-1); % hz per sample
+%wfFT = resample(wfFT,round(Fs),round(fs)); % for conv with z
+wff = linspace(-fs/2, fs/2, length(wf));
 
 % k=0 component 
 %{
@@ -108,16 +112,34 @@ q0 = [flipud(ampsine).*exp(-1i*flipud(phsine)); fc; ampsine.*exp(1i*phsine)]';
 %}
 f0 = [0;  fsine]';
 q0 = [fc; ampsine.*exp(1i*phsine)/(2*r)]';
+for fi = 1:length(f0)
+    %X = X + q0(fi)*addCompAtFreq(f0(fi), wfFT, wff, frange);
+    [~,fj] = min(abs(f0(fi)-frange));
+    X(fj) = X(fj) + q0(fi);
+end
+
+k = 1;
+while k*fc < 120
+    [fk,qk] = getFQ(k, r, fc, fsine, ampsine, phsine);
+    for fi = 1:length(fk)
+        %X = X + qk(fi)*addCompAtFreq(fk(fi), wfFT, wff, frange);
+        [~,fj] = min(abs(fk(fi)-frange));
+        X(fj) = X(fj) + qk(fi);
+    end
+    k = k+1;
+end
 
 figure; 
 plot(frange, 20*log10(px)); hold on; grid on; 
 xlabel('Frequency (Hz)'); ylabel('Power (dB)');
-plot([f0,f1,f1b],20*log10(abs([q0,q1,q1b])),'.');
+plot(frange, 20*log10(abs(X).^2));
 
 %% helpers
 
 function [fk,qk] = getFQ(k, r, fc, fsine, ampsine, phsine)
 % for k > 0 only! 
+% positive sided only!
+maxnumel = 1e6;
 
 % bessel 
 zrange = k*ampsine./(r*fsine); N = ceil(max(abs(zrange)));
@@ -137,7 +159,9 @@ xlabel('sine amplitudes');
 ylabel('n (Bessel order)');
 title('Bessel J_n(ampsine) vs n and amplitude');
 %}
-J(J.^2 < sum(J(:).^2)/numel(J)) = nan;
+maxnumeladj = length(ampsine)*(maxnumel^(1/length(ampsine)))/(2); % ~ N*L
+Jmag = sort(J(:).^2, 'descend'); Jmax = Jmag(floor(maxnumeladj));
+J(J.^2 < Jmax) = nan;
 
 % first term (freq unshifted)
 phshift = exp(1i*phsine*nrange)'; %phshiftAnti = exp(1i*(phsine+pi)*nrange)';
