@@ -83,8 +83,7 @@ end
 
 %% modulated pulse train analysis 
 
-xwin = xn(1:Fs); zwin = z(1:Fs); twin = t(1:Fs);
-xwin = x; zwin = z; twin = t;
+xwin = xn(1:5*Fs); zwin = z(1:5*Fs); twin = t(1:5*Fs);
 
 [px,frange] = pwelch(xwin,[],[],[],Fs,'power');
 X = complex(zeros(size(frange)));
@@ -139,7 +138,7 @@ plot(frange, 20*log10(abs(X).^2));
 function [fk,qk] = getFQ(k, r, fc, fsine, ampsine, phsine)
 % for k > 0 only! 
 % positive sided only!
-maxnumel = 1e6;
+maxnumel = 1e10;
 
 % bessel 
 zrange = k*ampsine./(r*fsine); N = ceil(max(abs(zrange)));
@@ -159,9 +158,12 @@ xlabel('sine amplitudes');
 ylabel('n (Bessel order)');
 title('Bessel J_n(ampsine) vs n and amplitude');
 %}
-maxnumeladj = length(ampsine)*(maxnumel^(1/length(ampsine)))/(2); % ~ N*L
-Jmag = sort(J(:).^2, 'descend'); Jmax = Jmag(floor(maxnumeladj));
-J(J.^2 < Jmax) = nan;
+maxnumeladj = (maxnumel^(1/length(ampsine)))/(2); 
+maxnumeladj = floor(maxnumeladj);
+Jmag = sort(J(:).^2, 'descend'); Jmin = Jmag(maxnumeladj);
+powerloss = sum(Jmag((maxnumeladj+1):end))/sum(Jmag);
+warning(['Losing ',num2str(100*powerloss,2),'% power.'])
+J(J.^2 < Jmin) = nan;
 
 % first term (freq unshifted)
 phshift = exp(1i*phsine*nrange)'; %phshiftAnti = exp(1i*(phsine+pi)*nrange)';
@@ -177,8 +179,14 @@ end
 for l = 2:length(ampsine)
     ql = single(Q1(:,l)); fl = single(fsine(l)*nrange');
     fl = fl(~isnan(ql))'; ql = ql(~isnan(ql))';
-    ff1 = (fl'+f1); f1 = single(ff1(:))';
-    qq1 = ql'*q1; q1 = single(qq1(:))';
+    if ~isempty(ql)
+        try
+        ff1 = (fl'+f1); f1 = single(ff1(:))';
+        qq1 = ql'*q1; q1 = single(qq1(:))';
+        catch ME
+            keyboard
+        end
+    end
 end
 f1=f1+k*fc; q1 = q1*fc;
 
@@ -186,7 +194,7 @@ f1=f1+k*fc; q1 = q1*fc;
 fshift = [-flipud(fsine);fsine]';
 Q1b = [flipud(ampsine).*exp(-1i*flipud(phsine)); ampsine.*exp(1i*phsine)]';
 Q1b = reshape(Q1b,[1,1,length(Q1b)]); fshift = reshape(fshift,[1,1,length(fshift)]);
-Q1b = Q1b.*Q1; F1b = (fsine*nrange)'.*fshift;
+Q1b = Q1b.*Q1; F1b = (fsine*nrange)' + fshift;
 q1b = single(Q1b(:,1,:)); q1b = q1b(:);
 f1b = single(F1b(:,1,:)); f1b = f1b(:);
 f1b = f1b(~isnan(q1b))'; q1b = q1b(~isnan(q1b))';
@@ -197,8 +205,12 @@ for l = 2:length(ampsine)
     ql = single(Q1b(:,l,:)); fl = single(F1b(:,1,:)); ql = ql(:); fl = fl(:);
     fl = fl(~isnan(ql)); ql = ql(~isnan(ql))';
     if ~isempty(ql)
+        try
         ff1 = (fl+f1b); f1b = single(ff1(:))';
         qq1 = ql'*q1b; q1b = single(qq1(:))';
+        catch MEb
+            keyboard
+        end
     end
 end
 f1b=f1b+k*fc; q1b = q1b/(2*r);
