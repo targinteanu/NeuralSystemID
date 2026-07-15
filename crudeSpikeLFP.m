@@ -83,21 +83,23 @@ end
 
 %% modulated pulse train analysis 
 
+[px,frange] = pwelch(xn,[],[],[],Fs,'power');
+
 fc = length(spkIdx)/(t(end)-t(1)); % initial est carrier freq = avg spk rate 
 zw = movsum(z,Fs); % est inst freq
-f0 = mean(zw); zw = zw-f0; % different from carrier freq?
-r = f0/fc; % "repetition rate"
+zw0 = mean(zw); zw = zw-zw0; % different from carrier freq?
+r = zw0/fc; % "repetition rate"
 
 % inst freq fourier sine coeffs 
 [fsine, ampsine, phsine, amp0] = FourierSine(zw, Fs, t);
 
-% pulse train fourier exp coeffs 
+% pulse train fourier coeffs 
 wf = mean(WF); %wf = wf-mean(wf); % 0 offset
 Tlen = ceil(fs/fc); % samples 
 wfT = zeros(1,Tlen); wfT(1:length(wf)) = wf; % single period 
 wft = 1:length(wfT); wft = (wft-1)/fs;
-C1 = fc*sum(wfT.*exp(-1i*2*pi*fc*wft))*(1/fs);
 C0 = fc*sum(wfT)*(1/fs);
+Ck = @(k) fc*sum(wfT.*exp(-1i*k*2*pi*fc*wft))*(1/fs);
 
 % k=0 component 
 %{
@@ -107,13 +109,24 @@ q0 = [flipud(ampsine).*exp(-1i*flipud(phsine)); fc; ampsine.*exp(1i*phsine)]';
 f0 = [0;  fsine]';
 q0 = [fc; ampsine.*exp(1i*phsine)/(2*r)]';
 
+figure; 
+plot(frange, 20*log10(px)); hold on; grid on; 
+xlabel('Frequency (Hz)'); ylabel('Power (dB)');
+plot([f0,f1,f1b],20*log10(abs([q0,q1,q1b])),'.');
+
+%% helpers
+
+function [fk,qk] = getFQ(k, r, fc, fsine, ampsine, phsine)
+% for k > 0 only! 
+
 % bessel 
-%ampsinesort = sort(ampsine);
-nrange = -30:30;
-J = zeros(length(nrange),length(ampsine));
+zrange = k*ampsine./(r*fsine); N = ceil(max(abs(zrange)));
+nrange = -N:N;
+J = zeros(length(nrange),length(zrange));
 for ni = 1:length(nrange)
-    J(ni,:) = besselj(nrange(ni),ampsine./(r*fsine)); % for k=1
+    J(ni,:) = besselj(nrange(ni),zrange); % for k=1
 end
+%{
 % plot heatmap of Bessel matrix J vs nrange
 figure;
 imagesc(ampsine, nrange, J); % x: sorted amplitudes, y: nrange
@@ -123,11 +136,13 @@ colorbar;
 xlabel('sine amplitudes');
 ylabel('n (Bessel order)');
 title('Bessel J_n(ampsine) vs n and amplitude');
+%}
 J(J.^2 < sum(J(:).^2)/numel(J)) = nan;
 
-% k=1 component 
-phshift = exp(1i*phsine*nrange)'; 
-phsh2 = exp(1i*1*ampsine.*sin(phsine)./(r*fsine)); phsh2 = prod(phsh2);
+% first term (freq unshifted)
+phshift = exp(1i*phsine*nrange)'; %phshiftAnti = exp(1i*(phsine+pi)*nrange)';
+phsh2 = k*ampsine.*sin(phsine)./(r*fsine); phsh2 = sum(phsh2);
+%phsh2Anti = exp(-1i*phsh2); phsh2 = exp(1i*phsh2);
 Q1 = J.*phshift*phsh2;
 numpk = prod(sum(~isnan(J)));
 q1 = single(Q1(:,1)); f1 = single(fsine(1)*nrange');
@@ -141,9 +156,11 @@ for l = 2:length(ampsine)
     ff1 = (fl'+f1); f1 = single(ff1(:))';
     qq1 = ql'*q1; q1 = single(qq1(:))';
 end
-f1=f1+1*fc; q1 = q1*fc;
+f1=f1+k*fc; q1 = q1*fc;
+
+% second term (freq shifted)
 fshift = [-flipud(fsine);fsine]';
-Q1b = [flipud(ampsine).*exp(-1i*phsine); ampsine.*exp(1i*phsine)]';
+Q1b = [flipud(ampsine).*exp(-1i*flipud(phsine)); ampsine.*exp(1i*phsine)]';
 Q1b = reshape(Q1b,[1,1,length(Q1b)]); fshift = reshape(fshift,[1,1,length(fshift)]);
 Q1b = Q1b.*Q1; F1b = (fsine*nrange)'.*fshift;
 q1b = single(Q1b(:,1,:)); q1b = q1b(:);
@@ -160,13 +177,13 @@ for l = 2:length(ampsine)
         qq1 = ql'*q1b; q1b = single(qq1(:))';
     end
 end
-f1b=f1b+1*fc; q1b = q1b/(2*r);
+f1b=f1b+k*fc; q1b = q1b/(2*r);
 
-figure; 
-pwelch(xn,[],[],[],Fs,'power'); hold on;
-plot([f0,f1,f1b],20*log10(abs([q0,q1,q1b])),'.');
+% output 
+fk = [f1, f1b]; qk = [q1, q1b];
 
-%% helpers
+end
+
 
 function [fsine, ampsine, phsine, A0] = FourierSine(zw, Fs, t)
 
