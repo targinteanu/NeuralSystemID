@@ -83,7 +83,8 @@ end
 
 %% modulated pulse train analysis 
 
-xwin = xn(1:5*Fs); zwin = z(1:5*Fs); twin = t(1:5*Fs);
+iwin = (1:(5*Fs)) + 10*Fs;
+xwin = xn(iwin); zwin = z(iwin); twin = t(iwin);
 
 [px,frange] = pwelch(xwin,[],[],[],Fs,'power');
 X = complex(zeros(size(frange)));
@@ -103,6 +104,9 @@ wfFT = fftshift(fft(wf)); % kernel for conv
 %wfFTres = fs/(length(wfFT)-1); % hz per sample
 %wfFT = resample(wfFT,round(Fs),round(fs)); % for conv with z
 wff = linspace(-fs/2, fs/2, length(wf));
+wfFTresamp = resample(wfFT,round(fs),round(Fs)); % should be same res as frange
+wfFTresamp_ihalf = length(wfFTresamp)/2;
+wfFTresamp(1:wfFTresamp_ihalf) = conj(fliplr(wfFTresamp(wfFTresamp_ihalf+1:end)));
 
 % k=0 component 
 %{
@@ -131,14 +135,14 @@ end
 figure; 
 plot(frange, 20*log10(px)); hold on; grid on; 
 xlabel('Frequency (Hz)'); ylabel('Power (dB)');
-plot(frange, 20*log10(abs(X).^2));
+plot(frange, 20*log10(abs(X).^2), '.');
 
 %% helpers
 
 function [fk,qk] = getFQ(k, r, fc, fsine, ampsine, phsine)
 % for k > 0 only! 
 % positive sided only!
-maxnumel = 1e10;
+maxnumel = 1e9;
 
 % bessel 
 zrange = k*ampsine./(r*fsine); N = ceil(max(abs(zrange)));
