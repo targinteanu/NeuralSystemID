@@ -12,17 +12,18 @@ subjIDdict = {...
     'PD26N002', 'XPD066'};
 subjIDdict = containers.Map(subjIDdict(:,1), subjIDdict(:,2));
 
-filename = '/Users/torenarginteanu/Documents/Anderson Lab/XTRA/dataL_91f313d618c254/Rows_master.xlsx'; % spreadsheet 
+% spreadsheet with the VT, PAC, power by row
+filename = '/Users/torenarginteanu/Documents/Anderson Lab/XTRA/dataL_91f313d618c254/Rows_master.xlsx'; 
 
 % VT
 opts = detectImportOptions(filename);
-opts.Sheet = 1;
+opts.Sheet = 1; % sheet 1 = VT
 opts = setvartype(opts, 'double');
 opts.VariableNamesRange = 1;      % first row contains XPD names
 opts.DataRange = 'A3';               % data starts on 3rd row
 tblVT = readtable(filename, opts);
 
-% PAC, power 
+% PAC, power (sheet 2 = low theta/low gamma)
 tblEph = readtable(filename, "Sheet",2, "Range","A1:CU22", "ReadVariableNames",true);
 %{
 opts = detectImportOptions(filename);
@@ -33,11 +34,12 @@ opts.DataRange = 'A2:CU22';               % data starts on 2nd row
 tblEph = readtable(filename, opts);
 %}
 
-filename = '/Users/torenarginteanu/Documents/Anderson Lab/XTRA/XTRA_neurophys-VT.xlsx'; % spreadsheet 
+% spreadsheet with anatomic labels 
+filename = '/Users/torenarginteanu/Documents/Anderson Lab/XTRA/XTRA_neurophys-VT.xlsx'; 
 
 % Al-Hakim
 opts = detectImportOptions(filename);
-opts.Sheet = 1;
+opts.Sheet = 1; % sheet 1 = Al-Hakim atlas values 
 opts = setvartype(opts, 'double');
 opts.VariableNamesRange = 1;      % first row contains variable names
 opts.DataRange = 'A2';               % data starts on second row
@@ -46,7 +48,7 @@ anatAH = anatAH(:,2:6);
 
 % HCP 
 opts = detectImportOptions(filename);
-opts.Sheet = 2;
+opts.Sheet = 2; % sheet 2 = HCP atlas values 
 opts = setvartype(opts, 'double');
 opts.VariableNamesRange = 1;      % first row contains variable names
 opts.DataRange = 'A2';               % data starts on second row
