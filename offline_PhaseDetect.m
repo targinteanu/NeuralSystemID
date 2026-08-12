@@ -89,12 +89,8 @@ end
 
 %% Constants: 
 
-
 % Simulate phase-dependent stimulation at this phase: 
 PhaseOfInterest_default = 0; % radians; i.e. 0 for peak, pi for trough stimulation
-
-% frequency range: 
-loco_default = 13; hico_default = 30; % low and high cutoff (Hz); e.g. 13-30 for beta band
 
 % Artifact duration: 
 artDur_default = 10; % artifact duration is extended by __ samples 
@@ -103,19 +99,36 @@ artDur_default = 10; % artifact duration is extended by __ samples
 ARwin_default = 1000; % #samples of baseline to use to fit the AR model
 ARlen_default = 10; % AR model order 
 
+% frequency range: 
+loco_default = 13; hico_default = 30; % low and high cutoff (Hz); e.g. 13-30 for beta band
+if isempty(FreqRange)
+    hico = hico_default; loco = loco_default;
+else
+    hico = FreqRange(2); loco = FreqRange(1);
+end
+
+% BPF setup 
+% filtering bound rules 
+minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
+min_filtorder  = 15;   % minimum filter length
+% filter order 
+if loco>0
+    filtord = minfac*fix(SamplingFreq/loco);
+elseif hico>0
+    filtord = minfac*fix(SamplingFreq/hico);
+end
+if filtord < min_filtorder
+    filtord = min_filtorder;
+end
+
 % AR-model prediction duration: 
-predWin_default = 20; % #samples ahead to predict at each time step 
+predWin_default = filtord; % #samples ahead to predict at each time step 
 
 % length of packets of incomming data 
 packetLength_default = 1; % samples; e.g. 1 for each sample entered individually 
 
 
 % apply default values if necessary 
-if isempty(FreqRange)
-    hico = hico_default; loco = loco_default;
-else
-    hico = FreqRange(2); loco = FreqRange(1);
-end
 varnames = ["PhaseOfInterest", "artDur", "ARwin", "ARlen", "predWin", "packetLength"];
 for v = varnames
     if isempty(eval(v))
@@ -201,20 +214,6 @@ end
 %% A.3 Band-Pass Filtering setup 
 % Get FIR filter weights, filter the signal, and train another AR model on
 % filtered data. 
-
-% filtering bound rules 
-minfac         = 2;    % this many (lo)cutoff-freq cycles in filter
-min_filtorder  = 15;   % minimum filter length
-
-% filter order 
-if loco>0
-    filtord = minfac*fix(SamplingFreq/loco);
-elseif hico>0
-    filtord = minfac*fix(SamplingFreq/hico);
-end
-if filtord < min_filtorder
-    filtord = min_filtorder;
-end
 
 % build filter and filtered baseline 
 filtwts = fir1(filtord, [loco, hico]./(SamplingFreq/2));
