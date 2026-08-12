@@ -7,20 +7,29 @@
 nstbl = ns2timetable('/Users/torenarginteanu/Desktop/Data_EMU/PY26N010/Phase-Dependent CCEPs/PDCCEP001.ns2');
 X = [nstbl.RA1, nstbl.RAH2]; 
 
-% timing 
+%% timing 
 fs = nstbl.Properties.SampleRate;
 t = nstbl.Time; 
 t0 = t(1); 
-T = [minutes(8),    minutes(9);    ... pk 66-65-67 (RAH2-1-3) 3mA 0.5hz  
-     minutes(9),    minutes(10);   ... ibid thresh100
+T = [minutes(8),    minutes(10);    ... pk 66-65-67 (RAH2-1-3) 3mA 0.5hz  
+     ...minutes(9),    minutes(10);   ... ibid thresh100
      minutes(14),   minutes(16.5); ... pk 1(RA1)-65-66 4mA 0.5hz 40+trl thresh100
      minutes(16.5), minutes(19)];    % tr 66-65-67 4mA 0.5hz 40+trl thresh100
 t1 = datetime(2026,8,5,19,0,0); t1.TimeZone = t0.TimeZone; T = T+t1;
 tRel = seconds(t-t0);
 g = nstbl.AINP1; g = [false; diff(g) > 1000];
+gidx = find(g);
 
-% art remove 
-XArtRem = artremove(tRel, X, g, 400);
+% baseline 
+iBL = (t < T(2,1)) & (t > T(1,2));
+XBL = X(iBL,:)-mean(X(iBL));
+ARord = 50;
+mdl1 = ar(iddata(XBL(:,1),[],1/fs),ARord,'yw');
+mdl2 = ar(iddata(XBL(:,2),[],1/fs),ARord,'yw');
+
+% remove artifact 
+XArtRem = [artremoveAR(mdl1, ARord, X(:,1), gidx, -10, 400), ...
+           artremoveAR(mdl2, ARord, X(:,2), gidx, -10, 400)];
 
 % filter, phase 
 BPF = buildFIRBPF(fs,4,9);
@@ -36,11 +45,11 @@ end
 linkaxes(ax, 'x');
 
 % analysis 
-figure; getplotPhaseEP(X(:,2),Xph(:,2),g,t,[T(1,1),T(2,2)],[-250 749],fs);
+figure; getplotPhaseEP(X(:,2),Xph(:,2),g,t,[T(1,1),T(1,2)],[-250 749],fs);
 sgtitle('RAH2 peak 3mA stim RAH1-RAH3'); 
-figure; getplotPhaseEP(X(:,2),Xph(:,2),g,t,[T(4,1),T(4,2)],[-250 749],fs);
+figure; getplotPhaseEP(X(:,2),Xph(:,2),g,t,[T(3,1),T(3,2)],[-250 749],fs);
 sgtitle('RAH2 trough 4mA stim RAH1-RAH3'); 
-figure; getplotPhaseEP(X(:,1),Xph(:,1),g,t,[T(3,1),T(3,2)],[-250 749],fs);
+figure; getplotPhaseEP(X(:,1),Xph(:,1),g,t,[T(2,1),T(2,2)],[-250 749],fs);
 sgtitle('RA1 peak 4mA stim RAH1-RAH2'); 
 
 %% phase-target stim 
@@ -111,6 +120,23 @@ phmean = phmean*180/pi; phconf = phconf*180/pi;
 title('Decode'); subtitle([num2str(phmean),'±',num2str(phconf),'°']);
 
 %% helper(s)
+
+function x = artremoveAR(mdl, mdlord, x, gidx, artstart, artend)
+for gi = gidx'
+    artidx = [artstart, artend] + gi;
+    artidx(1) = max(1, artidx(1));
+    artidx(2) = min(length(x), artidx(2));
+    artidx = artidx(1):artidx(2);
+    if numel(artidx)
+        pastidx = artidx(1)-mdlord-1;
+        if pastidx > 0
+            pastidx = pastidx + (1:mdlord) - 1;
+            xpast = x(pastidx); xpast = xpast-mean(xpast);
+            x(artidx) = myFastForecastAR(mdl, xpast, length(artidx));
+        end
+    end
+end
+end
 
 function XArtRem = artremove(tRel, X, g, artdur)
 G = movmean(g,artdur)>eps;
