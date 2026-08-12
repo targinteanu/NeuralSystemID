@@ -7,7 +7,7 @@
 nstbl = ns2timetable('/Users/torenarginteanu/Desktop/Data_EMU/PY26N010/Phase-Dependent CCEPs/PDCCEP001.ns2');
 X = [nstbl.RA1, nstbl.RAH2]; 
 
-%% timing 
+%timing 
 fs = nstbl.Properties.SampleRate;
 t = nstbl.Time; 
 t0 = t(1); 
@@ -34,8 +34,8 @@ mdl1 = zeros(1,ARord+1); mdl1(1:dsrat:end) = m1;
 mdl2 = zeros(1,ARord+1); mdl2(1:dsrat:end) = m2;
 
 % remove artifact 
-XArtRem = [artremoveAR(mdl1, ARord, X(:,1), gidx, -10, 400), ...
-           artremoveAR(mdl2, ARord, X(:,2), gidx, -10, 400)];
+XArtRem = [artremoveAR(mdl1, ARord, X(:,1), gidx, -2, 400, BPF), ...
+           artremoveAR(mdl2, ARord, X(:,2), gidx, -2, 400, BPF)];
 
 % filter, phase 
 Xf = filtfilt(BPF,1,XArtRem);
@@ -46,6 +46,7 @@ for p = 1:width(X)
     plot(t, X(:,p)-mean(XArtRem(:,p))); hold on; grid on; 
     plot(t, XArtRem(:,p)-mean(XArtRem(:,p)));
     plot(t, Xf(:,p))
+    plot(t(gidx), Xf(gidx,p), 'o');
 end
 linkaxes(ax, 'x');
 
@@ -69,6 +70,7 @@ t = nstbl.Time; X = nstbl.RAH2;
 t0 = t(1); 
 tRel = seconds(t-t0);
 g = nstbl.AINP1; g = [false; diff(g) > 1000];
+gidx = find(g);
 
 tstart = evtbl(strcmp(evtbl.EventName, 'decoding_start'),:);
 tend = evtbl(strcmp(evtbl.EventName, 'decoding_end'),:);
@@ -80,10 +82,9 @@ tend = evtbl(strcmp(evtbl.EventName, 'end_encoding'),:);
 Tencode = [tstart.Time, tend.Time]; 
 
 % art remove 
-XArtRem = artremove(tRel, X, g, 15);
+XArtRem = artremoveAR(mdl2, ARord, X, gidx, -2, 50, BPF);
 
 % filter, phase 
-BPF = buildFIRBPF(fs,4,9);
 Xf = filtfilt(BPF,1,XArtRem);
 Xph = angle(hilbert(Xf));
 figure('Theme','light'); 
@@ -95,11 +96,11 @@ yrng = 0.75*yrng;
 yrng = [yrng; yrng]; yrng = yrng(:);
 for ti = 1:height(Tencode)
     patch([Tencode(ti,:), fliplr(Tencode(ti,:))], yrng, ...
-        'r', 'FaceAlpha',0.3, 'EdgeColor','none');
+        'r', 'FaceAlpha',0.4, 'EdgeColor','none');
 end
 for ti = 1:height(Tdecode)
     patch([Tdecode(ti,:), fliplr(Tdecode(ti,:))], yrng, ...
-        'g', 'FaceAlpha',0.3, 'EdgeColor','none');
+        'g', 'FaceAlpha',0.4, 'EdgeColor','none');
 end
 
 % analysis 
@@ -126,18 +127,22 @@ title('Decode'); subtitle([num2str(phmean),'±',num2str(phconf),'°']);
 
 %% helper(s)
 
-function x = artremoveAR(mdl, mdlord, x, gidx, artstart, artend)
+function x = artremoveAR(mdl, mdlord, x, gidx, artstart, artend, filtwt)
+Lpast = max(mdlord, length(filtwt)*3);
 for gi = gidx'
     artidx = [artstart, artend] + gi;
     artidx(1) = max(1, artidx(1));
     artidx(2) = min(length(x), artidx(2));
     artidx = artidx(1):artidx(2);
     if numel(artidx)
-        pastidx = artidx(1)-mdlord-1;
+        pastidx = artidx(1)-Lpast-1;
         if pastidx > 0
-            pastidx = pastidx + (1:mdlord) - 1;
-            xpast = x(pastidx); xpast = xpast-mean(xpast);
-            x(artidx) = myFastForecastAR(mdl, xpast, length(artidx));
+            pastidx = pastidx + (1:Lpast) - 1;
+            xpast = x(pastidx); %DCOS = mean(xpast); xpast = xpast-DCOS;
+            DCOS = xpast(end);
+            xpast = filtfilt(filtwt,1,xpast);
+            xnew = myFastForecastAR(mdl, xpast, length(artidx));
+            x(artidx) = xnew+DCOS-xnew(1);
         end
     end
 end
