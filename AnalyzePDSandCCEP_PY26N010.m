@@ -21,8 +21,10 @@ g = nstbl.AINP1; g = [false; diff(g) > 1000];
 gidx = find(g);
 
 % baseline 
+BPF = buildFIRBPF(fs,4,9);
 iBL = (t < T(2,1)) & (t > T(1,2));
 XBL = X(iBL,:)-mean(X(iBL));
+XBL = filtfilt(BPF,1,XBL);
 ARord = 50;
 mdl1 = ar(iddata(XBL(:,1),[],1/fs),ARord,'yw');
 mdl2 = ar(iddata(XBL(:,2),[],1/fs),ARord,'yw');
@@ -32,7 +34,6 @@ XArtRem = [artremoveAR(mdl1, ARord, X(:,1), gidx, -10, 400), ...
            artremoveAR(mdl2, ARord, X(:,2), gidx, -10, 400)];
 
 % filter, phase 
-BPF = buildFIRBPF(fs,4,9);
 Xf = filtfilt(BPF,1,XArtRem);
 Xph = angle(hilbert(Xf));
 figure; 
