@@ -25,9 +25,13 @@ BPF = buildFIRBPF(fs,4,9);
 iBL = (t < T(2,1)) & (t > T(1,2));
 XBL = X(iBL,:)-mean(X(iBL));
 XBL = filtfilt(BPF,1,XBL);
-ARord = 50;
-mdl1 = ar(iddata(XBL(:,1),[],1/fs),ARord,'yw');
-mdl2 = ar(iddata(XBL(:,2),[],1/fs),ARord,'yw');
+ARord = 100; dsrat = 10;
+XBLd = XBL(1:dsrat:end,:);
+mdl1 = ar(iddata(XBLd(:,1),[],1/fs),ARord/dsrat,'yw');
+mdl2 = ar(iddata(XBLd(:,2),[],1/fs),ARord/dsrat,'yw');
+m1 = mdl1.A; m2 = mdl2.A;
+mdl1 = zeros(1,ARord+1); mdl1(1:dsrat:end) = m1;
+mdl2 = zeros(1,ARord+1); mdl2(1:dsrat:end) = m2;
 
 % remove artifact 
 XArtRem = [artremoveAR(mdl1, ARord, X(:,1), gidx, -10, 400), ...
