@@ -23,7 +23,8 @@ gidx = find(g);
 % baseline 
 BPF = buildFIRBPF(fs,4,9);
 iBL = (t < T(2,1)) & (t > T(1,2));
-XBL = X(iBL,:)-mean(X(iBL));
+XBLunf = X(iBL,:); % unfiltered/unprocessed 
+XBL = XBLunf-mean(XBLunf);
 XBL = filtfilt(BPF,1,XBL);
 ARord = 100; dsrat = 10;
 XBLd = XBL(1:dsrat:end,:);
@@ -57,6 +58,13 @@ figure; getplotPhaseEP(X(:,2),Xph(:,2),g,t,[T(3,1),T(3,2)],[-250 749],fs);
 sgtitle('RAH2 trough 4mA stim RAH1-RAH3'); 
 figure; getplotPhaseEP(X(:,1),Xph(:,1),g,t,[T(2,1),T(2,2)],[-250 749],fs);
 sgtitle('RA1 peak 4mA stim RAH1-RAH2'); 
+
+%% compare with best case scenario 
+% phase detection run offline causally with no actual stim
+offline_PhaseDetect(XBLunf(:,1)', 1000, [], tRel(iBL), 'RA1', 0, [4,9], [], ...
+    ARord,[], 50,1,0,false,false,false,true,false,true);
+offline_PhaseDetect(XBLunf(:,2)', 1000, [], tRel(iBL), 'RAH2', 0, [4,9], [], ...
+    ARord,[], 50,1,0,false,false,false,true,false,true);
 
 %% phase-target stim 
 % rec channel = RAH2 
