@@ -179,7 +179,8 @@ dataOneChannelWithArtifact = dataOneChannel;
 % Get indexes of stimulus: 
 % find when artifacts are believed to occur 
 isOut = isoutlier(dataOneChannel, 'mean');
-isArt = isOut | StimTrainRec; 
+%isArt = isOut | StimTrainRec; 
+isArt = StimTrainRec;
 if artDur > 0
     isArt = movsum(isArt, artDur) > 0;
 end
