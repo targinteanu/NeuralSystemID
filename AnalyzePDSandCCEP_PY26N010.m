@@ -62,9 +62,9 @@ sgtitle('RA1 peak 4mA stim RAH1-RAH2');
 %% compare with best case scenario 
 % phase detection run offline causally with no actual stim
 offline_PhaseDetect(XBLunf(:,1)', 1000, [], tRel(iBL), 'RA1', 0, [4,9], [], ...
-    ARord,[], 50,1,0,false,false,false,true,false,true);
+    ARord,[], 50,30,0,false,false,true,true,false,true);
 offline_PhaseDetect(XBLunf(:,2)', 1000, [], tRel(iBL), 'RAH2', 0, [4,9], [], ...
-    ARord,[], 50,1,0,false,false,false,true,false,true);
+    ARord,[], 50,30,0,false,false,true,true,false,true);
 
 %% phase-target stim 
 % rec channel = RAH2 
