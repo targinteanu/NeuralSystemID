@@ -1,4 +1,4 @@
-function [Y,P,w] = iterKalmanLMS(Y,artInd,a,P,q,w,stepsize,nLMS)
+function [Y,P,w,Ylms] = iterKalmanLMS(Y,artInd,a,P,q,w,stepsize,nLMS)
 % 
 % Use a combination Least Mean Squares (LMS) adaptive filter + Kalman
 % filter technique to remove artifact from a signal. The LMS removes runs
@@ -30,6 +30,7 @@ N = length(w); % LMS filter length (# taps)
 % LMS setup 
 noiseRef = zeros(1,L); % noise ref signal = timing of stim
 noiseRef(artInd(1)) = 1;
+Ylms = Y;
 
 for t = (max(N,M)+1):L
 
@@ -54,6 +55,7 @@ for t = (max(N,M)+1):L
     w = w + stepsize*dw;
     gprev = g; eprev = e;
     y = e'; % subtract LMS estimate of noise
+    Ylms(t,:) = y';
     R = diag(noiseLMS.^2); % Kalman observer noise
 
     % Kalman predict 
