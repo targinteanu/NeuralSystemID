@@ -1,19 +1,26 @@
-%% load data 
+%% load raw data 
 load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzRT.mat')
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time);
-x = Tbl.CLFP_AP_T___Central;
+%x = Tbl.CLFP_AP_T___Central;
+xch = 5; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch};
 Fs = 1375; % Hz
 load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat")
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/spikesort_227669d9c8fe69f115266d7020ddc4244c5f3779(2).mat')
 spkTbl = depth_p0496_1;
+tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+x = x(tsel); t = t(tsel);
+
+% spectrogram; look for beta bursts 
+figure; spectrogram(x,5*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
+title(xname);
+
+%% load spike-sorted data 
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/spikesort_227669d9c8fe69f115266d7020ddc4244c5f3779(2).mat')
 tSpk = spkIdx/fs + seconds(spkTbl.Time(1));
 ku = unique(kidx); tSpkK = cell(size(ku));
 for ki = 1:length(ku)
     tSpkK{ki} = spkIdx(kidx == ku(ki)) / fs + seconds(spkTbl.Time(1));
 end
-tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
-x = x(tsel); t = t(tsel);
 
 %% filter LFP 
 hpf = fir1(1024,0.25/(Fs/2),"high");
