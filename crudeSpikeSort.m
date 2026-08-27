@@ -1,11 +1,15 @@
 %% load data 
-load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat")
-x = depth_p0496_1.CSPK_AP_T___Central;
-t = seconds(depth_p0496_1.Time);
+load("/Users/torenarginteanu/Desktop/Data_PD/PD26N002/Neuro Omega/SPK_RT_SelectedTimes.mat")
+x = TblD.CSPK_01;
+t = seconds(TblD.Time);
 if any(diff(t) < 0)
     error('time must be ascending and uniform.')
 end
 fs = 1/median(diff(t)); % hz
+
+tsel = (t<(8440));
+x = x(tsel);
+t = t(tsel);
 
 %% threshold definition 
 
@@ -13,9 +17,9 @@ fs = 1/median(diff(t)); % hz
 BPF = fir1(1024, [300 3000]/(fs/2));
 xf = filtfilt(BPF,1,x);
 
-% identify threshold(s) 
+%% identify threshold(s) 
 % alternatively do this based on mean/SD
-[OL, lTH, uTH, mid] = isoutlier(xf); 
+[OL, lTH, uTH, mid] = isoutlier(xf, 'median', 'ThresholdFactor',10); 
 OL = find(OL);
 lOL = OL( xf(OL) < mid );
 uOL = OL( xf(OL) > mid );
@@ -50,21 +54,18 @@ else
     sgn = true; % Flip signal sign
 end
 
-if sgn
-    TH = -TH;
-    x = -x;
-    xf = -xf;
-end
-
 %% spike detection 
 % use findpeaks 
 % alternatively, look for positive thresh crossings 
-[spkVal, spkIdx] = findpeaks(xf); 
+[spkVal, spkIdx, spkWid, spkPrm] = findpeaks(xf); 
 % consider adding minPeakProminence/Distance related to WFlen
 spkSel = spkVal > TH;
 spkIdx = spkIdx(spkSel); % Select indices of detected spikes
 spkVal = spkVal(spkSel); % Select values of detected spikes
+spkWid = spkWid(spkSel);
+spkPrm = spkPrm(spkSel);
 
+%%
 if sgn
     TH = -TH;
     x = -x;
@@ -73,7 +74,7 @@ if sgn
 end
 
 %% build waveform list 
-WFdur = 0.002; % full duration, seconds
+WFdur = 0.01; % full duration, seconds
 WFlen = ceil(WFdur/2 * fs); % half-duration, samples 
 WF = nan(length(spkIdx), 2*WFlen+1);
 for n = 1:length(spkIdx)
@@ -196,12 +197,16 @@ grid on;
 title('Cluster scatterplot in PC space'); 
 xlabel('PC1'); ylabel('PC2'); zlabel('PC3');
 
-%% waveform 
+% waveform 
 figure; 
 errorbar(tWF, mean(WF), std(WF), 'Color',[.5 .5 .5]); hold on;
 for ki = unique(kidx)'
     WFi = WF(kidx == ki, :);
-    errorbar(tWF, mean(WFi), std(WFi)); hold on;
+    if height(WFi) > 1
+        errorbar(tWF, mean(WFi), std(WFi)); hold on;
+    else
+        plot(tWF, WFi); hold on;
+    end
 end
 grid on;
 title('Cluster Waveforms');
@@ -236,12 +241,18 @@ for ki = unique(kidx)'
     spki = spkIdx(kidx == ki);
     for kj = unique(kidx)'
         spkj = spkIdx(kidx == kj);
+        if (numel(spki)>1) & (numel(spkj)>1)
+        try
         subplot(k,k,p);
         [bincent, binvals] = corgm(spki, spkj, ceil(0.2*fs));
         bincent = bincent/fs; binvals = binvals*fs;
         bar(bincent, binvals);
         xlabel('delay (s)'); ylabel('avg # per s');
         title([num2str(kj),' given ',num2str(ki)]);
+        catch ME
+            warning(ME.message)
+        end
+        end
         p = p+1;
     end
 end
