@@ -15,13 +15,9 @@ t = t(tsel);
 
 % filter for detection only, not waveform identification
 BPFn = fir1(1023, [300 3000]/(fs/2)); BPFd = 1;
-notchq = 1000;
-for fnotch = 300:60:3000
-    wnotch = fnotch/(fs/2); bw = 1/(fs/2); %bw = wnotch/notchq;
-    %[notchNum,notchDen] = iirnotch(wnotch, bw);
-    notchNum = fir1(4096, wnotch+[-1,1]*bw, 'stop');
-    BPFn = conv(BPFn, notchNum); %BPFd = conv(BPFd, notchDen);
-end
+notchf = 60; notchq = 70;
+[notchNum,notchDen] = iircomb(round(fs/notchf), (notchf/(fs/2))/notchq, 'notch');
+BPFn = conv(BPFn, notchNum); BPFd = conv(BPFd, notchDen);
 xf = filtfilt(BPFn,BPFd,x);
 
 %% identify threshold(s) 
