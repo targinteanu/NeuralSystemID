@@ -16,7 +16,7 @@ figure; spectrogram(x,5*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
 title(xname);
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_central.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); tSpkK = cell(size(ku));
@@ -62,7 +62,7 @@ end
 [~,wi] = max(R);
 w = wvals(wi);
 %}
-w = 1*Fs;
+w = .5*Fs;
 zw = smoothdata(z,1,'gaussian',w);
 zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 
@@ -107,6 +107,7 @@ end
 end
 
 %% modulated pulse train analysis 
+%{
 
 iwin = (1:(5*Fs)) + 10*Fs;
 xwin = xn(iwin); zwin = z(iwin); twin = t(iwin);
@@ -162,6 +163,7 @@ plot(frange, 20*log10(px)); hold on; grid on;
 xlabel('Frequency (Hz)'); ylabel('Power (dB)');
 plot(frange, 20*log10(abs(X).^2), '.');
 
+%}
 %% helpers
 
 function [A, k1, c2] = pinkcorrect(A,f)
