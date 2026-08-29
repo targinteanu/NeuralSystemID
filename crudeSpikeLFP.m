@@ -5,6 +5,7 @@ t = seconds(Tbl.Time);
 %x = Tbl.CLFP_AP_T___Central;
 xch = 5; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch};
 Fs = 1375; % Hz
+dt = 1/Fs; dthalf = dt/2; % s
 load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat")
 spkTbl = depth_p0496_1;
 tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
@@ -15,11 +16,12 @@ figure; spectrogram(x,5*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
 title(xname);
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/spikesort_227669d9c8fe69f115266d7020ddc4244c5f3779(2).mat')
-tSpk = spkIdx/fs + seconds(spkTbl.Time(1));
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata.mat')
+tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
+kidx = cluster_class(:,1);
 ku = unique(kidx); tSpkK = cell(size(ku));
 for ki = 1:length(ku)
-    tSpkK{ki} = spkIdx(kidx == ku(ki)) / fs + seconds(spkTbl.Time(1));
+    tSpkK{ki} = tSpk(kidx == ku(ki));
 end
 
 %% filter LFP 
@@ -27,18 +29,25 @@ hpf = fir1(1024,0.25/(Fs/2),"high");
 xh = filtfilt(hpf,1,x); xl = x-xh;
 
 %% build spike train 
+%{
 z = zeros(size(t)); 
 for zi = tSpk'
     [~,ti] = min(abs(t-zi));
     z(ti) = 1;
 end
+%}
+z = arrayfun(@(ti) sum((tSpk>(ti-dthalf))&(tSpk<(ti+dthalf))), t)/(2*dthalf);
 zk = cell(size(ku));
 for ki = 1:length(ku)
+    tSpkKi = tSpkK{ki};
+    zk{ki} = arrayfun(@(ti) sum((tSpkKi>(ti-dthalf))&(tSpkKi<(ti+dthalf))), t)/(2*dthalf);
+    %{
     zk{ki} = zeros(size(t)); % Initialize spike train for each unique index
     for zi = tSpkK{ki}'
         [~, ti] = min(abs(t - zi));
         zk{ki}(ti) = 1; % Mark spikes in the corresponding train
     end
+    %}
 end
 
 %% gaussian smooth pulse train 
@@ -68,13 +77,15 @@ zwn = (zw-mean(zw))/std(zw);
 r = corr(xn, zwn); 
 rr = cellfun(@(zi) corr(xn,zi), zkwn);
 lgd = string(ku)+": \rho="+string(rr);
-lgd = ["raw LFP"; "all: \rho="+string(r); lgd];
+lgd = ["raw LFP"; "all spk: \rho="+string(r); lgd];
 
 % time domain 
 figure; 
 plot(t, xn); hold on; grid on; plot(t, zwn); 
+if length(ku) > 1
 for ki = 1:length(zkwn)
     plot(t, zkwn{ki}); % Plot each spike train for comparison
+end
 end
 title('Spike-LFP time domain comparison');
 xlabel('time (s)'); ylabel('normalized');
@@ -84,8 +95,10 @@ legend(lgd);
 figure; 
 pwelch(xn,[],[],[],Fs,'power'); hold on;
 pwelch(zwn,[],[],[],Fs,'power');
+if length(ku) > 1
 for ki = 1:length(zkwn)
     pwelch(zkwn{ki},[],[],[],Fs,'power');
+end
 end
 
 %% modulated pulse train analysis 
