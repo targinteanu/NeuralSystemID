@@ -92,12 +92,17 @@ xlabel('time (s)'); ylabel('normalized');
 legend(lgd);
 
 % freq domain 
-figure; 
-pwelch(xn,[],[],[],Fs,'power'); hold on;
-pwelch(zwn,[],[],[],Fs,'power');
+[px,f] = pwelch(xn,[],[],[],Fs,'power'); 
+[pz,f] = pwelch(zwn,[],[],[],Fs,'power');
+px = pinkcorrect(px,f); pz = pinkcorrect(pz,f);
+px = 20*log10(px); pz = 20*log10(pz);
+figure; plot(f,px); hold on; grid on; plot(f,pz);
+xlabel('freq (Hz)'); ylabel('Power (dB)');
 if length(ku) > 1
 for ki = 1:length(zkwn)
-    pwelch(zkwn{ki},[],[],[],Fs,'power');
+    [pzi,f] = pwelch(zkwn{ki},[],[],[],Fs,'power');
+    pzi = pinkcorrect(pzi,f); pzi = 20*log10(pzi);
+    plot(f,pzi);
 end
 end
 
@@ -158,6 +163,24 @@ xlabel('Frequency (Hz)'); ylabel('Power (dB)');
 plot(frange, 20*log10(abs(X).^2), '.');
 
 %% helpers
+
+function [A, k1, c2] = pinkcorrect(A,f)
+% correct for noise that obeys Anoise = k1*f^c2
+% i.e. ln(Anoise) = c2*ln(f) + c2*ln(k1)
+if f(1) < 2*eps
+    f0 = 0; f = f(2:end);
+    A0 = A(1,:); A = A(2:end,:);
+else
+    f0 = zeros(0,width(f)); A0 = zeros(0,width(A));
+end
+lnA = log(A); lnf = log(f); F = [ones(size(lnf)), lnf];
+c = F\lnA; 
+% c1 = c2*ln(k1), i.e. k1 = exp(c1/c2)
+c2 = c(2); k1 = exp(c(1)/c(2));
+lnAnoise = F*c;
+lnA = lnA - lnAnoise; A = exp(lnA);
+A = [A0; A];
+end
 
 function [fk,qk] = getFQ(k, r, fc, fsine, ampsine, phsine)
 % for k > 0 only! 
