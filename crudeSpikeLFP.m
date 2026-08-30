@@ -8,7 +8,8 @@ Fs = 1375; % Hz
 dt = 1/Fs; dthalf = dt/2; % s
 load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat")
 spkTbl = depth_p0496_1;
-tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+tsel = (t >= 5720) & (t <= 5780);
 x = x(tsel); t = t(tsel);
 
 % spectrogram; look for beta bursts 
@@ -48,6 +49,9 @@ for ki = 1:length(ku)
         zk{ki}(ti) = 1; % Mark spikes in the corresponding train
     end
     %}
+    disp("Cluster "+num2str(ki))
+    disp("Total rate: "+num2str(length(tSpkKi)/(t(end)-t(1))))
+    disp("Mean rate: "+num2str(mean(zk{ki})))
 end
 
 %% gaussian smooth pulse train 
