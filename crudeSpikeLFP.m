@@ -1,25 +1,25 @@
 %% load raw data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N002/Neuro Omega/SavedTable1375HzRT.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzLT.mat')
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time);
 %x = Tbl.CLFP_AP_T___Central;
-xch = 2; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
+xch = 1; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
 Fs = 1375; spkFs = 44000; % Hz
 dt = 1/Fs; dthalf = dt/2; % s
-load("/Users/torenarginteanu/Desktop/Data_PD/PD26N002/Neuro Omega/SPK_RT_SelectedTimes.mat")
-spkTbl = TblD; spkTbl.Properties.VariableNames{xch}
+load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_LT_SelectedTimes(2).mat")
+spkTbl = depth_p1886; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
-%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
 %tsel = (t >= 5720) & (t <= 5780);
-tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
+%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
 x = x(tsel); t = t(tsel);
 
 % spectrogram; look for beta bursts 
-figure; spectrogram(x,5*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
+figure; spectrogram(x,1*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
 title(xname);
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N002/Neuro Omega/times_waveclusdata2.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_LTp1886_ant_reref.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
@@ -94,7 +94,7 @@ end
 [~,wi] = max(R);
 w = wvals(wi);
 %}
-w = 5*Fs;
+w = 1*Fs;
 zw = smoothdata(z,1,'gaussian',w);
 zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 
@@ -139,12 +139,6 @@ for ki = 1:length(zkwn)
     plot(f,pzi);
 end
 end
-
-%%
-[px,f] = pwelch(xn,[],[],[],Fs,'power'); 
-[px,k1,c2] = pinkcorrect(px,f);
-k1
-c2
 
 %% modulated pulse train analysis 
 %{
