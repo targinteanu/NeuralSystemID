@@ -1,15 +1,17 @@
 %% load raw data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzRT.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N002/Neuro Omega/SavedTable1375HzRT.mat')
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time);
 %x = Tbl.CLFP_AP_T___Central;
-xch = 5; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch};
-Fs = 1375; % Hz
+xch = 2; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
+Fs = 1375; spkFs = 44000; % Hz
 dt = 1/Fs; dthalf = dt/2; % s
-load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat")
-spkTbl = depth_p0496_1;
+load("/Users/torenarginteanu/Desktop/Data_PD/PD26N002/Neuro Omega/SPK_RT_SelectedTimes.mat")
+spkTbl = TblD; spkTbl.Properties.VariableNames{xch}
+xx = spkTbl{:,xch};
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
-tsel = (t >= 5720) & (t <= 5780);
+%tsel = (t >= 5720) & (t <= 5780);
+tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
 x = x(tsel); t = t(tsel);
 
 % spectrogram; look for beta bursts 
@@ -17,17 +19,43 @@ figure; spectrogram(x,5*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
 title(xname);
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_central.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N002/Neuro Omega/times_waveclusdata2.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
-ku = unique(kidx); tSpkK = cell(size(ku));
+ku = unique(kidx); 
+ku = ku(ku > 0); % exclude noise
+tSpkK = cell(size(ku));
 for ki = 1:length(ku)
     tSpkK{ki} = tSpk(kidx == ku(ki));
 end
+tSpk = tSpk(kidx > 0); % exclude noise
+
+% show spike detection 
+figure; plot(spkTbl.Time, xx); hold on; grid on;
+for ki = 1:length(ku)
+    iSpkKi = round( cluster_class(kidx==ki,2) * spkFs/1000 );
+    plot(spkTbl.Time(iSpkKi), xx(iSpkKi), 'o');
+end
+title('Spike signal detection');
+
+%% raster plot 
+figure; ax(1) = subplot(2,1,1);
+if length(ku) > 1
+    plot(tSpk,zeros(size(tSpk)),'|', 'LineWidth',2, 'MarkerSize',10); hold on;
+    for ki = 1:length(ku)
+        tSpkKi = tSpkK{ki};
+        plot(tSpkK{ki}, ki*ones(size(tSpkK{ki})), '|', 'LineWidth',2, 'MarkerSize',10);
+    end
+    ylabel('Spike raster');
+end
 
 %% filter LFP 
+ax(2) = subplot(2,1,2);
 hpf = fir1(1024,0.25/(Fs/2),"high");
 xh = filtfilt(hpf,1,x); xl = x-xh;
+plot(t, xh); grid on; 
+xlabel('time (s)'); ylabel('LFP');
+linkaxes(ax,'x');
 
 %% build spike train 
 %{
@@ -66,7 +94,7 @@ end
 [~,wi] = max(R);
 w = wvals(wi);
 %}
-w = .5*Fs;
+w = 5*Fs;
 zw = smoothdata(z,1,'gaussian',w);
 zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 
@@ -74,25 +102,27 @@ zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 
 % normalize 
 xn = (x-mean(x))/std(x);
-zkwn = cellfun(@(zi) (zi-mean(zi))/std(zi), zkw, 'UniformOutput',false);
-zwn = (zw-mean(zw))/std(zw);
+%zkwn = cellfun(@(zi) (zi-mean(zi))/std(zi), zkw, 'UniformOutput',false);
+%zwn = (zw-mean(zw))/std(zw);
+zkwn = zkw; zwn = zw;
 
 % evaluate 
 r = corr(xn, zwn); 
 rr = cellfun(@(zi) corr(xn,zi), zkwn);
 lgd = string(ku)+": \rho="+string(rr);
-lgd = ["raw LFP"; "all spk: \rho="+string(r); lgd];
+lgd = ["raw LFP"; lgd; "all spk: \rho="+string(r)];
 
 % time domain 
 figure; 
-plot(t, xn); hold on; grid on; plot(t, zwn); 
+plot(t, xn); hold on; grid on;  
 if length(ku) > 1
 for ki = 1:length(zkwn)
     plot(t, zkwn{ki}); % Plot each spike train for comparison
 end
 end
+plot(t, zwn, 'w');
 title('Spike-LFP time domain comparison');
-xlabel('time (s)'); ylabel('normalized');
+xlabel('time (s)'); ylabel('normalized LFP/count');
 legend(lgd);
 
 % freq domain 
@@ -109,6 +139,12 @@ for ki = 1:length(zkwn)
     plot(f,pzi);
 end
 end
+
+%%
+[px,f] = pwelch(xn,[],[],[],Fs,'power'); 
+[px,k1,c2] = pinkcorrect(px,f);
+k1
+c2
 
 %% modulated pulse train analysis 
 %{
