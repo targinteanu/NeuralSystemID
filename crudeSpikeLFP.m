@@ -1,25 +1,30 @@
 %% load raw data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzLT.mat')
+%load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzLT.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Neuro Omega/mat/Saved To Table/Table Data 2026-05-08 01.59.31 74fb23bd19ce2f/RT_SPK-LFP_SelectTimes.mat')
+Tbl = Tbl1A; 
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time);
 %x = Tbl.CLFP_AP_T___Central;
-xch = 1; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
+%xch = 1; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
+x = Tbl.CLFP_01 - Tbl.CLFP_02; xname = 'LFP diff';
 Fs = 1375; spkFs = 44000; % Hz
 dt = 1/Fs; dthalf = dt/2; % s
-load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_LT_SelectedTimes(2).mat")
-spkTbl = depth_p1886; spkTbl.Properties.VariableNames{xch}
-xx = spkTbl{:,xch};
-tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+%load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_LT_SelectedTimes(2).mat")
+spkTbl = TblSpk1A; %spkTbl.Properties.VariableNames{xch}
+%xx = spkTbl{:,xch};
+xx = spkTbl.CSPK_01 - spkTbl.CSPK_02; 
+%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
 %tsel = (t >= 5720) & (t <= 5780);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
-x = x(tsel); t = t(tsel);
+%x = x(tsel); t = t(tsel);
 
 % spectrogram; look for beta bursts 
 figure; spectrogram(x,1*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
 title(xname);
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_LTp1886_ant_reref.mat')
+%load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_LTp1886_ant_reref.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Neuro Omega/mat/Saved To Table/Table Data 2026-05-08 01.59.31 74fb23bd19ce2f/times_waveclusdata_1AchDiff.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
@@ -94,7 +99,7 @@ end
 [~,wi] = max(R);
 w = wvals(wi);
 %}
-w = 1*Fs;
+w = .5*Fs;
 zw = smoothdata(z,1,'gaussian',w);
 zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 
@@ -125,7 +130,7 @@ title('Spike-LFP time domain comparison');
 xlabel('time (s)'); ylabel('normalized LFP/count');
 legend(lgd);
 
-% freq domain 
+%% freq domain 
 [px,f] = pwelch(xn,[],[],[],Fs,'power'); 
 [pz,f] = pwelch(zwn,[],[],[],Fs,'power');
 px = pinkcorrect(px,f); pz = pinkcorrect(pz,f);
