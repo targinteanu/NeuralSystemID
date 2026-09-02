@@ -1,22 +1,21 @@
 %% load raw data 
 %load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzLT.mat')
-load('/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Neuro Omega/mat/Saved To Table/Table Data 2026-05-08 01.59.31 74fb23bd19ce2f/RT_SPK-LFP_SelectTimes.mat')
-Tbl = Tbl1A; 
+load('/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Neuro Omega/mat/RT/Saved To Table/Table Data 2026-09-01 00.48.32 fb5ce541626f9e/SavedTable1375HzRT.mat')
+%Tbl = Tbl1; 
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time);
-%x = Tbl.CLFP_AP_T___Central;
 %xch = 1; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
-x = Tbl.CLFP_01 - Tbl.CLFP_02; xname = 'LFP diff';
+x = Tbl.CLFP_NP1___Posterior; xname = 'CLFP_NP1___Posterior';
 Fs = 1375; spkFs = 44000; % Hz
 dt = 1/Fs; dthalf = dt/2; % s
-%load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_LT_SelectedTimes(2).mat")
-spkTbl = TblSpk1A; %spkTbl.Properties.VariableNames{xch}
+load('/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Neuro Omega/mat/RT/Saved To Table/Table Data 2026-09-01 00.48.32 fb5ce541626f9e/RT_Spk_sel.mat')
+spkTbl = Tbl1; %spkTbl.Properties.VariableNames{xch}
 %xx = spkTbl{:,xch};
-xx = spkTbl.CSPK_01 - spkTbl.CSPK_02; 
-%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+xx = spkTbl.CSPK_NP1___Posterior; 
+tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
 %tsel = (t >= 5720) & (t <= 5780);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
-%x = x(tsel); t = t(tsel);
+x = x(tsel); t = t(tsel);
 
 % spectrogram; look for beta bursts 
 figure; spectrogram(x,1*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
@@ -24,7 +23,7 @@ title(xname);
 
 %% load spike-sorted data 
 %load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_LTp1886_ant_reref.mat')
-load('/Users/torenarginteanu/Desktop/Data_PD/PD25N006/Neuro Omega/mat/Saved To Table/Table Data 2026-05-08 01.59.31 74fb23bd19ce2f/times_waveclusdata_1AchDiff.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Neuro Omega/mat/RT/Saved To Table/Table Data 2026-09-01 00.48.32 fb5ce541626f9e/times_waveclusdata_RT1NP1p.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
@@ -132,14 +131,14 @@ legend(lgd);
 
 %% freq domain 
 [px,f] = pwelch(xn,[],[],[],Fs,'power'); 
-[pz,f] = pwelch(zwn,[],[],[],Fs,'power');
+[pz,f] = pwelch(z,[],[],[],Fs,'power');
 px = pinkcorrect(px,f); pz = pinkcorrect(pz,f);
 px = 20*log10(px); pz = 20*log10(pz);
 figure; plot(f,px); hold on; grid on; plot(f,pz);
 xlabel('freq (Hz)'); ylabel('Power (dB)');
 if length(ku) > 1
-for ki = 1:length(zkwn)
-    [pzi,f] = pwelch(zkwn{ki},[],[],[],Fs,'power');
+for ki = 1:length(zk)
+    [pzi,f] = pwelch(zk{ki},[],[],[],Fs,'power');
     pzi = pinkcorrect(pzi,f); pzi = 20*log10(pzi);
     plot(f,pzi);
 end
