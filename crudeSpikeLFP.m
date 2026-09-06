@@ -1,17 +1,17 @@
 %% load raw data 
 %load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzLT.mat')
-load('/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Neuro Omega/mat/RT/Saved To Table/Table Data 2026-09-01 00.48.32 fb5ce541626f9e/SavedTable1375HzRT.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N009/Neuro Omega/mat/LT/Saved To Table/Table Data 2026-09-04 16.02.54 d0a6723833db66/SavedTable1375HzLT.mat')
 %Tbl = Tbl1; 
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time);
-%xch = 1; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
-x = Tbl.CLFP_NP1___Posterior; xname = 'CLFP_NP1___Posterior';
+xch = 2; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
+%x = Tbl.CLFP_NP1___Posterior; xname = 'CLFP_NP1___Posterior';
 Fs = 1375; spkFs = 44000; % Hz
 dt = 1/Fs; dthalf = dt/2; % s
-load('/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Neuro Omega/mat/RT/Saved To Table/Table Data 2026-09-01 00.48.32 fb5ce541626f9e/RT_Spk_sel.mat')
-spkTbl = Tbl1; %spkTbl.Properties.VariableNames{xch}
-%xx = spkTbl{:,xch};
-xx = spkTbl.CSPK_NP1___Posterior; 
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N009/Neuro Omega/mat/LT/Saved To Table/Table Data 2026-09-04 16.02.54 d0a6723833db66/SpkLt_p1560_1A.mat')
+spkTbl = Tbl1A; spkTbl.Properties.VariableNames{xch}
+xx = spkTbl{:,xch};
+%xx = spkTbl.CSPK_NP1___Posterior; 
 tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
 %tsel = (t >= 5720) & (t <= 5780);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
@@ -23,7 +23,7 @@ title(xname);
 
 %% load spike-sorted data 
 %load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_LTp1886_ant_reref.mat')
-load('/Users/torenarginteanu/Desktop/Data_PD/PD25N009/Neuro Omega/mat/RT/Saved To Table/Table Data 2026-09-01 00.48.32 fb5ce541626f9e/times_waveclusdata_RT1NP1p.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N009/Neuro Omega/mat/LT/Saved To Table/Table Data 2026-09-04 16.02.54 d0a6723833db66/times_waveclusdata_LT1A_2.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
@@ -98,7 +98,7 @@ end
 [~,wi] = max(R);
 w = wvals(wi);
 %}
-w = .5*Fs;
+w = (1)*Fs;
 zw = smoothdata(z,1,'gaussian',w);
 zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 
@@ -108,7 +108,7 @@ zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 xn = (x-mean(x))/std(x);
 %zkwn = cellfun(@(zi) (zi-mean(zi))/std(zi), zkw, 'UniformOutput',false);
 %zwn = (zw-mean(zw))/std(zw);
-zkwn = zkw; zwn = zw;
+zkwn = zkw; zwn = zw; 
 
 % evaluate 
 r = corr(xn, zwn); 
@@ -118,7 +118,7 @@ lgd = ["raw LFP"; lgd; "all spk: \rho="+string(r)];
 
 % time domain 
 figure; 
-plot(t, xn); hold on; grid on;  
+plot(t, xn*mean(zw)); hold on; grid on;  
 if length(ku) > 1
 for ki = 1:length(zkwn)
     plot(t, zkwn{ki}); % Plot each spike train for comparison
@@ -127,6 +127,20 @@ end
 plot(t, zwn, 'w');
 title('Spike-LFP time domain comparison');
 xlabel('time (s)'); ylabel('normalized LFP/count');
+legend(lgd);
+
+%% time domain v2 
+figure; 
+plot(t, xn*(mean(1./diff(tSpk)))); hold on; grid on;  
+if length(ku) > 1
+for ki = 1:length(ku)
+    tSpkKi = tSpkK{ki};
+    plot(tSpkKi(2:end), 1./diff(tSpkKi)); % Plot each spike train for comparison
+end
+end
+plot(tSpk(2:end), 1./diff(tSpk), 'w');
+title('Spike-LFP time domain comparison');
+xlabel('time (s)'); ylabel('normalized LFP/rate');
 legend(lgd);
 
 %% freq domain 
