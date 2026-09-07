@@ -1,6 +1,5 @@
 %% load raw data 
-%load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzLT.mat')
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N009/Neuro Omega/mat/LT/Saved To Table/Table Data 2026-09-04 16.02.54 d0a6723833db66/SavedTable1375HzLT.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/SavedTable1375HzLT.mat')
 %Tbl = Tbl1; 
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time);
@@ -8,12 +7,13 @@ xch = 2; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
 %x = Tbl.CLFP_NP1___Posterior; xname = 'CLFP_NP1___Posterior';
 Fs = 1375; spkFs = 44000; % Hz
 dt = 1/Fs; dthalf = dt/2; % s
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N009/Neuro Omega/mat/LT/Saved To Table/Table Data 2026-09-04 16.02.54 d0a6723833db66/SpkLt_p1560_1A.mat')
-spkTbl = Tbl1A; spkTbl.Properties.VariableNames{xch}
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/SpkLT1sel.mat')
+spkTbl = TblB; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
 %xx = spkTbl.CSPK_NP1___Posterior; 
-tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
-%tsel = (t >= 5720) & (t <= 5780);
+%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+tsel = (t >= 8077) & (t <= 8089);
+%tsel = (t >= 8064) & (t <= 8074);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
 x = x(tsel); t = t(tsel);
 
@@ -22,8 +22,7 @@ figure; spectrogram(x,1*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
 title(xname);
 
 %% load spike-sorted data 
-%load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_LTp1886_ant_reref.mat')
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N009/Neuro Omega/mat/LT/Saved To Table/Table Data 2026-09-04 16.02.54 d0a6723833db66/times_waveclusdata_LT1A_2.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/times_LT1Bch2_waveclusdata.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
@@ -55,7 +54,7 @@ end
 
 %% filter LFP 
 ax(2) = subplot(2,1,2);
-hpf = fir1(1024,0.25/(Fs/2),"high");
+hpf = fir1(2048,0.5/(Fs/2),"high");
 xh = filtfilt(hpf,1,x); xl = x-xh;
 plot(t, xh); grid on; 
 xlabel('time (s)'); ylabel('LFP');
@@ -98,7 +97,7 @@ end
 [~,wi] = max(R);
 w = wvals(wi);
 %}
-w = (1)*Fs;
+w = (1/50)*Fs;
 zw = smoothdata(z,1,'gaussian',w);
 zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 
@@ -148,7 +147,7 @@ legend(lgd);
 [pz,f] = pwelch(z,[],[],[],Fs,'power');
 px = pinkcorrect(px,f); pz = pinkcorrect(pz,f);
 px = 20*log10(px); pz = 20*log10(pz);
-figure; plot(f,px); hold on; grid on; plot(f,pz);
+figure; plot(f,px); hold on; grid on; 
 xlabel('freq (Hz)'); ylabel('Power (dB)');
 if length(ku) > 1
 for ki = 1:length(zk)
@@ -157,6 +156,7 @@ for ki = 1:length(zk)
     plot(f,pzi);
 end
 end
+plot(f,pz, 'w'); 
 
 %% modulated pulse train analysis 
 %{
