@@ -85,7 +85,7 @@ for ki = 1:length(ku)
     disp("Mean rate: "+num2str(mean(zk{ki})))
 end
 
-%% gaussian smooth pulse train 
+%% smooth pulse train into firing rate
 %{
 wvals = 1:ceil(100*Fs);
 R = nan(size(wvals));
@@ -97,9 +97,25 @@ end
 [~,wi] = max(R);
 w = wvals(wi);
 %}
+%{
 w = (1/50)*Fs;
 zw = smoothdata(z,1,'gaussian',w);
 zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
+%}
+zkw = cell(length(ku),1);
+for ki = 1:length(ku)
+    tSpkKi = tSpkK{ki};
+    dt = diff(tSpkKi);
+    [~,~,w] = isoutlier(dt);
+    %LPF = fir1(1023, 2/(w*Fs), "low"); 
+    %zkw{ki} = filtfilt(LPF,1,zk{ki});
+    zkw{ki} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*w));
+end
+dt = diff(tSpk);
+[~,~,w] = isoutlier(dt);
+%LPF = fir1(1023, 2/(w*Fs), "low"); 
+%zw = filtfilt(LPF,1,z);
+zw = smoothdata(z,1,'gaussian', ceil(Fs*w));
 
 %% compare spike and LFP signals 
 
