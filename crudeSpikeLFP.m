@@ -12,7 +12,8 @@ spkTbl = TblB; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
 %xx = spkTbl.CSPK_NP1___Posterior; 
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
-tsel = (t >= 8077) & (t <= 8089);
+tsel = (t >= 8059) & (t <= 8091);
+%tsel = (t >= 8077) & (t <= 8089);
 %tsel = (t >= 8064) & (t <= 8074);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
 x = x(tsel); t = t(tsel);
@@ -116,6 +117,25 @@ dt = diff(tSpk);
 %LPF = fir1(1023, 2/(w*Fs), "low"); 
 %zw = filtfilt(LPF,1,z);
 zw = smoothdata(z,1,'gaussian', ceil(Fs*w));
+
+%% report rolling rate offset, phase, and amp
+wf = 10*ceil(w*Fs);
+zf = zerocrossrate(zw-mean(zw), 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
+tf = t((wf/2):(end-wf/2));
+zw2 = smoothdata(z,1,'gaussian', 100*ceil(Fs*w));
+amp2 = envelope(zw-mean(zw));
+figure; 
+ax2(1) = subplot(2,1,1); 
+patch([t; flipud(t)], [zw2; flipud(zw2)]+[amp2; -flipud(amp2)], 'b', ...
+    'FaceAlpha',0.5, 'EdgeColor','none');
+hold on; grid on; plot(t, zw2, 'b', 'LineWidth', 2);
+ylabel('rate (Hz)'); xlabel('t (s)');
+title('offset and amplitude');
+ax2(2) = subplot(2,1,2);
+plot(tf, zf); grid on; 
+ylabel('rate (Hz)'); xlabel('t (s)');
+title('modulation rate');
+linkaxes(ax2, 'x');
 
 %% compare spike and LFP signals 
 
