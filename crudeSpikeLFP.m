@@ -18,9 +18,20 @@ tsel = (t >= 8059) & (t <= 8091);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
 x = x(tsel); t = t(tsel);
 
-% spectrogram; look for beta bursts 
-figure; spectrogram(x,1*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
+%% spectrogram; look for beta bursts 
+
+% unprocessed 
+figure; spectrogram(x,0.5*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
 title(xname);
+
+% adjusted 
+[S,fS,tS] = spectrogram(x,0.5*Fs,[],[],Fs,"yaxis","power");
+[~,k1,c2] = pinkcorrect(mean(abs(S),2),fS);
+Anoise = k1*fS.^c2; Anoise(1)=eps;
+SS = abs(S)./Anoise;
+figure; img = imagesc(tS, fS(2:end), (SS(2:end,:))); %colorbar
+img.Parent.YDir = 'normal';
+title([xname,' adjusted spectrogram']);
 
 %% load spike-sorted data 
 load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/times_LT1Bch2_waveclusdata.mat')
@@ -119,11 +130,11 @@ dt = diff(tSpk);
 zw = smoothdata(z,1,'gaussian', ceil(Fs*w));
 
 %% report rolling rate offset, phase, and amp
-wf = 10*ceil(w*Fs);
-zf = zerocrossrate(zw-mean(zw), 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
-tf = t((wf/2):(end-wf/2));
 zw2 = smoothdata(z,1,'gaussian', 100*ceil(Fs*w));
-amp2 = envelope(zw-mean(zw));
+wf = 10*ceil(w*Fs);
+zf = zerocrossrate(zw-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
+tf = t((wf/2):(end-wf/2));
+amp2 = envelope(zw-zw2);
 figure; 
 ax2(1) = subplot(2,1,1); 
 patch([t; flipud(t)], [zw2; flipud(zw2)]+[amp2; -flipud(amp2)], 'b', ...
@@ -193,6 +204,7 @@ for ki = 1:length(zk)
 end
 end
 plot(f,pz, 'w'); 
+title('adjusted spectrum')
 
 %% modulated pulse train analysis 
 %{
