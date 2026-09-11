@@ -199,12 +199,13 @@ xlabel('freq (Hz)'); ylabel('Power (dB)');
 if length(ku) > 1
 for ki = 1:length(zk)
     [pzi,f] = pwelch(zk{ki},[],[],[],Fs,'power');
-    pzi = pinkcorrect(pzi,f); pzi = 20*log10(pzi);
+    %pzi = pinkcorrect(pzi,f); pzi = 20*log10(pzi);
+    pzi = 20*log10(pzi);
     plot(f,pzi);
 end
 end
 plot(f,pz, 'w'); 
-title('adjusted spectrum')
+title('(adjusted) spectrum')
 
 %% modulated pulse train analysis 
 %{
