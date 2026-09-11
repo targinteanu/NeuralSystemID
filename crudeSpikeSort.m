@@ -1,28 +1,32 @@
 %% load data 
-load("/Users/torenarginteanu/Desktop/Data_PD/PD26N002/Neuro Omega/SPK_RT_SelectedTimes.mat")
-x = TblD.CSPK_01;
-t = seconds(TblD.Time);
+load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_LT_SelectedTimes(2).mat")
+%x = TblD.CSPK_01;
+%t = seconds(TblD.Time);
+X = depth_p1886{:,1:4}; x = X(:,1)-mean(X,2);
+t = seconds(depth_p1886.Time);
 if any(diff(t) < 0)
     error('time must be ascending and uniform.')
 end
 fs = 1/median(diff(t)); % hz
 
-tsel = (t<(8440));
-x = x(tsel);
-t = t(tsel);
+%tsel = (t<(8440));
+%x = x(tsel);
+%t = t(tsel);
 
 %% threshold definition 
 
 % filter for detection only, not waveform identification
-BPFn = fir1(1023, [300 3000]/(fs/2)); BPFd = 1;
+BPFn = fir1(1023, [500 1000]/(fs/2)); BPFd = 1;
+%{
 notchf = 60; notchq = 70;
 [notchNum,notchDen] = iircomb(round(fs/notchf), (notchf/(fs/2))/notchq, 'notch');
 BPFn = conv(BPFn, notchNum); BPFd = conv(BPFd, notchDen);
+%}
 xf = filtfilt(BPFn,BPFd,x);
 
 %% identify threshold(s) 
 % alternatively do this based on mean/SD
-[OL, lTH, uTH, mid] = isoutlier(xf, 'median', 'ThresholdFactor',10); 
+[OL, lTH, uTH, mid] = isoutlier(xf, 'median', 'ThresholdFactor',3); 
 OL = find(OL);
 lOL = OL( xf(OL) < mid );
 uOL = OL( xf(OL) > mid );
@@ -55,6 +59,12 @@ if mean(xu)/std(xu) > mean(xl)/std(xl)
 else
     TH = lTH; % Set threshold to lower threshold
     sgn = true; % Flip signal sign
+end
+
+if sgn
+    TH = -TH;
+    x = -x;
+    xf = -xf;
 end
 
 %% spike detection 
