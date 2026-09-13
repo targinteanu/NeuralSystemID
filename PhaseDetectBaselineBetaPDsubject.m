@@ -54,7 +54,7 @@ for p = 1:length(phTargets)
 
 phTarget = phTargets(p)
 
-prog = (c-1)*length(phTargets) + p;
+prog = (c-1)*length(phTargets) + p-1;
 prog = prog/(length(phTargets)*width(dtaBL));
 disp([' ========== PROGRESS: ',num2str(round(100*prog)),'% ========== ']);
 
