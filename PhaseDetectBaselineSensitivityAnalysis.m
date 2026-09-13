@@ -82,7 +82,7 @@ for p = 1:length(phTargets)
 
 phTarget = phTargets(p)
 
-for l = 1:length(learnrates)
+parfor l = 1:length(learnrates)
 
 learnrate = learnrates(l)
 
