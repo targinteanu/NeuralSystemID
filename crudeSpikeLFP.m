@@ -21,11 +21,11 @@ x = x(tsel); t = t(tsel);
 %% spectrogram; look for beta bursts 
 
 % unprocessed 
-figure; spectrogram(x,0.5*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
+figure; spectrogram(x,1*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
 title(xname);
 
 % adjusted 
-[S,fS,tS] = spectrogram(x,0.5*Fs,[],[],Fs,"yaxis","power");
+[S,fS,tS] = spectrogram(x,1*Fs,[],[],Fs,"yaxis","power");
 [~,k1,c2] = pinkcorrect(mean(abs(S),2),fS);
 Anoise = k1*fS.^c2; Anoise(1)=eps;
 SS = abs(S)./Anoise;
@@ -34,7 +34,7 @@ img.Parent.YDir = 'normal';
 title([xname,' adjusted spectrogram']);
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/times_LT1Bch2_waveclusdata.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/times_LT1Bch2_waveclusdata(3).mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
@@ -130,12 +130,13 @@ dt = diff(tSpk);
 zw = smoothdata(z,1,'gaussian', ceil(Fs*w));
 
 %% report rolling rate offset, phase, and amp
+
 zw2 = smoothdata(z,1,'gaussian', 100*ceil(Fs*w));
 wf = 10*ceil(w*Fs);
 zf = zerocrossrate(zw-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
 tf = t((wf/2):(end-wf/2));
 amp2 = envelope(zw-zw2);
-figure; 
+figure; sgtitle('All Spikes')
 ax2(1) = subplot(2,1,1); 
 patch([t; flipud(t)], [zw2; flipud(zw2)]+[amp2; -flipud(amp2)], 'b', ...
     'FaceAlpha',0.5, 'EdgeColor','none');
@@ -147,6 +148,26 @@ plot(tf, zf); grid on;
 ylabel('rate (Hz)'); xlabel('t (s)');
 title('modulation rate');
 linkaxes(ax2, 'x');
+
+for ki = 1:length(zk)
+zw2 = smoothdata(zk{ki},1,'gaussian', 100*ceil(Fs*w));
+wf = 10*ceil(w*Fs);
+zf = zerocrossrate(zkw{ki}-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
+tf = t((wf/2):(end-wf/2));
+amp2 = envelope(zkw{ki}-zw2);
+figure; sgtitle(['Spike Cluster ',num2str(ki)])
+ax2(1) = subplot(2,1,1); 
+patch([t; flipud(t)], [zw2; flipud(zw2)]+[amp2; -flipud(amp2)], 'b', ...
+    'FaceAlpha',0.5, 'EdgeColor','none');
+hold on; grid on; plot(t, zw2, 'b', 'LineWidth', 2);
+ylabel('rate (Hz)'); xlabel('t (s)');
+title('offset and amplitude');
+ax2(2) = subplot(2,1,2);
+plot(tf, zf); grid on; 
+ylabel('rate (Hz)'); xlabel('t (s)');
+title('modulation rate');
+linkaxes(ax2, 'x');
+end
 
 %% compare spike and LFP signals 
 

@@ -1,13 +1,16 @@
 %% load data 
-load("/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_LT_SelectedTimes(2).mat")
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/LT1Bch2_waveclusdata.mat')
 %x = TblD.CSPK_01;
 %t = seconds(TblD.Time);
+%{
 X = depth_p1886{:,1:4}; x = X(:,1)-mean(X,2);
 t = seconds(depth_p1886.Time);
 if any(diff(t) < 0)
     error('time must be ascending and uniform.')
 end
 fs = 1/median(diff(t)); % hz
+%}
+x = data; fs = sr; t = ((1:length(x))-1)/fs;
 
 %tsel = (t<(8440));
 %x = x(tsel);
@@ -16,7 +19,7 @@ fs = 1/median(diff(t)); % hz
 %% threshold definition 
 
 % filter for detection only, not waveform identification
-BPFn = fir1(1023, [500 1000]/(fs/2)); BPFd = 1;
+BPFn = fir1(1023, [500 3000]/(fs/2)); BPFd = 1;
 %{
 notchf = 60; notchq = 70;
 [notchNum,notchDen] = iircomb(round(fs/notchf), (notchf/(fs/2))/notchq, 'notch');
@@ -26,7 +29,7 @@ xf = filtfilt(BPFn,BPFd,x);
 
 %% identify threshold(s) 
 % alternatively do this based on mean/SD
-[OL, lTH, uTH, mid] = isoutlier(xf, 'median', 'ThresholdFactor',3); 
+[OL, lTH, uTH, mid] = isoutlier(xf, 'median', 'ThresholdFactor',5); 
 OL = find(OL);
 lOL = OL( xf(OL) < mid );
 uOL = OL( xf(OL) > mid );
@@ -87,7 +90,7 @@ if sgn
 end
 
 %% build waveform list 
-WFdur = 0.01; % full duration, seconds
+WFdur = 0.002; % full duration, seconds
 WFlen = ceil(WFdur/2 * fs); % half-duration, samples 
 WF = nan(length(spkIdx), 2*WFlen+1);
 for n = 1:length(spkIdx)
@@ -238,10 +241,10 @@ xlabel('time (s)');
 
 % ISI histo
 figure; 
-histogram(diff(spkIdx)/fs, 'BinWidth',0.005, 'FaceColor',[.5 .5 .5]); hold on;
+histogram(diff(spkIdx)/fs, 'BinWidth',0.0005, 'FaceColor',[.5 .5 .5]); hold on;
 for ki = unique(kidx)'
     spki = spkIdx(kidx == ki);
-    histogram(diff(spki)/fs, 'BinWidth',0.005);
+    histogram(diff(spki)/fs, 'BinWidth',0.0005);
 end
 grid on;
 title('Inter-Spike Interval');
@@ -257,7 +260,7 @@ for ki = unique(kidx)'
         if (numel(spki)>1) & (numel(spkj)>1)
         try
         subplot(k,k,p);
-        [bincent, binvals] = corgm(spki, spkj, ceil(0.2*fs));
+        [bincent, binvals] = corgm(spki, spkj, ceil(0.03*fs));
         bincent = bincent/fs; binvals = binvals*fs;
         bar(bincent, binvals);
         xlabel('delay (s)'); ylabel('avg # per s');
