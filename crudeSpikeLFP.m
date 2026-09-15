@@ -11,8 +11,8 @@ load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/SpkLT1sel.mat'
 spkTbl = TblB; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
 %xx = spkTbl.CSPK_NP1___Posterior; 
-%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
-tsel = (t >= 8059) & (t <= 8091);
+tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+%tsel = (t >= 8059) & (t <= 8091);
 %tsel = (t >= 8077) & (t <= 8089);
 %tsel = (t >= 8064) & (t <= 8074);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
@@ -32,6 +32,7 @@ SS = abs(S)./Anoise;
 figure; img = imagesc(tS, fS(2:end), (SS(2:end,:))); %colorbar
 img.Parent.YDir = 'normal';
 title([xname,' adjusted spectrogram']);
+ylabel('Frequency (Hz)'); xlabel('time (s)');
 
 %% load spike-sorted data 
 load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/times_LT1Bch2_waveclusdata(3).mat')
@@ -132,7 +133,7 @@ zw = smoothdata(z,1,'gaussian', ceil(Fs*w));
 %% report rolling rate offset, phase, and amp
 
 zw2 = smoothdata(z,1,'gaussian', 100*ceil(Fs*w));
-wf = 10*ceil(w*Fs);
+wf = 50*ceil(w*Fs);
 zf = zerocrossrate(zw-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
 tf = t((wf/2):(end-wf/2));
 amp2 = envelope(zw-zw2);
@@ -148,10 +149,11 @@ plot(tf, zf); grid on;
 ylabel('rate (Hz)'); xlabel('t (s)');
 title('modulation rate');
 linkaxes(ax2, 'x');
+xlim([t(1), t(end)]);
 
 for ki = 1:length(zk)
 zw2 = smoothdata(zk{ki},1,'gaussian', 100*ceil(Fs*w));
-wf = 10*ceil(w*Fs);
+wf = 50*ceil(w*Fs);
 zf = zerocrossrate(zkw{ki}-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
 tf = t((wf/2):(end-wf/2));
 amp2 = envelope(zkw{ki}-zw2);
@@ -167,6 +169,7 @@ plot(tf, zf); grid on;
 ylabel('rate (Hz)'); xlabel('t (s)');
 title('modulation rate');
 linkaxes(ax2, 'x');
+xlim([t(1), t(end)]);
 end
 
 %% compare spike and LFP signals 
