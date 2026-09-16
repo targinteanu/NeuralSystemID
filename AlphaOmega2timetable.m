@@ -162,9 +162,13 @@ for f = filelist'
                 N = data(2);
                 DEPTH = data(3);
                 FILE = data(4);
+                DEPTHcheck = (DEPTH >= mindepth) && (DEPTH <= maxdepth);
+            else
+                warning('Unrecognized file naming convention.')
+                DEPTHcheck = true;
             end
 
-            if (DEPTH >= mindepth) && (DEPTH <= maxdepth)
+            if DEPTHcheck
 
             % process stim markers into event table 
             ET = [];
