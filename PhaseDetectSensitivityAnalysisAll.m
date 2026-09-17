@@ -18,7 +18,10 @@ clr = {[0.0660    0.4430    0.7450], ... blue
        [0.3720    0.1050    0.0310], ... brown
        [0.7170    0.1920    0.1720], ... dark red
        [0.0070    0.3450    0.0540], ... dark green
-       [0.0620    0.2580    0.5010] ... dark blue 
+       [0.0620    0.2580    0.5010], ... dark blue 
+       [0.2422    0.1504    0.6603], ... dark indigo
+       [0.0638    0.7446    0.7292], ... teal
+       [0.9769    0.9839    0.0805]  ... yellow
        };
 FaceAlpha = 0.6;
 
@@ -216,21 +219,58 @@ lgd.Layout.Tile = 'east';
 
 %% aggregate/display all channel/target results 
 
+errResultsAll_avg = nan(length(learnrates),1);
+errResultsAll_std = errResultsAll_avg;
+for m = 1:size(ERR,3)
+    ERRm = ERR(:,:,m,1); ERRm = ERRm(:);
+    errResultsAll_avg(m) = circ_mean(ERRm);
+    errResultsAll_std(m) = circ_std(ERRm);
+end
+errResultsAll_avg = errResultsAll_avg*180/pi;
+errResultsAll_std = errResultsAll_std*180/pi;
+
+figure('Position',[272 297 715 400], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w');
+%bar(learnrates, errResultsAll_avg); 
+bar(errResultsAll_avg, 'LineWidth',2, 'EdgeColor','k', ...
+    'FaceAlpha',FaceAlpha, 'FaceColor',clr{2}); 
+xticks(1:length(errResultsAll_avg)); xticklabels(string(learnrates));
+set(gca, 'FontSize',12)
+hold on; grid on; 
+%errorbar(learnrates,errResultsAll_avg, errResultsAll_std,errResultsAll_std, '.');
+errorbar(errResultsAll_avg, errResultsAll_std, ...
+        '.', 'Color','k', 'LineWidth',2, 'CapSize',8);
+xlabel('Learn Rate', 'FontSize',14); 
+ylabel('Stim Mean Phase Error (°)', 'FontSize',14); 
+title('Accuracy vs Learning Rate', 'FontSize',18)
+legend('Circular Mean', '±1 Circular S.D.', ... 
+    'Location','northoutside', 'FontSize',14, 'Orientation','horizontal');
+
 errResultsAll_avg = (ERR(:,:,:,1));
 errResultsAll_std = (ERR(:,:,:,2));
 errResultsAll_avg = mean(errResultsAll_avg,2);
 errResultsAll_avg = mean(errResultsAll_avg,1);
-errResultsAll_avg = squeeze(errResultsAll_avg);
+errResultsAll_avg = squeeze(errResultsAll_avg)*180/pi;
 errResultsAll_std = rms(errResultsAll_std,2);
 errResultsAll_std = rms(errResultsAll_std,1);
-errResultsAll_std = squeeze(errResultsAll_std);
+errResultsAll_std = squeeze(errResultsAll_std)*180/pi;
 
-figure; 
-bar(learnrates, errResultsAll_avg); 
+figure('Position',[272 297 715 400], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w');
+%bar(learnrates, errResultsAll_avg); 
+bar(errResultsAll_avg, 'LineWidth',2, 'EdgeColor','k', ...
+    'FaceAlpha',FaceAlpha, 'FaceColor',clr{2}); 
+xticks(1:length(errResultsAll_avg)); xticklabels(string(learnrates));
+set(gca, 'FontSize',12)
 hold on; grid on; 
-errorbar(learnrates,errResultsAll_avg, errResultsAll_std,errResultsAll_std, '.');
-xlabel('Learn Rate'); ylabel('Phase Error (rad)'); 
-legend('Circ Mean', '±1 Circ SD');
+%errorbar(learnrates,errResultsAll_avg, errResultsAll_std,errResultsAll_std, '.');
+errorbar(errResultsAll_avg, errResultsAll_std, ...
+        '.', 'Color','k', 'LineWidth',2, 'CapSize',8);
+xlabel('Learn Rate', 'FontSize',14); 
+ylabel('Phase Error (°)', 'FontSize',14); 
+title('Accuracy vs Learning Rate', 'FontSize',18)
+legend('Circular Mean', '±1 Circular S.D.', ... 
+    'Location','northoutside', 'FontSize',14, 'Orientation','horizontal');
 
 %% pie by cycle of extra/missing 
 
@@ -274,6 +314,50 @@ for m = 1:length(learnrates)
 end
     lgd = legend({'Missing', 'Extra', 'Correct'}, 'FontSize',18);
     lgd.Layout.Tile = 'east';
+
+sgtitle('Number of Stimulations', 'FontSize',20)
+
+%% bar by cycle of extra/missing 
+
+figure('Position',[1 1 875 625], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+tiledlayout(length(bndnames)+1,1, "TileSpacing","compact")
+
+% beta/theta
+for b = 1:length(bndnames)
+    nexttile;
+    NUMb = NUM(:,selBnd{b},:,:);
+    NUMb = sum(NUMb,1);
+    NUMb = sum(NUMb,2);
+    NUMb = squeeze(NUMb);
+    NUMb = NUMb./sum(NUMb,2);
+    hb = bar(NUMb, 'LineWidth',2, 'FaceAlpha',FaceAlpha);
+    for bi = 1:length(hb)
+        hb(bi).FaceColor = clr{11+bi};
+    end
+    xticks(1:length(learnrates)); xticklabels(string(learnrates));
+    ylabel('% of Cycles', 'FontSize',14); 
+    title([bndnames{b},' band'], 'FontSize',16);
+end
+
+% all bnd
+nexttile; 
+NUMb = NUM;
+    NUMb = sum(NUMb,1);
+    NUMb = sum(NUMb,2);
+    NUMb = squeeze(NUMb);
+    NUMb = NUMb./sum(NUMb,2);
+    hb = bar(NUMb, 'LineWidth',2, 'FaceAlpha',FaceAlpha);
+    for bi = 1:length(hb)
+        hb(bi).FaceColor = clr{11+bi};
+    end
+    xticks(1:length(learnrates)); xticklabels(string(learnrates));
+    ylabel('% of Cycles', 'FontSize',14); 
+xlabel('Learn Rate', 'FontSize',14); 
+title('Both bands', 'FontSize',16);
+lgd = legend('Missing Stimulation', 'Stimulated Extra', 'Stimulated Correctly', ...
+    'FontSize',14, 'Orientation','horizontal');
+lgd.Layout.Tile = 'south';
 
 sgtitle('Number of Stimulations', 'FontSize',20)
 
