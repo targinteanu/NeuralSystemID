@@ -132,6 +132,7 @@ selTheta = strcmp({INFO.Band}, "Theta");% & strcmp([INFO.Cond], "Baseline");
 selBnd = {selBeta, selTheta};
 ERRbnd  = {ERR(:,selBeta,:,1), ERR(:,selTheta,:,1)}; 
 INFObnd = {INFO(selBeta),      INFO(selTheta)};
+%{
 figure;
 for m = 1:size(ERR,3)
     subplot(1,size(ERR,3),m);
@@ -147,75 +148,7 @@ for m = 1:size(ERR,3)
     %subtitle(['Kuiper p value: ',num2str(p)]);
     legend("Beta", "Theta", 'Location','northoutside');
 end
-
-%% analysis of all 
-
-figure('Position',[1 1 1125 425], 'WindowStyle','normal', ...
-    'Theme','light', 'Color','w'); 
-tiledlayout(1,length(bndnames)+1,'TileSpacing','compact');
-
-% beta/theta/all
-for b = 1:(length(bndnames)+1)
-    ax1(b) = nexttile;
-    if b > length(bndnames)
-        bndname = 'Both'; ERRb = ERR; INFOb = INFO;
-    else
-        bndname = bndnames{b}; ERRb = ERR(:,selBnd{b},:,:); INFOb = INFO(selBnd{b});
-    end
-
-    %{
-    % analyze baseline only
-    INFObCond = lower([INFOb.Cond]);
-    selBaseline = strcmp(INFObCond, "baseline");
-    ERRb = ERRb(:,selBaseline,:,:);
-    %}
-
-    ERRbm = cell(length(learnrates),1); 
-    R = zeros(1,length(learnrates));
-    for m = 1:length(learnrates)
-        ERRbm_ = ERRb(:,:,m,1);
-        ERRbm{m} = ERRbm_(:);
-        ph = polarhistogram(ERRbm_, 'BinEdges',bedge, 'FaceColor',clr{m}, ...
-            'EdgeColor','none', 'FaceAlpha',FaceAlpha);
-        hold on;
-        R(m) = max(ph.Values);
-    end
-    %R = 1*R + 0.5*[-1,1];
-    R = 1.1*R; R = fixspacing(R);
-    %p1 = circ_kuipertest(ERRbm{1}, ERRbm{2});
-    [~,p2] = ttest2(ERRbm{1}.^2, ERRbm{2}.^2, 'tail','right', 'Vartype','unequal');
-
-    ERRbstats = [cellfun(@circ_mean, ERRbm), ...
-                 cellfun(@circ_confmean, ERRbm), ...
-                 cellfun(@circ_std, ERRbm), ...
-                 cellfun(@rms, ERRbm)];
-    disp(['Band ',bndname,' circmean, 95CI, std, rmse (deg):'])
-    disp(ERRbstats*180/pi);
-    for m = 1:length(learnrates)
-        %{
-        polarregion(ERRbstats(m,1) + [-1,1]*ERRbstats(m,2), R, ...
-            "FaceColor",clr{m}, "FaceAlpha",0.8, "EdgeColor",'k');
-        %}
-        polarboxplot(ERRbstats(m,1), ERRbstats(m,2), ERRbstats(m,3), ...
-            R(m), max(R), clr{m});
-    end
-
-    ax1(b)=gca(); ax1(b).FontSize = 12;
-    ax1(b).ThetaTick = 0:45:360;
-    for ax1bti = 1:2:length(ax1(b).ThetaTickLabel)
-        ax1(b).ThetaTickLabel{ax1bti} = '';
-    end
-    ax1(b).RTick = round(max(R)*[0.5,1]);
-    ax1(b).RLim = [0 1.1*max(R)];
-    ax1(b).RTickLabelRotation = 80;
-    title([bndname,' band'], 'FontSize',16);
-    %subtitle(['p = ',num2str(p1),' | ',num2str(p2)], 'FontSize',14)
-    subtitle(['p = ',num2str(p2)], 'FontSize',14)
-end
-
-sgtitle('Phase Error', 'FontSize',20)
-lgd = legend("Learn Rate = "+string(learnrates), 'FontSize',18);
-lgd.Layout.Tile = 'east';
+%}
 
 %% aggregate/display all channel/target results 
 
@@ -246,6 +179,8 @@ title('Accuracy vs Learning Rate', 'FontSize',18)
 legend('Circular Mean', '±1 Circular S.D.', ... 
     'Location','northoutside', 'FontSize',14, 'Orientation','horizontal');
 
+%{
+
 errResultsAll_avg = (ERR(:,:,:,1));
 errResultsAll_std = (ERR(:,:,:,2));
 errResultsAll_avg = mean(errResultsAll_avg,2);
@@ -272,50 +207,7 @@ title('Accuracy vs Learning Rate', 'FontSize',18)
 legend('Circular Mean', '±1 Circular S.D.', ... 
     'Location','northoutside', 'FontSize',14, 'Orientation','horizontal');
 
-%% pie by cycle of extra/missing 
-
-figure('Position',[1 1 875 625], 'WindowStyle','normal', ...
-    'Theme','light', 'Color','w'); 
-tiledlayout(length(learnrates),length(bndnames)+1,'TileSpacing','compact');
-
-for m = 1:length(learnrates)
-    NUMm = NUM(:,:,m,:);
-    NUMm = sum(NUMm,1);
-    
-    % beta/theta
-    for b = 1:length(bndnames)
-        ax(m,b) = nexttile;
-        NUMmb = NUMm(:,selBnd{b},:);
-        NUMmb = sum(NUMmb,2);
-        NUMmb = squeeze(NUMmb);
-        hp = pie(ax(m,b), NUMmb);
-        hpType = arrayfun(@(G) string(G.Type), hp);
-        htxt = hp(strcmp(hpType, 'text'));
-        for ht = htxt
-            ht.FontSize = 14;
-        end
-        title(['Learn Rate: ',num2str(learnrates(m))], 'FontSize',16); 
-        subtitle([bndnames{b},' band'], 'FontSize',16);
-    end
-
-    % all bnd
-    ax(m,b+1) = nexttile;
-    NUMm = sum(NUMm,2);
-    NUMm = squeeze(NUMm);
-    hp = pie(ax(m,b+1), NUMm);
-    hpType = arrayfun(@(G) string(G.Type), hp);
-    htxt = hp(strcmp(hpType, 'text'));
-    for ht = htxt
-        ht.FontSize = 14;
-    end
-    title(['Learn Rate: ',num2str(learnrates(m))], 'FontSize',16);
-    subtitle('Both bands', 'FontSize',16);
-
-end
-    lgd = legend({'Missing', 'Extra', 'Correct'}, 'FontSize',18);
-    lgd.Layout.Tile = 'east';
-
-sgtitle('Number of Stimulations', 'FontSize',20)
+%}
 
 %% bar by cycle of extra/missing 
 
