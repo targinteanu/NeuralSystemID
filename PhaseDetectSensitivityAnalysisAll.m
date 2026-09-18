@@ -177,7 +177,7 @@ xlabel('Learn Rate', 'FontSize',14);
 ylabel('Stim Mean Phase Error (°)', 'FontSize',14); 
 title('Accuracy vs Learning Rate', 'FontSize',18)
 legend('Circular Mean', '±1 Circular S.D.', ... 
-    'Location','northoutside', 'FontSize',14, 'Orientation','horizontal');
+    'Location','southoutside', 'FontSize',14, 'Orientation','horizontal');
 
 %{
 
@@ -223,7 +223,7 @@ for b = 1:length(bndnames)
     NUMb = sum(NUMb,2);
     NUMb = squeeze(NUMb);
     NUMb = NUMb./sum(NUMb,2);
-    hb = bar(NUMb, 'LineWidth',2, 'FaceAlpha',FaceAlpha);
+    hb = bar(100*NUMb, 'LineWidth',2, 'FaceAlpha',FaceAlpha);
     for bi = 1:length(hb)
         hb(bi).FaceColor = clr{11+bi};
     end
@@ -239,7 +239,7 @@ NUMb = NUM;
     NUMb = sum(NUMb,2);
     NUMb = squeeze(NUMb);
     NUMb = NUMb./sum(NUMb,2);
-    hb = bar(NUMb, 'LineWidth',2, 'FaceAlpha',FaceAlpha);
+    hb = bar(100*NUMb, 'LineWidth',2, 'FaceAlpha',FaceAlpha);
     for bi = 1:length(hb)
         hb(bi).FaceColor = clr{11+bi};
     end
@@ -252,6 +252,24 @@ lgd = legend('Missing Stimulation', 'Stimulated Extra', 'Stimulated Correctly', 
 lgd.Layout.Tile = 'south';
 
 sgtitle('Number of Stimulations', 'FontSize',20)
+
+%% all bnd only
+
+figure('Position',[272 297 715 400], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w');
+
+    hb = bar(100*NUMb, 'LineWidth',2, 'FaceAlpha',FaceAlpha);
+    for bi = 1:length(hb)
+        hb(bi).FaceColor = clr{11+bi};
+    end
+    xticks(1:length(learnrates)); xticklabels(string(learnrates));
+    ylabel('% of Cycles', 'FontSize',14); 
+xlabel('Learn Rate', 'FontSize',14); 
+title('Number of Stimulations vs Learning Rate', 'FontSize',18);
+grid on;
+
+lgd = legend('Missing Stimulation', 'Stimulated Extra', 'Stimulated Correctly', ...
+    'FontSize',14, 'Orientation','horizontal', 'location','southoutside');
 
 %% helper(s) 
 
