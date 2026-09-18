@@ -6,15 +6,16 @@ ARord = 50; % # coefficients
 donorm = false;
 
 % time points (sample) 
-t1 = 1; % start AR train 
-t2 = 1000; % end AR train 
-t3 = 1060; % start eval AR (1)
-t4 = 1500; % start eval AR (2)
+t1 = 451000; % start AR train 
+t2 = t1+1000; % end AR train 
+t3 = t2+ARord+1; % start eval AR (1)
+t4 = t1+1900; % start eval AR (2)
 T = 250; % AR eval dur
 
 %% file selection 
 [fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Segmented Data File');
 SegmentedDataFullfile = fullfile(fp,fn);
+%fn = '/Users/torenarginteanu/Documents/MATLAB/NeuralSystemID/AdaptAR/PD22N009_SegmentData_7e8979e58123db.mat';
 load(SegmentedDataFullfile);
 [~,fn,fe] = fileparts(fn);
 subjname = upper(fn(1:8));
@@ -66,7 +67,10 @@ end
 chsel1 = listdlg("PromptString","select channel", "SelectionMode","single", ...
     "ListString",chselName);
 x = dtaBL{:,chsel1};
-t = ((1:length(x))-1)/Fs;
+t = ((1:length(x))-1)/Fs; t = t-t(t1);
+
+chselname = dtaBL.Properties.VariableNames{chsel1}
+chseldesc = dtaBL.Properties.VariableDescriptions{chsel1}
 
 % filter 
 BPF = fir1(1023, freqrng/(Fs/2));
@@ -83,6 +87,7 @@ x4c = myFastForecastAR(mdl, x(t2:t4), T);
 % adaptive 
 w1 = mdl.A; w1 = fliplr(-w1(2:end)/w1(1));
 w = w1;
+W = w;
 for ti = t2:t3
     xi = x(ti); xxi = x((ti-ARord):(ti-1));
     w_ = updateWts(w, xxi, xi, learnrate, donorm);
@@ -90,6 +95,7 @@ for ti = t2:t3
     if max(abs(r)) < 1 % ensure stability
         w = w_;
     end
+    W = [W; w];
 end
 w3 = w; mdl3 = [norm(w3)/norm(w1), -fliplr(w3)];
 x3a = myFastForecastAR(mdl3, x(t2:t3), T);
@@ -100,9 +106,13 @@ for ti = (t3+1):t4
     if max(abs(r)) < 1 % ensure stability
         w = w_;
     end
+    W = [W; w];
 end
 w4 = w; mdl4 = [norm(w4)/norm(w1), -fliplr(w4)];
 x4a = myFastForecastAR(mdl4, x(t2:t4), T);
+
+figure; imagesc(diff(W,2)); colorbar; title('AR coeff change');
+xlabel('coef index'); ylabel('sample');
 
 %% plot
 
@@ -142,12 +152,12 @@ ylabel('Signal (\muV)', 'FontSize',16);
 title('Model-Forecast Signal Example', 'FontSize',16);
 subtitle(['Subject ',subjname], 'FontSize',16);
 ax5.Box = false;
-%ax5.XAxisLocation = 'origin';
-%ax5.XAxis.TickLength = [.05 .025];
-%ax5.XTick = [1 2];
+ax5.XAxisLocation = 'origin';
+ax5.XAxis.TickLength = [.1 .025];
+ax5.XTick = unique(round(ax5.XTick)); % round to nearest second
 %ax5.XTickLabels = {'1','2'};
-%ax5.XAxis.TickDirection = 'both';
-%ax5.YTick = [-100 0 100];
+ax5.XAxis.TickDirection = 'both';
+ax5.YTick = [-20 0 20];
 ax5.YAxis.TickDirection = 'both';
 
 %% helper(s)
