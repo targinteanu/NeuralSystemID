@@ -106,13 +106,49 @@ x4a = myFastForecastAR(mdl4, x(t2:t4), T);
 
 %% plot
 
-figure; 
-plot(t, x, 'w', 'LineWidth',1.5); hold on; grid on; 
-plot(t(t3+(1:T)), x3c, 'b', 'LineWidth',1);
-plot(t(t3+(1:T)), x3a, '--r', 'LineWidth',1);
-plot(t(t4+(1:T)), x4c, 'b', 'LineWidth',1);
-plot(t(t4+(1:T)), x4a, '--r', 'LineWidth',1);
+clr = {[0.0660    0.4430    0.7450], ... blue 
+       [0.8660    0.3290         0], ... red 
+       [0.2310    0.6660    0.1960], ... green
+       [0.5210    0.0860    0.8190], ... purple
+       ...[0.6193    0.4627    0.0833], ... gold
+       [0.6110    0.4660    0.1250], ... gold
+       ...[0.9290    0.6940    0.1250], ... yellow
+       ...[0.2588    0.4471    0.5294], ... teal
+       [     0    0.6390    0.6390], ... teal
+       [0.8190    0.0150    0.5450], ... pink
+       [0.3720    0.1050    0.0310], ... brown
+       [0.7170    0.1920    0.1720], ... dark red
+       [0.0070    0.3450    0.0540], ... dark green
+       [0.0620    0.2580    0.5010] ... dark blue 
+       };
+FaceAlpha = 0.6;
+
+figure('Position',[1 1 1200 375], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+plot(t, x, 'k', 'LineWidth',2); hold on; % grid on; 
+plot(t(t3+(1:T)), x3c,       'color',clr{1}, 'LineWidth',1.5);
+plot(t(t3+(1:T)), x3a, '--', 'color',clr{2}, 'LineWidth',1.5);
+plot(t(t4+(1:T)), x4c,       'color',clr{1}, 'LineWidth',1.5);
+plot(t(t4+(1:T)), x4a, '--', 'color',clr{2}, 'LineWidth',1.5);
+
 xlim(t([t2-.5*T, t4+1.5*T]));
+ax5 = gca(); ax5.FontSize = 14;
+legend('Actual', 'Constant Model', 'Adaptive Model', ...
+    'FontSize',16, 'location','southoutside', 'Orientation','horizontal');
+xlabel(' time (s)', 'FontSize',16, ...
+    'Units','Normalized', 'Position',[1,0.5], ...
+    'HorizontalAlignment','left', 'VerticalAlignment','middle'); 
+ylabel('Signal (\muV)', 'FontSize',16);
+title('Model-Forecast Signal Example', 'FontSize',16);
+subtitle(['Subject ',subjname], 'FontSize',16);
+ax5.Box = false;
+%ax5.XAxisLocation = 'origin';
+%ax5.XAxis.TickLength = [.05 .025];
+%ax5.XTick = [1 2];
+%ax5.XTickLabels = {'1','2'};
+%ax5.XAxis.TickDirection = 'both';
+%ax5.YTick = [-100 0 100];
+ax5.YAxis.TickDirection = 'both';
 
 %% helper(s)
 
