@@ -1,14 +1,14 @@
 %% load raw data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/SavedTable1375HzLT.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzRT.mat')
 %Tbl = Tbl1; 
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time);
-xch = 2; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
+xch = 5; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
 %x = Tbl.CLFP_NP1___Posterior; xname = 'CLFP_NP1___Posterior';
 Fs = 1375; spkFs = 44000; % Hz
 dt = 1/Fs; dthalf = dt/2; % s
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/SpkLT1sel.mat')
-spkTbl = TblB; spkTbl.Properties.VariableNames{xch}
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat')
+spkTbl = depth_p2011; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
 %xx = spkTbl.CSPK_NP1___Posterior; 
 tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
@@ -35,7 +35,7 @@ title([xname,' adjusted spectrogram']);
 ylabel('Frequency (Hz)'); xlabel('time (s)');
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/times_LT1Bch2_waveclusdata(3).mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_RTp2011_APTcent.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
