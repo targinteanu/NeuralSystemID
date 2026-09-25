@@ -8,10 +8,11 @@ xch = 5; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
 Fs = 1375; spkFs = 44000; % Hz
 dt = 1/Fs; dthalf = dt/2; % s
 load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat')
-spkTbl = depth_p2011; spkTbl.Properties.VariableNames{xch}
+spkTbl = depth_p0496_1; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
 %xx = spkTbl.CSPK_NP1___Posterior; 
-tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+tsel = (t >= 5700) & (t <= 5800);
 %tsel = (t >= 8059) & (t <= 8091);
 %tsel = (t >= 8077) & (t <= 8089);
 %tsel = (t >= 8064) & (t <= 8074);
@@ -35,7 +36,7 @@ title([xname,' adjusted spectrogram']);
 ylabel('Frequency (Hz)'); xlabel('time (s)');
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_RTp2011_APTcent.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_RTp0496_1_APTcent.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
@@ -395,7 +396,10 @@ fk = [f1, f1b]; qk = [q1, q1b];
 end
 
 
-function [fsine, ampsine, phsine, A0] = FourierSine(zw, Fs, t)
+function [fsine, ampsine, phsine, A0] = FourierSine(zw, Fs, t, K)
+if nargin < 4
+    K = 8;
+end
 
 % compute Fourier series approximation of zw as sum of sine waves (with phase shifts)
 % treat zw as real-valued signal sampled at Fs over times t
@@ -429,7 +433,7 @@ phk = phpos - pi/2; % convert complex exponential phase to sine-phase
 
 % reconstruct using a limited number of harmonics for stability (optional)
 % choose K components with largest amplitudes
-K = min(8, numel(Ak)); % limit to 50 components or less
+K = min(K, numel(Ak)); % limit to 50 components or less
 [~,ord] = sort(Ak,'descend');
 sel = sort(ord(1:K));
 Ak = -Ak;
