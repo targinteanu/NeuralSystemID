@@ -116,25 +116,41 @@ w = (1/50)*Fs;
 zw = smoothdata(z,1,'gaussian',w);
 zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 %}
-zkw = cell(length(ku),1);
+zkw = cell(length(ku),2);
 for ki = 1:length(ku)
     tSpkKi = tSpkK{ki};
+    % split into carrier vs rate 
     dt = diff(tSpkKi);
-    [~,~,w] = isoutlier(dt);
-    %LPF = fir1(1023, 2/(w*Fs), "low"); 
-    %zkw{ki} = filtfilt(LPF,1,zk{ki});
-    zkw{ki} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*w));
+    [~,~,Fu] = isoutlier(1./dt); 
+    [~,~,wl] = isoutlier(dt);
+    % perform smoothing
+    %LPF = fir1(1023, 2/(Fs*wl), "low"); 
+    %zkw{ki,1} = filtfilt(LPF,1,zk{ki});
+    zkw{ki,1} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*wl));
+    %LPF = fir1(1023, 2*Fu/Fs, "low"); 
+    %zkw{ki,2} = filtfilt(LPF,1,zk{ki});
+    zkw{ki,2} = smoothdata(zk{ki},1,'gaussian', ceil(Fs/Fu));
 end
+
+% split into carrier vs rate 
 dt = diff(tSpk);
-[~,~,w] = isoutlier(dt);
-%LPF = fir1(1023, 2/(w*Fs), "low"); 
+[~,~,Fu] = isoutlier(1./dt); 
+[~,~,wl] = isoutlier(dt);
+% perform smoothing 
+%LPF = fir1(1023, 2/(Fs*wl), "low"); 
 %zw = filtfilt(LPF,1,z);
-zw = smoothdata(z,1,'gaussian', ceil(Fs*w));
+zw = smoothdata(z,1,'gaussian', ceil(Fs*wl));
+%LPF = fir1(1023, 2*Fu/Fs, "low"); 
+%zw = filtfilt(LPF,1,z);
+zww = smoothdata(z,1,'gaussian', ceil(Fs/Fu));
 
 %% report rolling rate offset, phase, and amp
 
-zw2 = smoothdata(z,1,'gaussian', 100*ceil(Fs*w));
-wf = 50*ceil(w*Fs);
+[fsine, ampsine, phsine, amp0] = FourierSine(zww, Fs, t, 16);
+%%
+
+zw2 = smoothdata(z,1,'gaussian',100*ceil(Fs*wl));
+wf = 50*ceil(wl*Fs);
 zf = zerocrossrate(zw-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
 tf = t((wf/2):(end-wf/2));
 amp2 = envelope(zw-zw2);
@@ -153,11 +169,11 @@ linkaxes(ax2, 'x');
 xlim([t(1), t(end)]);
 
 for ki = 1:length(zk)
-zw2 = smoothdata(zk{ki},1,'gaussian', 100*ceil(Fs*w));
-wf = 50*ceil(w*Fs);
-zf = zerocrossrate(zkw{ki}-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
+zw2 = smoothdata(zk{ki},1,'gaussian', 100*ceil(Fs*wl));
+wf = 50*ceil(wl*Fs);
+zf = zerocrossrate(zkw{ki,1}-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
 tf = t((wf/2):(end-wf/2));
-amp2 = envelope(zkw{ki}-zw2);
+amp2 = envelope(zkw{ki,1}-zw2);
 figure; sgtitle(['Spike Cluster ',num2str(ki)])
 ax2(1) = subplot(2,1,1); 
 patch([t; flipud(t)], [zw2; flipud(zw2)]+[amp2; -flipud(amp2)], 'b', ...
@@ -179,7 +195,7 @@ end
 xn = (x-mean(x))/std(x);
 %zkwn = cellfun(@(zi) (zi-mean(zi))/std(zi), zkw, 'UniformOutput',false);
 %zwn = (zw-mean(zw))/std(zw);
-zkwn = zkw; zwn = zw; 
+zkwn = zkw(:,1); zwn = zw; 
 
 % evaluate 
 r = corr(xn, zwn); 
@@ -399,6 +415,9 @@ end
 function [fsine, ampsine, phsine, A0] = FourierSine(zw, Fs, t, K)
 if nargin < 4
     K = 8;
+    if nargin < 3
+        t = ((1:length(zw))-1)/Fs;
+    end
 end
 
 % compute Fourier series approximation of zw as sum of sine waves (with phase shifts)
