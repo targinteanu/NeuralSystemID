@@ -30,6 +30,7 @@ for xch = 1:width(Tbl)
         xname(xname=='_') = ' ';
 
 % regularize 
+[t,iu] = unique(t); x = x(iu);
 x = interp1(t,x,tReg, "nearest","extrap");
 
 % plug NaNs 
