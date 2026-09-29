@@ -139,6 +139,7 @@ for f = filelist'
         fni = find(fn == '.');
         fn1 = fn(1:(fni-1)); fn2 = fn((fni+1):end);
         fn1 = string(fn1); fn2 = string(fn2);
+        fn = lower(fn);
         if strcmpi(fe, '.mat')
             curfiledata = load(fnfull);
             FileData = varnames2struct(fileDataFields, curfiledata, '');
@@ -157,7 +158,7 @@ for f = filelist'
 
             % get details of this rec
             [data, flag] = sscanf(fn, '%ct%fd%ff%f %s');
-            if flag > 4
+            if flag >= 4
                 SIDE = string(char(data(1)));
                 N = data(2);
                 DEPTH = data(3);
@@ -268,6 +269,7 @@ for f = filelist'
                 clear chName t1 t2 t Data err FileName T
                 end
 
+                if ~isempty(TT)
                 % mark table TT with file details 
                 TT.Properties.Events = eventtable(seconds([T1;T2]), ...
                     "EventLabels", string(fn)+[" Start";" End"]);
@@ -283,6 +285,7 @@ for f = filelist'
 
                 if ~isempty(TT)
                     Tbls{FSGRP} = tblvertcat(Tbls{FSGRP}, TT);
+                end
                 end
                 % if the memory is getting full, save and clear 
                 sz = whos('Tbls'); sz = sz.bytes;
