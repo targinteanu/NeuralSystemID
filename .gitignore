@@ -39,3 +39,9 @@ eventsraw.csv
 /__pycache__
 *.data
 *.onnx
+/.vscode
+*.npy
+FreqModPulseTrains_TimeDomain.fig
+FreqModPulseTrains.fig
+/AdaptAR
+spc_log.txt

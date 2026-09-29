@@ -632,6 +632,7 @@ class TimeSeriesConv(nn.Module):
         self.pair_fc1 = nn.Linear(tuple_size, C1) 
         self.pair_norm = nn.LayerNorm(C1)
         self.pair_fc2 = nn.Linear(C1, self.pair_output) 
+        self.pair_norm2 = nn.LayerNorm(self.pair_output)
 
         # Stage 2: linear over flattened group
         self.group_fcA = nn.Linear(group_size * self.pair_output, 8)
@@ -648,7 +649,10 @@ class TimeSeriesConv(nn.Module):
         self.time_conv1 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K1)
         self.time_conv2 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K2)
         self.time_conv3 = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=K3)
-        self.time_fc = nn.Linear(time_len - K1 - K2 - K3 + 3, 1)
+        self.time_len_postconv = time_len - K1 - K2 - K3 + 3
+        #self.time_conv_norm = nn.LayerNorm(dim_in)
+        #self.time_fc = nn.Linear(self.time_len_postconv, 1)
+        self.time_fc = nn.Conv1d(mlp_in, mlp_in, groups=mlp_in, kernel_size=self.time_len_postconv) # global conv to collapse time dimension
         #self.time_fc = nn.Linear(time_len - K1 - K2 + 2, len_model)
         #self.time_fc = nn.Linear(time_len - K1 + 1, len_model)
 
@@ -703,15 +707,23 @@ class TimeSeriesConv(nn.Module):
         xCos_skip = x_used[:,-1:,self.num_pairs:2*self.num_pairs]
         xSin_skip = x_used[:,-1:,2*self.num_pairs:3*self.num_pairs]
         xUnpaired_skip = x_unpaired[:,-1:,:]
+
         """
-        x_pairs = torch.stack( 
-            (
-                x_used[:, :, :self.num_pairs],            # first half
-                x_used[:, :, self.num_pairs:],            # second half
-            ),
-            dim=3
-        )  # (B,T,N,2)
+        # time processing first 
+        x = x.permute(0,2,1) # (B, dim_in, T)
+        x = F.gelu(self.time_conv1(x))
+        x = F.gelu(self.time_conv2(x))
+        x = F.gelu(self.time_conv3(x))
+        x = F.gelu(self.time_fc(x))
+        x = x.permute(0,2,1) # (B, T, dim_in)
+        x = self.time_conv_norm(x)
+
+        # unsure if the below re-assignment is necessary based on how the arrays exist in memory
+        x_used = x[..., :num_paired]  # (B,T,kN1)
+        x_unpaired = x[..., num_paired:(num_paired+num_unpaired)] # (B,T,N2)
+        x_left = x[..., (num_paired+num_unpaired):]  # (B,T,n); may be unused
         """
+
         x_pairs = x_used.view(x_used.shape[0], x_used.shape[1], self.tuple_size, -1).permute(0,1,3,2).contiguous() # (B,T,N1,k)
         x_unpaired_groups = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], self.numGrpUnpaired, -1) 
         x_unpaired_threads = x_unpaired.view(x_unpaired.shape[0], x_unpaired.shape[1], -1, self.group_size).permute(0,1,3,2).contiguous()
@@ -720,6 +732,7 @@ class TimeSeriesConv(nn.Module):
         p = F.gelu(self.pair_fc1(x_pairs))     # (B,T,N,C1)
         p = self.pair_norm(p)
         p = F.gelu(self.pair_fc2(p))           # (B,T,N,pair_output)
+        p = self.pair_norm2(p)
 
         # Stage 2A: groups
         p_groups = p.view(B, T, self.num_groups-self.numGrpUnpaired, self.group_size * self.pair_output)  # (B,T,num_groups,...)
@@ -749,7 +762,7 @@ class TimeSeriesConv(nn.Module):
         h = F.gelu(self.time_conv2(h))
         h = F.gelu(self.time_conv3(h))
         h = F.gelu(self.time_fc(h))
-        h = h.permute(0,2,1) # (B, T, dim_model)
+        h = h.permute(0,2,1) # (B, 1, dim_model)
 
         # Stage 3B MLP
         h = self.norm(h)
@@ -766,15 +779,16 @@ class TimeSeriesConv(nn.Module):
         Z_list = []
         for r in range(rollout):
             u = u_seq[:, r, :] # (B, dim_u)
-            #z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
-            #z = F.gelu(self.fc2(z))
-            dz = F.gelu(self.fc2(torch.cat([z, u], dim=1)))
+            z = torch.cat([z, u], dim=1) # (B, dim_model+dim_u)
+            z = F.gelu(self.fc2(z))
+            #dz = F.gelu(self.fc2(torch.cat([z, u], dim=1)))
             #dz = F.gelu(self.fc3(dz))
-            dz = self.fcnorm(dz)
+            #dz = self.fcnorm(dz)
+            z = self.fcnorm(z)
             #dz = F.gelu(self.fc4(dz))
-            dz = F.gelu(self.fc5(dz))
+            z = self.fc5(z)
             #z = z + zskip # skip connection
-            z = z + dz # skip connection from previous latent state to next
+            #z = z + dz # skip connection from previous latent state to next
             #zskip = z.clone()
             #Z[:, r, :] = z
             Z_list.append(z)
@@ -787,8 +801,10 @@ class TimeSeriesConv(nn.Module):
         #y = F.gelu(self.fco3(y))
         #y = self.fco4(y)  # (B, dim_out)
         #out = y + xy_skip # skip connection
-        yAmp = self.fcoAmp(y) + xAmp_skip # predict amplitude with skip connection
-        yFreq = torch.cumsum(self.fcoFreq(y), dim=1)
+        yAmp = torch.cumsum(self.fcoAmp(y), dim=1) + xAmp_skip # predict amplitude with skip connection
+        yFreq = self.fcoFreq(y)
+        yFreq = math.pi * torch.tanh(yFreq)
+        yFreq = torch.cumsum(yFreq, dim=1)
         yCos = xCos_skip*torch.cos(yFreq) - xSin_skip*torch.sin(yFreq) # reconstruct cosine with predicted freq and skip connection
         ySin = xSin_skip*torch.cos(yFreq) + xCos_skip*torch.sin(yFreq) # reconstruct sine with predicted freq and skip connection
         yUnpaired = self.fcoUnpaired(y) + xUnpaired_skip # predict unpaired features with skip connection

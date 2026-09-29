@@ -1,20 +1,50 @@
 function [dtaPred, figout] = AdaptKalmanAuton(noiseRef, dtaTbl, Am, KA, A0, stepsize, Q, N, w0, ...
     nLMS, dLMS, showfit)
-% Adaptive LTV sys ID plus artifact removal with Kalman filter 
-% TO DO: replace RR with N and have QQ calculated using the output of a LMS
-% filter 
-
-% is Am actually being used??
+% 
+% Adaptive LTV sys ID plus artifact removal with Kalman+LMS filters. 
+% The least mean squares (LMS) filter adaptively estimates the artifact and
+% subtracts it. The LMS output amplitude also provides an estimate of the 
+% measurement noise covariance (R) used by the Kalman filter. The Kalman
+% filter makes an estimate of the state using matrix A, makes an adaptive
+% estimate of the process noise, and smoothly weighs between state estimate
+% and measurement-based estimate of signal value. The state matrix itself
+% can also be identified adaptively if nonzero/nonempty parameters Am and
+% KA are provided to define the adaptive update rule. Current version only
+% supports full state availability, i.e. system output = full state (no
+% latent states). 
+% 
+% Inputs: 
+%   noiseRef: reference signal for start of artifacts 
+%   dtaTbl: input noisy data as timetable 
+%   Am: Hurwitz stabilizing matrix for adaptive state matrix ID; 
+%       leave empty for no adaptive system ID
+%   KA: gain matrix for adaptive state matrix update; 
+%       leave empty for no adaptive system ID
+%   A0: initial estimate for state matrix 
+%   stepsize: learning rate for LMS filter 
+%   Q: process noise covariance estimate for Kalman filter
+%   N: LMS filter length (number of taps); should be at least as long as
+%      expected artifact duration (in samples) 
+%   w0: initial LMS filter weights; default = all zero 
+%   nLMS: flag to normalize LMS step update; default = true 
+%   dLMS: flag to minimize noise derivative instead of noise value; default
+%         = false
+%   showfit: flag to produce figures and display progress; default = false
+% 
+% Outputs: 
+%   dtaPred: output data with artifact removed 
+%   figout: figure handles 
+% 
 
 %% arg handling 
 
-% handle incomplete args 
-if nargin < 11
-    dLMS = false;
-    if nargin < 10
-        nLMS = true;
-        if nargin < 12
-            showfit = false;
+% handle incomplete args
+if nargin < 12
+    showfit = false;
+    if nargin < 11
+        dLMS = false;
+        if nargin < 10
+            nLMS = true;
         end
     end
 end

@@ -103,7 +103,7 @@ for Ti = 1:height(alltbls)
     end
 end
 
-%%{
+%{
 % reref to common average 
 for Ti = 1:height(alltbls)
     disp(['Rereferencing: ',num2str(Ti),' of ',num2str(height(alltbls))])

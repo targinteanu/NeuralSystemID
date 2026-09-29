@@ -2,15 +2,67 @@
 disp('Please select subject folder...')
 folder = uigetdir; 
 [~,pName] = fileparts(folder)
+
 NSfiles = dir([folder,filesep,'*.ns*']);
 NEVfiles = dir([folder,filesep,'*.nev']);
-ElecXL = [dir([folder,filesep,'electrode_data.xls*']); ...
-          dir([folder,filesep,pName,filesep,'electrode_data.xls*']); ...
-          dir([folder,filesep,'Imaging',filesep,'electrode_data.xls*']); ...
-          dir([folder,filesep,pName,'_electrode_data.xls*']); ...
-          dir([folder,filesep,pName,filesep,pName,'_electrode_data.xls*']); ...
-          dir([folder,filesep,'Imaging',filesep,pName,'_electrode_data.xls*']) ...
+ElecXL = [dir([folder,filesep,'electrode_data*.xls*']); ...
+          dir([folder,filesep,pName,filesep,'electrode_data*.xls*']); ...
+          dir([folder,filesep,'Imaging',filesep,'electrode_data*.xls*']); ...
+          dir([folder,filesep,pName,'_electrode_data*.xls*']); ...
+          dir([folder,filesep,pName,filesep,pName,'_electrode_data*.xls*']); ...
+          dir([folder,filesep,'Imaging',filesep,pName,'_electrode_data*.xls*']) ...
           ];
+
+ElecType = questdlg('What type of electrodes?','Electrode Type specification',...
+    'ECoG/Cortex','sEEG/depth','ECoG/Cortex');
+XYZacpc = []; meshLacpc = []; meshRacpc = []; contelecsearch = false;
+if strcmp(ElecType,'ECoG/Cortex')
+    curelecfile = fullfile(folder,[pName,'_elec_acpc_fr.mat']);
+    if exist(curelecfile,'file')
+        XYZacpc = load(curelecfile, 'elec_acpc_fr');
+        XYZacpc = XYZacpc.elec_acpc_fr;
+    else
+        curelecfile = fullfile(folder,'Imaging',[pName,'_elec_acpc_fr.mat']);
+        if exist(curelecfile,'file')
+            XYZacpc = load(curelecfile, 'elec_acpc_fr');
+            XYZacpc = XYZacpc.elec_acpc_fr;
+        else
+            contelecsearch = true;
+        end
+    end
+end
+if contelecsearch || strcmp(ElecType,'sEEG/depth')
+    curelecfile = fullfile(folder,[pName,'_elec_acpc_f.mat']);
+    if exist(curelecfile,'file')
+        XYZacpc = load(curelecfile, 'elec_acpc_f');
+        XYZacpc = XYZacpc.elec_acpc_f;
+    else
+        curelecfile = fullfile(folder,'Imaging',[pName,'_elec_acpc_f.mat']);
+        if exist(curelecfile,'file')
+            XYZacpc = load(curelecfile, 'elec_acpc_f');
+            XYZacpc = XYZacpc.elec_acpc_f;
+        end
+    end
+end
+curelecfile = fullfile(folder,'Imaging','lh.pial.T1');
+if exist(curelecfile,'file')
+    meshLacpc = curelecfile;
+else
+    curelecfile = fullfile(folder,'Imaging','freesurfer','surf','lh.pial.T1');
+    if exist(curelecfile,'file')
+        meshLacpc = curelecfile;
+    end
+end
+curelecfile = fullfile(folder,'Imaging','rh.pial.T1');
+if exist(curelecfile,'file')
+    meshRacpc = curelecfile;
+else
+    curelecfile = fullfile(folder,'Imaging','freesurfer','surf','rh.pial.T1');
+    if exist(curelecfile,'file')
+        meshRacpc = curelecfile;
+    end
+end
+
 thisfilename = mfilename("fullpath");
 
 %% try to load a previous run if available 
@@ -21,6 +73,7 @@ lastrun = dir(folder); % all files and folders
 lastrun = lastrun(3:end); % exclude '.' and '..'
 lastrun = lastrun([lastrun.isdir]); % folders
 lastrun = lastrun(contains({lastrun.name},[pName,'_SegmentData']));
+channelNameRejectPrev = "";
 if ~isempty(lastrun)
     lastrunsel = listdlg(...
         "PromptString", "Load previous session?", ...
@@ -40,7 +93,9 @@ if ~isempty(lastrun)
                     "ListSize", [300 300]);
                 lastrun = lastrun(lastrunsel);
             end
-            if ~isempty(lastrun)
+            if isempty(lastrun)
+                channelNameRejectPrev = "";
+            else
                 load(fullfile(lastrun.folder, lastrun.name), ...
                     'channelNameRec', 'channelNameStim', 'channelNameTrig', 'channelNameReject', ...
                     'trngBaseline', 'trngTrig', 'trngStimNoTrig', 'trngMisc', 'trngSrl', ...
@@ -81,7 +136,13 @@ end
 
 electbl = [];
 for f = ElecXL'
+    original_state = warning('off','all');
     fTbl = readtable([f.folder,filesep,f.name]);
+    warning(original_state);
+
+    disp(['File: ',f.name]);
+    proc = input('Include this file? (Y/N) ', "s");
+    if strcmpi(proc, 'Y')
 
     % interpret coordinates
     if sum(strcmpi(fTbl.Properties.VariableNames, 'coordinates'))
@@ -103,6 +164,7 @@ for f = ElecXL'
     fTbl = [fTbl, XYZ];
 
     electbl = [electbl; fTbl];
+    end
 end
 
 clear x y z XYZ xyz f fTbl
@@ -134,7 +196,7 @@ for f = NSfiles'
     timeEnd = max(timeEnd, max(fTbl.Time));
 
     % pair timetable variables with electrode info
-    if ~isempty(electbl)
+    if ~isempty(electbl) && ~strcmp(ElecType, 'sEEG/depth')
     elecname = electbl.Electrode; elecnum = nan(size(elecname));
     for c = 1:length(elecname)
         cname = elecname{c};
@@ -202,6 +264,52 @@ for f = NSfiles'
     end
 end
 
+% pair timetable variables with electrode info
+for SFi = 1:width(tbls)
+fTbl = tbls{SFi};
+if strcmp(ElecType, 'sEEG/depth')
+    if ~ismember('MatchUncertain', electbl.Properties.VariableNames) 
+        % match has not been run yet
+        pause(.001); drawnow; pause(.001);
+        electbl = matchSEEGchan(fTbl.Properties.VariableNames, ...
+            electbl,XYZacpc,meshLacpc,meshRacpc);
+        pause(.001); drawnow; pause(.001);
+        thisfilever = getFileVersion(thisfilename);
+        % save this for future/other runs 
+        if isempty(ElecXL)
+            electblsvname = ['ElectrodeTable_',thisfilever,'.xlsx'];
+            electblsvname = fullfile(folder, electblsvname);
+        else
+            [~,electblsv] = min([ElecXL.datenum]); % get oldest (original)
+            electblsv = ElecXL(electblsv);
+            [~,electblsvname,electblsvexten] = fileparts(electblsv.name);
+            electblsvname = fullfile(electblsv.folder, ...
+                [electblsvname,'_',thisfilever,'.xlsx']);
+        end
+        writetable(electbl, electblsvname);
+    end
+    for c = 1:width(fTbl)
+        r = find(strcmp(electbl.Electrode, fTbl.Properties.VariableNames{c})); % strcmpi?
+        if numel(r)
+            r = r(1);
+            descrip = electbl.Brainnetome{r};
+            if electbl.MatchUncertain(r)
+                descrip = ['?',descrip];
+            end
+            tbls{SFi}.Properties.VariableDescriptions{c} = descrip;
+        end
+    end
+end
+end
+
+% need to remove fieldtrip-20250318/external/... from path?
+try
+    [ftver, ftpath] = ft_version;
+    rmpath(genpath([ftpath,filesep,'external']));
+catch MEft
+    warning(MEft.message)
+end
+
 % NEV (event data) files
 disp('  - event data...')
 NEVtbl = [];
@@ -209,6 +317,9 @@ for f = NEVfiles'
     try
     fEV = openNEV([f.folder,filesep,f.name], 'nosave');
     EVtbl = nev2table(fEV);
+
+    % ignore Spike events, which should be handled separately: 
+    EVtbl = EVtbl(~contains(EVtbl.EventLabels, "Spike"), :);
 
     disp(['File: ',f.name,...
           ' first event at ',char(min(EVtbl.Time)),' and',...
@@ -247,7 +358,8 @@ for SFi = 1:width(tbls)
 end
 chnames = unique(chnames); chnames = string(chnames);
 
-clear f fNS fEV fTbl EVtbl c r cname cnum proc varnames sortind
+clear f fNS fEV fTbl EVtbl NEVtbl c r cname cnum proc varnames sortind
+clear electbl XYZacpc meshRacpc meshLacpc
 
 if isempty(tbls) || isempty(chnames)
     error('Something went wrong.')
@@ -349,6 +461,15 @@ SamplingFreq = inputdlg('Select main frequency to resample:', ...
 SamplingFreq = eval(SamplingFreq{1});
 [~,SFi] = min(abs(SampleRates-SamplingFreq));
 MainTable = tbls{SFi};
+
+% check expected data size 
+datanumel = seconds(timeEnd-timeBegin)*SamplingFreq*width(MainTable);
+if 8*datanumel > 2^32
+    warning(['This script is not well suited for large recordings or ' ...
+        'multiple sessions over different days. Consider running on ' ...
+        'individual recordings separately instead.'])
+end
+
 MainTable = myRetime(MainTable, SampleRates(SFi), nan);
 MainTable = retime(MainTable, 'regular', 'nearest', 'SampleRate',SamplingFreq);
 SFj = true(size(SampleRates)); SFj(SFi) = false; SFj = find(SFj);
@@ -410,8 +531,16 @@ for itrig = 1:length(trigstart_)
     end
     candwinds = [candwinds; t1, t2];
 end
+if isempty(candwinds)
+    candwinds = [timeBegin timeEnd];
+else
 candwindslong = (candwinds(:,2) - candwinds(:,1)) >= minutes(3); % MIN DURATION
+if ~any(candwindslong)
+    warning('Suggested baseline does not meet minimum duration requirement!')
+    [~,candwindslong] = max((candwinds(:,2) - candwinds(:,1)));
+end
 candwinds = candwinds(candwindslong,:);
+end
 
 clear trigstart_ trigend_ t1 t2 disci d discont
 
@@ -436,7 +565,7 @@ for iwind = 1:height(OLwinds)
     OLwinds(iwind) = OLwinds(iwind)/seconds(t2-t1);
 end
 
-clear t1 t2 numOL io trng iwind
+clear t1 t2 numOL io trng iwind OLtbls
 
 %% user confirms baseline 
 disp('Please confirm baseline condition...')
@@ -591,7 +720,7 @@ end
 
 pause(.01); drawnow; pause(.01);
 
-clear showas xl
+clear showas xl io BaselineData BaselineData_inan
 
 %% inspect and reject noisy channels 
 disp('Please inspect and specify noisy channels to reject...')
@@ -608,7 +737,7 @@ end
 % rejection 
 channelIndexReject = listdlg_chsel("REJECT Channel(s)",chnames,channelNameRejectPrev);
 channelNameReject = [channelNameReject, chnames(channelIndexReject)];
-MainTable = removevars(MainTable, channelNameReject);
+MainTable = removevars(MainTable, channelNameReject); % to do: fix if any are duplicate or already removed
 tblBaselineMain = removevars(tblBaselineMain, channelNameReject);
 tbls = cellfun(@(tbl) myRemoveVars(tbl, channelNameReject), ...
     tbls, 'UniformOutput',false);

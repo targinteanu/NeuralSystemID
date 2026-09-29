@@ -1,14 +1,10 @@
 function rgb = colorwheel(theta)
 
-theta = .75*theta;
+%theta = .75*theta;
 
-r = sin(2*pi*theta) + 1;
-g = sin(2*pi*theta - 2*pi/3) + 1;
-b = sin(2*pi*theta - 4*pi/3) + 1;
-
-r = min(r,1);
-g = min(g,1);
-b = min(b,1);
+r = .5*sin(2*pi*theta) + .5;
+g = .5*sin(2*pi*theta - 2*pi/3) + .5;
+b = .5*sin(2*pi*theta - 4*pi/3) + .5;
 
 rgb = [r,g,b]*.7;
 

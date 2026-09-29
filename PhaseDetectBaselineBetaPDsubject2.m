@@ -1,3 +1,5 @@
+% comparing AR model versus const freq sinusoid prediction 
+
 % file selection
 thisfilename = mfilename("fullpath");
 [fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Segmented Data File');
@@ -29,8 +31,8 @@ end
 %% parameters 
 packetSize = 20; % samples
 phTargets = 2*pi*[0, .5, .3186, .6520, .7332, .1075]; % radians
-ARwin = 1000; predWin = 500; % samples
-ARord = 50; % # coefficients 
+ARwin = 5000; predWin = 100; % samples
+ARord = 16; % # coefficients 
 learnrate = .05; % for adaptive mode 
 freqrng = [13, 30]; % Hz (beta band)
 
@@ -40,9 +42,9 @@ numResults = cell(size(errResults));
 trgResults = cell(size(errResults));
 % dim 1: target phase
 % dim 2: channel 
-% dim 3: const vs dynamic AR model 
+% dim 3: const AR model vs const freq
 
-durConst = []; durDyn = [];
+durAR = []; durSin = [];
 
 for c = 1:1:width(dtaBL)
 
@@ -59,47 +61,47 @@ disp([' ========== PROGRESS: ',num2str(round(100*prog)),'% ========== ']);
 % run phase detection 
 
 % with constant AR model: 
-[phAll, phEst, frAll, frEst, trgTimeConst, phStimConst, ~, ~, durC, ...
-    nCycleConst, nMissConst, nXtraConst] = ...
+[phAll, phEst, frAll, frEst, trgTimeAR, phStimAR, ~, ~, durA, ...
+    nCycleAR, nMissAR, nXtraAR] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
     phTarget, freqrng, ARwin, ARord, predWin, -1, packetSize, ...
-    -1, [], false, false, false, false);
-phErrConst = radfix(phEst-phAll); frErrConst = frEst - frAll;
-durConst = [durConst, durC];
+    -1, [], false, false, false, false, true);
+phErrAR = radfix(phEst-phAll); frErrAR = frEst - frAll;
+durAR = [durAR, durA];
 
 pause(.001); 
 drawnow;
 pause(.001);
 
-% with dynamic AR model: 
-[phAll, phEst, frAll, frEst, trgTimeDyn, phStimDyn, ~, ~, durD, ...
-    nCycleDyn, nMissDyn, nXtraDyn] = ...
+% with const freq sinusoid: 
+[phAll, phEst, frAll, frEst, trgTimeSin, phStimSin, ~, ~, durS, ...
+    nCycleSin, nMissSin, nXtraSin] = ...
     offline_PhaseDetect(dtaBL.(chtoplot)', Fs, [], dtaBL.Time', chtoplot, ...
     phTarget, freqrng, ARwin, ARord, predWin, -1, packetSize, ...
-    learnrate, false, false, false, false, false);
-phErrDyn = radfix(phEst-phAll); frErrDyn = frEst - frAll;
-durDyn = [durDyn, durD];
+    -1, [], false, false, false, false, false);
+phErrSin = radfix(phEst-phAll); frErrSin = frEst - frAll;
+durSin = [durSin, durS];
 
 pause(.001); 
 drawnow;
 pause(.001);
 
-errResults{p,c,1} = radfix(phStimConst-phTarget); 
-errResults{p,c,2} = radfix(phStimDyn-phTarget);
-trgResults{p,c,1} = trgTimeConst; trgResults{p,c,2} = trgTimeDyn;
-numResults{p,c,1} = [nMissConst, nXtraConst, nCycleConst];
-numResults{p,c,2} = [nMissDyn, nXtraDyn, nCycleDyn];
+errResults{p,c,1} = radfix(phStimAR-phTarget); 
+errResults{p,c,2} = radfix(phStimSin-phTarget);
+trgResults{p,c,1} = trgTimeAR; trgResults{p,c,2} = trgTimeSin;
+numResults{p,c,1} = [nMissAR, nXtraAR, nCycleAR];
+numResults{p,c,2} = [nMissSin, nXtraSin, nCycleSin];
 
 end % phase targets
 end % channels
 
 %% aggregate/display all channel/target results 
 
-durConst = durConst(~isnan(durConst)); durDyn = durDyn(~isnan(durDyn));
+durAR = durAR(~isnan(durAR)); durSin = durSin(~isnan(durSin));
 fspc = 'took avg. %f, min %f, max %f seconds';
 fspf = @(t) sprintf(fspc, mean(t), min(t), max(t));
-disp(['Constant ',fspf(durConst)]);
-disp(['Dynamic ',fspf(durDyn)]);
+disp(['Constant AR ',fspf(durAR)]);
+disp(['Constant Freq Sin ',fspf(durSin)]);
 
 errResultsAll = cell(1, size(errResults,3));
 numResultsAll = cell(1, size(numResults,3));
@@ -121,8 +123,8 @@ fig1 = figure;
 polarhistogram(errResultsAll{1}, 18); hold on; polarhistogram(errResultsAll{2}, 18);
 title('Stim error (causal - offline)'); 
 legend( ...
-    ['Constant - RMSE ',num2str(rms(errResultsAll{1}))], ... 
-    ['Dynamic - RMSE ',num2str(rms(errResultsAll{2}))], ...
+    ['Constant AR - RMSE ',num2str(rms(errResultsAll{1}))], ... 
+    ['Constant Sin Freq - RMSE ',num2str(rms(errResultsAll{2}))], ...
     'Location','northoutside');
 [~,p] = ttest2(errResultsAll{1}.^2, errResultsAll{2}.^2, 'tail', 'right');
 subtitle(['p = ',num2str(p)])
@@ -131,10 +133,10 @@ fig2 = figure;
 tiledlayout(1,2,'TileSpacing','compact');
 ax1 = nexttile;
 pie(ax1, numResultsAll{1});
-title('Num. Stim. - Constant');
+title('Num. Stim. - AR');
 ax2 = nexttile;
 pie(ax2, numResultsAll{2});
-title('Num. Stim. - Dynamic');
+title('Num. Stim. - Sin');
 lgd = legend({'Missing', 'Extra', 'Correct'});
 lgd.Layout.Tile = 'east';
 
@@ -143,7 +145,7 @@ thisfilever = getFileVersion(thisfilename);
 [~,thisfilename] = fileparts(thisfilename);
 svname = [fp,fn,'_',thisfilename,'_',thisfilever];
 
-save(svname, 'errResults', 'durConst', 'durDyn', 'numResults', 'trgResults', ...
+save(svname, 'errResults', 'durAR', 'durSin', 'numResults', 'trgResults', ...
     'phTargets', 'chselName', 'packetSize', 'ARwin', 'ARord', 'learnrate', 'freqrng');
 saveas(fig1, [svname,'_error'], 'png');
 saveas(fig2, [svname,'_number'], 'png');
