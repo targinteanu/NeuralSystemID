@@ -146,7 +146,7 @@ zww = smoothdata(z,1,'gaussian', ceil(Fs/Fu));
 
 %% report rolling rate offset, phase, and amp
 
-[fsine, ampsine, phsine, amp0] = FourierSine(zww, Fs, t, 16, false);
+[fsine, ampsine, phsine, amp0] = FourierSine(zw, Fs, t, 8, false, 0.01, []);
 %%
 
 zw2 = smoothdata(z,1,'gaussian',100*ceil(Fs*wl));
@@ -412,13 +412,19 @@ fk = [f1, f1b]; qk = [q1, q1b];
 end
 
 
-function [fsine, ampsine, phsine, A0] = FourierSine(zw, Fs, t, K, tres)
-if nargin < 5
-    tres = false;
-    if nargin < 4
-        K = 8;
-        if nargin < 3
-            t = ((1:length(zw))-1)/Fs;
+function [fsine, ampsine, phsine, A0] = FourierSine(zw, Fs, t, K, tres, fres, fminmax)
+if nargin < 7
+    fminmax = [];
+    if nargin < 6
+        fres = false;
+        if nargin < 5
+            tres = false;
+            if nargin < 4
+                K = 8;
+                if nargin < 3
+                    t = ((1:length(zw))-1)/Fs;
+                end
+            end
         end
     end
 end
@@ -445,6 +451,10 @@ phpos = angle(Y(posIdx));         % phase of complex exponential
 % include DC term separately
 A0 = real(Y(1))/Nt; % DC (constant) term
 
+if fres
+    fresnorm = ceil(fres*Nt/Fs); % freq samples
+end
+
 % build sine-wave-only representation: A_k * sin(2*pi*f_k*t + phi_k)
 if tres 
     [S,fS,tS] = spectrogram(y,tres*Fs,[],[],Fs,"yaxis");
@@ -457,23 +467,36 @@ else
     fk = freqs(posIdx);
     phk = phpos - pi/2; % convert complex exponential phase to sine-phase
 end
+if fres
+    Ak = smoothdata(Ak,1,"gaussian", fresnorm);
+end
+
+% exclude low freqs 
+if ~isempty(fminmax)
+    fsel = (fk > fminmax(1)) & (fk < fminmax(2));
+    Ak = Ak(fsel);
+    phk = phk(fsel);
+    fk = fk(fsel);
+end
+
 % (since e^{i(ωt+ph)} = cos(ωt+ph) + i sin(...); to express as sin(ωt+phi_s):
 % sin(ωt+phi_s) = cos(ωt+phi_s - pi/2), adjust accordingly. Using phase shift:
 % amplitude already accounts for factor 2 above.)
 
-% exclude low freqs 
-flowlim = 0.5;
-Ak  =  Ak(fk > flowlim);
-phk = phk(fk > flowlim);
-fk  =  fk(fk > flowlim);
-
 % reconstruct using a limited number of harmonics for stability (optional)
 % choose K components with largest amplitudes
 K = min(K, numel(Ak)); % limit to _ components or less
-[~,ord] = sort(Ak,'descend');
-sel = sort(ord(1:K));
-Ak = -Ak;
+if fres
+    [pkA,pkF,pkFw,pkAp] = findpeaks(Ak, 'SortStr','descend', ...
+        'MinPeakDistance',fresnorm); % could instead use 'MinPeakWidth' and sort by Ap
+    K = min(K, numel(pkF));
+    sel = pkF(1:K);
+else
+    [~,ord] = sort(Ak,'descend');
+    sel = sort(ord(1:K));
+end
 
+Ak = -Ak;
 % build approximation
 y_approx = A0 + zeros(size(tv));
 for ii = 1:numel(sel)
