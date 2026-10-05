@@ -146,7 +146,7 @@ zww = smoothdata(z,1,'gaussian', ceil(Fs/Fu));
 
 %% report rolling rate offset, phase, and amp
 
-[fsine, ampsine, phsine, amp0] = FourierSine(zww, Fs, t, 16);
+[fsine, ampsine, phsine, amp0] = FourierSine(zww, Fs, t, 16, false);
 %%
 
 zw2 = smoothdata(z,1,'gaussian',100*ceil(Fs*wl));
@@ -412,11 +412,14 @@ fk = [f1, f1b]; qk = [q1, q1b];
 end
 
 
-function [fsine, ampsine, phsine, A0] = FourierSine(zw, Fs, t, K)
-if nargin < 4
-    K = 8;
-    if nargin < 3
-        t = ((1:length(zw))-1)/Fs;
+function [fsine, ampsine, phsine, A0] = FourierSine(zw, Fs, t, K, tres)
+if nargin < 5
+    tres = false;
+    if nargin < 4
+        K = 8;
+        if nargin < 3
+            t = ((1:length(zw))-1)/Fs;
+        end
     end
 end
 
@@ -443,16 +446,30 @@ phpos = angle(Y(posIdx));         % phase of complex exponential
 A0 = real(Y(1))/Nt; % DC (constant) term
 
 % build sine-wave-only representation: A_k * sin(2*pi*f_k*t + phi_k)
-fk = freqs(posIdx);
-Ak = Apos;
-phk = phpos - pi/2; % convert complex exponential phase to sine-phase
+if tres 
+    [S,fS,tS] = spectrogram(y,tres*Fs,[],[],Fs,"yaxis");
+    S = S/(2*Fs);
+    Ak = mean(abs(S), 2);
+    phk = circ_mean(angle(S), [], 2);
+    fk = fS;
+else
+    Ak = Apos;
+    fk = freqs(posIdx);
+    phk = phpos - pi/2; % convert complex exponential phase to sine-phase
+end
 % (since e^{i(ωt+ph)} = cos(ωt+ph) + i sin(...); to express as sin(ωt+phi_s):
 % sin(ωt+phi_s) = cos(ωt+phi_s - pi/2), adjust accordingly. Using phase shift:
 % amplitude already accounts for factor 2 above.)
 
+% exclude low freqs 
+flowlim = 0.5;
+Ak  =  Ak(fk > flowlim);
+phk = phk(fk > flowlim);
+fk  =  fk(fk > flowlim);
+
 % reconstruct using a limited number of harmonics for stability (optional)
 % choose K components with largest amplitudes
-K = min(K, numel(Ak)); % limit to 50 components or less
+K = min(K, numel(Ak)); % limit to _ components or less
 [~,ord] = sort(Ak,'descend');
 sel = sort(ord(1:K));
 Ak = -Ak;
