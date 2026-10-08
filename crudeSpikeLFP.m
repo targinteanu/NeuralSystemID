@@ -116,6 +116,17 @@ w = (1/50)*Fs;
 zw = smoothdata(z,1,'gaussian',w);
 zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
 %}
+
+dt = diff(tSpk);
+[~,~,Fu] = isoutlier(1./dt); 
+[~,~,wl] = isoutlier(dt);
+figure; hh = histogram(dt, 0:.001:0.1); grid on; hold on;
+hs = stem([wl, 1/Fu], max(hh.Values)*[1,1], '.');
+hs.SeriesIndex = hh.SeriesIndex;
+title('ISI histograms:')
+subtitle('all spikes + each cluster');
+xlabel('ISI (s)'); ylabel('count');
+
 zkw = cell(length(ku),2);
 for ki = 1:length(ku)
     tSpkKi = tSpkK{ki};
@@ -123,6 +134,10 @@ for ki = 1:length(ku)
     dt = diff(tSpkKi);
     [~,~,Fu] = isoutlier(1./dt); 
     [~,~,wl] = isoutlier(dt);
+    hh = histogram(dt, 0:.001:0.1); 
+    hs = stem([wl, 1/Fu], max(hh.Values)*[1,1], '.');
+    hs.SeriesIndex = ki+1;
+    hh.SeriesIndex = ki+1;
     % perform smoothing
     %LPF = fir1(1023, 2/(Fs*wl), "low"); 
     %zkw{ki,1} = filtfilt(LPF,1,zk{ki});
