@@ -1,10 +1,11 @@
 %% obtain segmented, artifact-free data 
 
 % file selection
-[fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Artifact-Free Data File');
+[fn,fp] = uigetfile('*.mat', 'Choose Artifact-Free Data File');
 load(fullfile(fp,fn));
 [~,fn,fe] = fileparts(fn);
 ArtRemoveDone = contains(fn, '_ArtifactRemoveOffline');
+QCcleaned = contains(fn,'QCcleaned');
 if ArtRemoveDone
     fnOrig = split(fn, '_ArtifactRemoveOffline'); fnOrig = fnOrig{1};
     fpOrig = fp;
@@ -39,6 +40,20 @@ PDdata = PDdata(:,channames); % reorder
 % common avg ECoG reref 
 PDdata{:,:} = PDdata{:,:} - mean(PDdata{:,1:63}, 2, 'omitnan');
 
+% interp nan values 
+PDdata_nanmask = double(isnan(PDdata.Variables));
+for ch = 1:width(PDdata)
+    x = PDdata{:,ch};
+    if sum(~isnan(x))
+        if sum(isnan(x))
+            iAll = (1:length(x))'; iValid = find(~PDdata_nanmask(:,ch));
+            xValid = x(iValid);
+            x = interp1(iValid,xValid,iAll,"linear","extrap");
+            PDdata{:,ch} = x;
+        end
+    end
+end
+
 % signal processing 
 %thetaPowerCortex = bandpower(PDdata.Variables, srate, [4,9]);
 %thetaPowerCortex(isoutlier(sqrt(thetaPowerCortex))) = nan;
@@ -51,7 +66,7 @@ for ch = 1:width(PDdata)
         PDdata{:,ch} = filtfilt(filtwts,1,x);
     end
 end
-PDdata = PDdata(:,1:63);
+PDdata = PDdata(:,1:63); PDdata_nanmask = PDdata_nanmask(:,1:63);
 %PD_Phase_Data = instPhaseFreqTbl(PDdata);
 PD_Channel_Names = PDdata.Properties.VariableNames;
 
@@ -68,10 +83,15 @@ for ch = 1:width(PDdata)
         thetaPowerWindowed(:,ch) = movmean(envelope(x.^2), windowSize);
     end
 end
+PDdata_nanmask = movmean(PDdata_nanmask, windowSize);
+
 %thetaPowerWindowed = movmean(envelope(PDdata.Variables).^2, windowSize);
 thetaPowerWindowed = thetaPowerWindowed(round(windowSize/2):windowSize:end, :);
+PDdata_nanmask = PDdata_nanmask(round(windowSize/2):windowSize:end, :);
+PDdata_nanmask = PDdata_nanmask>0;
 thetaPowerWindowed = 10*log10((thetaPowerWindowed)); % decibel (dB) scale 
 thetaPowerWindowed(isoutlier(thetaPowerWindowed)) = nan;
+thetaPowerWindowed(PDdata_nanmask) = nan;
 thetaPowerWindowed = median(thetaPowerWindowed, 'omitnan');
 
 ElecTbl.ThetaPowerWindowed = thetaPowerWindowed';
