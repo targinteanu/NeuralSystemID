@@ -90,7 +90,10 @@ thetaPowerWindowed = thetaPowerWindowed(round(windowSize/2):windowSize:end, :);
 PDdata_nanmask = PDdata_nanmask(round(windowSize/2):windowSize:end, :);
 PDdata_nanmask = PDdata_nanmask>0;
 thetaPowerWindowed = 10*log10((thetaPowerWindowed)); % decibel (dB) scale 
-thetaPowerWindowed(isoutlier(thetaPowerWindowed)) = nan;
+if ~QCcleaned
+    thetaPowerWindowed(isoutlier(thetaPowerWindowed)) = nan;
+    % if QC already done, this step is not necessary?
+end
 thetaPowerWindowed(PDdata_nanmask) = nan;
 thetaPowerWindowed = median(thetaPowerWindowed, 'omitnan');
 
@@ -102,11 +105,14 @@ R = mean(G,2, 'omitnan');
 OLthresh = thetaPowerWindowed > median(thetaPowerWindowed, 'omitnan');
 OLthresh = thetaPowerWindowed(OLthresh); 
 io = isoutlier(OLthresh, 'mean'); OLthresh = min(OLthresh(io));
-disp(['Removing ',num2str(sum(io)),' outlier channels.'])
-if isempty(OLthresh) || isnan(OLthresh)
-    OLthresh = inf;
+if ~QCcleaned
+    % if QC already done, this step is not necessary?
+    disp(['Removing ',num2str(sum(io)),' outlier channels.'])
+    if isempty(OLthresh) || isnan(OLthresh)
+        OLthresh = inf;
+    end
+    thetaPowerWindowed(thetaPowerWindowed >= OLthresh) = nan;
 end
-thetaPowerWindowed(thetaPowerWindowed >= OLthresh) = nan;
 
 %%
 %{
