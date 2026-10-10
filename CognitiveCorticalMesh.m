@@ -74,7 +74,7 @@ ElecTbl = table('RowNames',PD_Channel_Names(1:63)); % cortical only
 
 %% windowed theta power 
 % Calculate windowed theta power
-windowSize = 1000; % samples 
+windowSize = 10000; % samples 
 thetaPowerWindowed = PDdata.Variables.^2;
 for ch = 1:width(PDdata)
     disp(['Calculating power: channel ',num2str(ch),' of ',num2str(width(PDdata))])
@@ -138,6 +138,12 @@ lat = questdlg('Specify Electrode Laterality:', 'Laterality', ...
     'left','right','Cancel','Cancel');
 if ~(strcmp(lat,'left')|strcmp(lat,'right'))
     error('Laterality must be specified.')
+else
+    if strcmp(lat,'left')
+        lat = 1;
+    else
+        lat = 2;
+    end
 end
 
 % specify file(s)
@@ -147,17 +153,26 @@ fnElecMNI = [subjID,'_elec_mni_frv.mat'];
 
 % look for imaging files 
 fpPialT1 = fpElec;
-fnPialT1 = fullfile(fpPialT1,[lat(1),'h.pial.T1']);
+fnPialT1 = fullfile(fpPialT1,'lh.pial.T1');
 if ~exist(fnPialT1, 'file')
     fpPialT1 = fullfile(fpElec,'freesurfer','surf');
-    fnPialT1 = fullfile(fpPialT1,[lat(1),'h.pial.T1']);
+    fnPialT1 = fullfile(fpPialT1,'lh.pial.T1');
 end
+meshACPCl = ft_read_headshape(fnPialT1);
+fnPialT1 = fullfile(fpPialT1,'rh.pial.T1');
+if ~exist(fnPialT1, 'file')
+    fpPialT1 = fullfile(fpElec,'freesurfer','surf');
+    fnPialT1 = fullfile(fpPialT1,'rh.pial.T1');
+end
+meshACPCr = ft_read_headshape(fnPialT1);
 
 % load files
 elecACPC = load(fullfile(fpElec, fnElec)).elec_acpc_fr;
 elecMNI = load(fullfile(fpElec, fnElecMNI)).elec_mni_frv;
-meshACPC = ft_read_headshape(fnPialT1);
-meshMNI = load([ftpath,filesep,'template/anatomy/surface_pial_',lat,'.mat']).mesh;
+meshMNIl = load([ftpath,filesep,'template/anatomy/surface_pial_left.mat']).mesh;
+meshMNIr = load([ftpath,filesep,'template/anatomy/surface_pial_right.mat']).mesh;
+meshACPC = {meshACPCl, meshACPCr};
+meshMNI = {meshMNIl, meshMNIr};
 
 %% patient specific acpc coords
 
@@ -174,17 +189,23 @@ for ch = 1:length(thetaPowerWindowed)
     end
 end
 
-figACPC = figure('Units','normalized', 'Position',[.05,.05,.65,.9]); 
-ThetaPowerInterp = load_ACPC_FR_mesh(elecACPC, meshACPC, ...
-    thetaPowerWindowed, 'acpc', isnan(thetaPowerOrig));
-title('Theta Power, individual ACPC', 'FontSize',20)
+figACPC = figure('Units','normalized', 'Position',[.05,.05,.65,.9], 'Theme','light'); 
+ThetaPowerInterp = showbrainmesh(elecACPC, meshACPC{lat}, ...
+    thetaPowerWindowed, 'acpc', meshACPC{3-lat});%, isnan(thetaPowerOrig));
+
+pos = mean(elecACPC.chanpos);
+[az,el] = cart2sph(pos(1),pos(2),pos(3));
 
 camlight;
+%{
 if lat(1)=='r'
     view([150,5]);
 else
     view([0,90]);
 end
+%}
+view(az*180/pi + 90, el*180/pi);
+sgtitle('Theta Power, individual ACPC', 'FontSize',20)
 camlight headlight;
 
 %% freesurfer mni coords 
@@ -193,17 +214,23 @@ ElecTbl.mniX = elecMNI.chanpos(:,1);
 ElecTbl.mniY = elecMNI.chanpos(:,2); 
 ElecTbl.mniZ = elecMNI.chanpos(:,3); 
 
-figMNI = figure('Units','normalized', 'Position',[.3,.05,.65,.9]); 
-ThetaPowerInterp = load_ACPC_FR_mesh(elecMNI, meshMNI, ...
-    thetaPowerWindowed, 'mni', isnan(thetaPowerOrig));
-title('Theta Power, MNI space / template brain', 'FontSize',20)
+figMNI = figure('Units','normalized', 'Position',[.3,.05,.65,.9], 'Theme','light'); 
+ThetaPowerInterp = showbrainmesh(elecMNI, meshMNI{lat}, ...
+    thetaPowerWindowed, 'mni', meshMNI{3-lat});%, isnan(thetaPowerOrig));
+
+pos = mean(elecMNI.chanpos);
+[az,el] = cart2sph(pos(1),pos(2),pos(3));
 
 camlight;
+%{
 if lat(1)=='r'
     view([150,5]);
 else
     view([0,90]);
 end
+%}
+view(az*180/pi + 90, el*180/pi);
+sgtitle('Theta Power, MNI space / template brain', 'FontSize',20)
 camlight headlight;
 
 %% saving 
@@ -220,19 +247,20 @@ end
 %% helper functions 
 
 function [interp_source, srcpltcfg] = ...
-    load_ACPC_FR_mesh(elec_acpc_fr, pial_lh, data, coordsys, markmissing)
-    sphereradius = 3;
-    if nargin < 5
-        markmissing = false(size(elec_acpc_fr.chanpos,1),1);
+    showbrainmesh(elecpos, brainmesh, data, coordsys, brainmesh2, markmissing)
+    sphereradius = 4;
+    if nargin < 6
+        markmissing = false(size(elecpos.chanpos,1),1);
+        if nargin < 5
+            brainmesh2 = [];
+        end
     end
 
     % === Step 1: Load Electrode Positions and Mesh ===
-    %elec_acpc_fr = load(acpc_path).elec_acpc_fr;
-    %pial_lh = ft_read_headshape(pial_lh_path);
-    pial_lh.coordsys = coordsys;
+    brainmesh.coordsys = coordsys;
 
-    pial_lh = ft_convert_units(pial_lh, 'mm');
-    elec_acpc_fr = ft_convert_units(elec_acpc_fr, 'mm');
+    brainmesh = ft_convert_units(brainmesh, 'mm');
+    elecpos = ft_convert_units(elecpos, 'mm');
 
     %{
     % === Step 2: Identify reference channels ===
@@ -240,12 +268,11 @@ function [interp_source, srcpltcfg] = ...
     data_clean = data;              % Copy data
     data_clean(ref_idx) = 0;         % Set NaNs to 0 for interpolation
     %}
-    data_clean = data;
 
     % === Step 3: Build source structure ===
     source = struct();
-    source.pos = elec_acpc_fr.chanpos;
-    source.pow = data_clean;
+    source.pos = elecpos.chanpos;
+    source.pow = data;
     source.dimord = 'pos';
     source.coordsys = coordsys;
     source.unit = 'mm';
@@ -255,19 +282,19 @@ function [interp_source, srcpltcfg] = ...
     cfg.parameter = 'pow';
     cfg.interpmethod = 'sphere_weighteddistance';
     cfg.sphereradius = sphereradius;
-    interp_source = ft_sourceinterpolate(cfg, source, pial_lh);
+    interp_source = ft_sourceinterpolate(cfg, source, brainmesh);
 
     % === Step 5: Plot the Interpolated Data ===
     cfg = [];
     cfg.funparameter = 'pow';
     %cfg.funcolorlim = [0 1];            % normal 0-1 scaling
-    cfg.funcolorlim = [min(data_clean), max(data_clean)]; % normalize
+    cfg.funcolorlim = [min(data), max(data)]; % normalize
     cfg.method = 'surface';
     cfg.interpmethod = 'nearest';
     cfg.sphereradius = sphereradius;
     cfg.camlight = 'no';
 
-    srcpltcfg = ft_sourceplot(cfg, interp_source, pial_lh);
+    srcpltcfg = ft_sourceplot(cfg, interp_source, brainmesh);
 
     %view([-55 10]);
     ax = gca;
@@ -288,17 +315,23 @@ function [interp_source, srcpltcfg] = ...
 
     % === Step 7: Plot electrodes ===
     % Plot normal electrodes
-    elec_plot_colors = data_clean;   % Use interpolated data (0–1)
+    elec_plot_colors = data;   % Use interpolated data (0–1)
     %ft_plot_sens(elec_acpc_fr, 'elecsize', 9, 'facecolor', elec_plot_colors, 'edgecolor', 'black');
-    ft_plot_sens(elec_acpc_fr, 'elecsize', 15, 'facecolor', 'red', 'edgecolor', 'black');
+    ft_plot_sens(elecpos, 'elecsize', 15, 'facecolor', 'red', 'edgecolor', 'black');
 
     % indicate electrodes with missing/omitted data 
     hold on;
     plot3(...
-        elec_acpc_fr.chanpos(markmissing,1), ...
-        elec_acpc_fr.chanpos(markmissing,2), ...
-        elec_acpc_fr.chanpos(markmissing,3)+.1, ...
+        elecpos.chanpos(markmissing,1), ...
+        elecpos.chanpos(markmissing,2), ...
+        elecpos.chanpos(markmissing,3)+.1, ...
         'xk', 'MarkerSize',15, 'LineWidth',3);
+
+    if ~isempty(brainmesh2)
+        hold on; ft_plot_mesh(brainmesh2);
+    end
+    ax.Children(1).FaceColor = [.8 .8 .8]; % brain mesh 2
+    ax.Children(1).FaceAlpha = .6; % brain mesh 2
 
     %{
     % === Step 8: Overlay reference electrodes manually ===
