@@ -2,11 +2,10 @@
 load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzRT.mat')
 %Tbl = Tbl1; 
 Tbl = sortrows(Tbl, 'Time');
-t = seconds(Tbl.Time); t0 = t(1);
+t = seconds(Tbl.Time); 
 xch = 5; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
 %x = Tbl.CLFP_NP1___Posterior; xname = 'CLFP_NP1___Posterior';
 Fs = 1375; spkFs = 44000; % Hz
-dt = 1/Fs; dthalf = dt/2; % s
 load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat')
 spkTbl = depth_p0496_1; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
@@ -112,6 +111,66 @@ end
 
 %% report mod components 
 
+[F,W,fW,Wmean] = getModComponents(zww, Fs, [0.5 inf]);
+
+% Multi-panel spectrogram with linked marginal plots
+fPlot = fS(2:end);
+sPlot = SS(2:end,:);
+specMean = mean(sPlot, 2, 'omitnan');
+
+figure;
+axMain = axes('Position',[0.25 0.30 0.70 0.65]);
+imagesc(axMain, tS, fPlot, sPlot);
+axMain.YLim = [0 140];
+axMain.YDir = 'normal';
+ylabel(axMain,'Frequency (Hz)');
+title(axMain,'LFP Adjusted spectrogram');
+colormap(axMain, parula);
+%colorbar(axMain);
+
+axLeft = axes('Position',[0.06 0.30 0.14 0.65]);
+h1 = histogram(axLeft, zww, 'Orientation','horizontal');
+hold(axLeft,'on'); grid(axLeft,'on');
+h2 = histogram(axLeft, zw,  'Orientation','horizontal');
+axLeft_xmax = max(h1.Values(2:end));
+axLeft_xmax = max(axLeft_xmax, max(h2.Values(2:end)));
+Wmean = Wmean * axLeft_xmax / max(Wmean); % scale
+plot(axLeft,[0,axLeft_xmax],OnRate*[1,1], ...
+    'LineWidth',3);
+plot(axLeft,Wmean,fW, ...
+    'LineWidth',3); 
+legend(axLeft, 'Inst Fire Rate', 'Avg Fire Rate', 'Carrier Rate', ...
+    'Fire Rate Mod. Spectrum', 'Location','best');
+axLeft.XDir = "reverse";
+axLeft.YDir = 'normal';
+axLeft.YLim = axMain.YLim;
+axLeft.XLim = [0, 1.1*axLeft_xmax];
+axLeft.YAxisLocation = 'right';
+xlabel(axLeft,'Power / count');
+title(axLeft, 'Spike Rate');
+axLeft.XTick = [];
+linkaxes([axLeft axMain],'y');
+
+axBottom = axes('Position',[0.25 0.08 0.70 0.14]);
+yyaxis left;
+amp2 = envelope(zww-zw);
+plot(axBottom, t, zw, 'b', 'LineWidth', 2);
+grid(axBottom,'on'); hold(axBottom,'on');
+patch(axBottom, [t; flipud(t)], [zw; flipud(zw)]+[amp2; -flipud(amp2)], 'b', ...
+    'FaceAlpha',0.5, 'EdgeColor','none');
+yyaxis right;
+plot(axBottom, t, x-mean(x));
+for Fi = 1:height(F)
+    FiBPF = fir1(1023,F(Fi,[1,3])/(Fs/2));
+    Fx = filtfilt(FiBPF,1,x);
+    plot(axBottom, t, Fx);
+end
+plot(axBottom, t, z, 'k', 'LineWidth',1);
+xlabel(axBottom,'Time (s)');
+ylabel(axBottom,'Rate (Hz) / Amp (\muV)');
+xlim(axBottom, axMain.XLim);
+legend(["Avg Fire Rate"; "Fire Rate Mod Amp"; "LFP"; string(F(:,2))+" hz"]);
+linkaxes([axMain axBottom],'x');
 
 %% report rolling rate offset, phase, and amp
 
@@ -301,7 +360,7 @@ dt = dt(spkOn(2:end) & spkOn(1:(end-1)));
 end
 
 
-function F = getModComponents(zw2, Fs, fminmax)
+function [F,W,fW,Wt] = getModComponents(zw2, Fs, fminmax)
 
 % cont wavelet transform pks = candidate components 
 [W,fW] = cwt(zw2,"amor",Fs);
@@ -328,6 +387,8 @@ F = [fminmax(1).*[1 1 1];
      fminmax(2).*[1 1 1] ];
 for iPk = 2:height(F)-1
     F(iPk,1) = max(F(iPk,1), F(iPk-1,3));
+end
+for iPk = fliplr(2:height(F)-1)
     F(iPk,3) = min(F(iPk,3), F(iPk+1,1));
 end
 F = F(2:(end-1),:);
