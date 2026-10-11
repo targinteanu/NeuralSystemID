@@ -2,7 +2,7 @@
 load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzRT.mat')
 %Tbl = Tbl1; 
 Tbl = sortrows(Tbl, 'Time');
-t = seconds(Tbl.Time);
+t = seconds(Tbl.Time); t0 = t(1);
 xch = 5; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
 %x = Tbl.CLFP_NP1___Posterior; xname = 'CLFP_NP1___Posterior';
 Fs = 1375; spkFs = 44000; % Hz
@@ -19,11 +19,12 @@ tsel = (t >= 5700) & (t <= 5800);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
 x = x(tsel); t = t(tsel);
 
-%% spectrogram; look for beta bursts 
+%% time-freq; look for beta bursts 
 
 % unprocessed 
 figure; spectrogram(x,1*Fs,[],[],Fs,"yaxis","power"); ylim([0 200]);
 title(xname);
+figure; cwt(x,"bump",Fs);
 
 % adjusted 
 [S,fS,tS] = spectrogram(x,1*Fs,[],[],Fs,"yaxis","power");
@@ -44,8 +45,11 @@ ku = ku(ku > 0); % exclude noise
 tSpkK = cell(size(ku));
 for ki = 1:length(ku)
     tSpkK{ki} = tSpk(kidx == ku(ki));
+    tSpkK{ki} = ...
+        tSpkK{ki}(tSpkK{ki}>=t(1) & tSpkK{ki}<=t(end)); % limit spk/lfp to same time selection
 end
 tSpk = tSpk(kidx > 0); % exclude noise
+tSpk = tSpk(tSpk>=t(1) & tSpk<=t(end)); % limit spk/lfp to same time selection
 
 % show spike detection 
 figure; plot(spkTbl.Time, xx); hold on; grid on;
@@ -66,114 +70,61 @@ if length(ku) > 1
     ylabel('Spike raster');
 end
 
-%% filter LFP 
-ax(2) = subplot(2,1,2);
-hpf = fir1(2048,0.5/(Fs/2),"high");
-xh = filtfilt(hpf,1,x); xl = x-xh;
-plot(t, xh); grid on; 
-xlabel('time (s)'); ylabel('LFP');
-linkaxes(ax,'x');
+%% build spike train and get ISI
 
-%% build spike train 
-%{
-z = zeros(size(t)); 
-for zi = tSpk'
-    [~,ti] = min(abs(t-zi));
-    z(ti) = 1;
-end
-%}
-z = arrayfun(@(ti) sum((tSpk>(ti-dthalf))&(tSpk<(ti+dthalf))), t)/(2*dthalf);
-zk = cell(size(ku));
-for ki = 1:length(ku)
-    tSpkKi = tSpkK{ki};
-    zk{ki} = arrayfun(@(ti) sum((tSpkKi>(ti-dthalf))&(tSpkKi<(ti+dthalf))), t)/(2*dthalf);
-    %{
-    zk{ki} = zeros(size(t)); % Initialize spike train for each unique index
-    for zi = tSpkK{ki}'
-        [~, ti] = min(abs(t - zi));
-        zk{ki}(ti) = 1; % Mark spikes in the corresponding train
-    end
-    %}
-    disp("Cluster "+num2str(ki))
-    disp("Total rate: "+num2str(length(tSpkKi)/(t(end)-t(1))))
-    disp("Mean rate: "+num2str(mean(zk{ki})))
-end
+[z,dt,Fu,Tl,OnRate,OnOffThresh] = getISIperiods(tSpk, Fs, t);
+disp("All Spikes");
+disp(" - Total rate: "+num2str(length(tSpk)/(t(end)-t(1))))
+disp(" - Mean rate: "+num2str(mean(z)))
+disp(" - On Rate: "+num2str(OnRate))
 
-%% smooth pulse train into firing rate
-%{
-wvals = 1:ceil(100*Fs);
-R = nan(size(wvals));
-for wi = 1:length(wvals)
-    w = wvals(wi);
-    zw = smoothdata(z,1,'gaussian',w);
-    R(wi) = corr(x, zw);
-end
-[~,wi] = max(R);
-w = wvals(wi);
-%}
-%{
-w = (1/50)*Fs;
-zw = smoothdata(z,1,'gaussian',w);
-zkw = cellfun(@(zi) smoothdata(zi,1,'gaussian',w), zk, 'UniformOutput',false);
-%}
-
-dt = diff(tSpk);
-[~,~,Fu] = isoutlier(1./dt); 
-[~,~,wl] = isoutlier(dt);
 figure; hh = histogram(dt, 0:.001:0.1); grid on; hold on;
-hs = stem([wl, 1/Fu], max(hh.Values)*[1,1], '.');
+hs = stem([Tl, 1/Fu], max(hh.Values)*[1,1], '.');
 hs.SeriesIndex = hh.SeriesIndex;
 title('ISI histograms:')
 subtitle('all spikes + each cluster');
 xlabel('ISI (s)'); ylabel('count');
+% perform smoothing 
+zw  = smoothdata(z,1,'gaussian', ceil(Fs*4*Tl));
+zww = smoothdata(z,1,'gaussian', ceil(Fs*4/Fu));
 
+zk = cell(size(ku)); Fuk = nan(size(ku)); Tlk = nan(size(ku));
+OnRates = nan(size(ku)); OnOffThreshs = nan(size(ku));
 zkw = cell(length(ku),2);
 for ki = 1:length(ku)
     tSpkKi = tSpkK{ki};
-    % split into carrier vs rate 
-    dt = diff(tSpkKi);
-    [~,~,Fu] = isoutlier(1./dt); 
-    [~,~,wl] = isoutlier(dt);
-    hh = histogram(dt, 0:.001:0.1); 
-    hs = stem([wl, 1/Fu], max(hh.Values)*[1,1], '.');
+    [zk{ki},dtki,Fuk(ki),Tlk(ki),OnRates(ki),OnOffThreshs(ki)] = ...
+        getISIperiods(tSpkKi, Fs, t);
+
+    disp("Cluster "+num2str(ki))
+    disp(" - Total rate: "+num2str(length(tSpkKi)/(t(end)-t(1))))
+    disp(" - Mean rate: "+num2str(mean(zk{ki})))
+    disp(" - On Rate: "+num2str(OnRates(ki)))
+
+    hh = histogram(dtki, 0:.001:0.1); 
+    hs = stem([Tlk(ki), 1/Fuk(ki)], max(hh.Values)*[1,1], '.');
     hs.SeriesIndex = ki+1;
     hh.SeriesIndex = ki+1;
     % perform smoothing
-    %LPF = fir1(1023, 2/(Fs*wl), "low"); 
-    %zkw{ki,1} = filtfilt(LPF,1,zk{ki});
-    zkw{ki,1} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*wl));
-    %LPF = fir1(1023, 2*Fu/Fs, "low"); 
-    %zkw{ki,2} = filtfilt(LPF,1,zk{ki});
-    zkw{ki,2} = smoothdata(zk{ki},1,'gaussian', ceil(Fs/Fu));
+    zkw{ki,1} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*4*Tlk(ki)));
+    zkw{ki,2} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*4/Fuk(ki)));
 end
 
-% split into carrier vs rate 
-dt = diff(tSpk);
-[~,~,Fu] = isoutlier(1./dt); 
-[~,~,wl] = isoutlier(dt);
-% perform smoothing 
-%LPF = fir1(1023, 2/(Fs*wl), "low"); 
-%zw = filtfilt(LPF,1,z);
-zw = smoothdata(z,1,'gaussian', ceil(Fs*wl));
-%LPF = fir1(1023, 2*Fu/Fs, "low"); 
-%zw = filtfilt(LPF,1,z);
-zww = smoothdata(z,1,'gaussian', ceil(Fs/Fu));
+%% report mod components 
+
 
 %% report rolling rate offset, phase, and amp
 
-[fsine, ampsine, phsine, amp0] = FourierSine(zw, Fs, t, 8, false, 0.01, []);
-%%
-
-zw2 = smoothdata(z,1,'gaussian',100*ceil(Fs*wl));
-wf = 50*ceil(wl*Fs);
-zf = zerocrossrate(zw-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
-tf = t((wf/2):(end-wf/2));
-amp2 = envelope(zw-zw2);
+Tf = 4*ceil(Tl);
+zf = zerocrossrate(zww-zw, 'method','difference', ...
+    'WindowLength',Tf, 'OverlapLength',Tf-1)*Fs/2;
+tf = t((Tf/2):(end-Tf/2));
+amp2 = envelope(zww-zw);
 figure; sgtitle('All Spikes')
 ax2(1) = subplot(2,1,1); 
-patch([t; flipud(t)], [zw2; flipud(zw2)]+[amp2; -flipud(amp2)], 'b', ...
+patch([t; flipud(t)], [zw; flipud(zw)]+[amp2; -flipud(amp2)], 'b', ...
     'FaceAlpha',0.5, 'EdgeColor','none');
-hold on; grid on; plot(t, zw2, 'b', 'LineWidth', 2);
+hold on; grid on; plot(t, zw, 'b', 'LineWidth', 2);
 ylabel('rate (Hz)'); xlabel('t (s)');
 title('offset and amplitude');
 ax2(2) = subplot(2,1,2);
@@ -184,16 +135,16 @@ linkaxes(ax2, 'x');
 xlim([t(1), t(end)]);
 
 for ki = 1:length(zk)
-zw2 = smoothdata(zk{ki},1,'gaussian', 100*ceil(Fs*wl));
-wf = 50*ceil(wl*Fs);
-zf = zerocrossrate(zkw{ki,1}-zw2, 'method','difference', 'WindowLength',wf, 'OverlapLength',wf-1)*Fs/2;
-tf = t((wf/2):(end-wf/2));
-amp2 = envelope(zkw{ki,1}-zw2);
+Tf = 4*ceil(Tlk(ki));
+zf = zerocrossrate(zkw{ki,2}-zkw{ki,1}, 'method','difference', ...
+    'WindowLength',Tf, 'OverlapLength',Tf-1)*Fs/2;
+tf = t((Tf/2):(end-Tf/2));
+amp2 = envelope(zkw{ki,2} - zkw{ki,1});
 figure; sgtitle(['Spike Cluster ',num2str(ki)])
 ax2(1) = subplot(2,1,1); 
-patch([t; flipud(t)], [zw2; flipud(zw2)]+[amp2; -flipud(amp2)], 'b', ...
+patch([t; flipud(t)], [zkw{ki,1}; flipud(zkw{ki,1})]+[amp2; -flipud(amp2)], 'b', ...
     'FaceAlpha',0.5, 'EdgeColor','none');
-hold on; grid on; plot(t, zw2, 'b', 'LineWidth', 2);
+hold on; grid on; plot(t, zkw{ki,1}, 'b', 'LineWidth', 2);
 ylabel('rate (Hz)'); xlabel('t (s)');
 title('offset and amplitude');
 ax2(2) = subplot(2,1,2);
@@ -323,6 +274,67 @@ plot(frange, 20*log10(abs(X).^2), '.');
 %}
 %% helpers
 
+function [z,dt,Fu,Tl,OnRate,OnOffThresh]...
+    = getISIperiods(tSpk, Fs, t)
+
+% build pulse train
+t0 = t(1);
+dthalf = 1/(2*Fs);
+z = arrayfun(@(ti) sum((tSpk>(ti-dthalf))&(tSpk<(ti+dthalf))), t)/(2*dthalf);
+iSpk = (tSpk-t0)*Fs; iSpk = round(iSpk) + 1;
+
+% average ("carrier") firing rate in 1s sliding windows: 
+zw2 = smoothdata(z,1,'gaussian', ceil(1*Fs));
+
+% distinguish on/off states 
+[~,OnOffThresh] = midcross(zw2); 
+OnOffRate = statelevels(zw2); OnRate = OnOffRate(2);
+isOff = zw2 < OnOffThresh;
+isOff = movmean( double(isOff), 5 ) > 0;
+spkOn = ~isOff(iSpk);
+
+% ISI periods 
+dt = diff(tSpk);
+dt = dt(spkOn(2:end) & spkOn(1:(end-1)));
+[~,~,Fu] = isoutlier(1./dt); % upper bound on carrier freq
+[~,~,Tl] = isoutlier(dt);    % 1/ lower bound on carrier freq
+end
+
+
+function F = getModComponents(zw2, Fs, fminmax)
+
+% cont wavelet transform pks = candidate components 
+[W,fW] = cwt(zw2,"amor",Fs);
+Wt = mean(abs(W),2);
+[vPk,fPk,wPk,pPk] = findpeaks(flipud(Wt), flipud(fW), "WidthReference","halfheight");
+
+% exclude freqs too low/high 
+selPk = (fPk >= fminmax(1)) & (fPk <= fminmax(2));
+vPk = vPk(selPk); 
+fPk = fPk(selPk); 
+wPk = wPk(selPk); 
+pPk = pPk(selPk); 
+
+% exclude small pks 
+selPk = pPk >= 0.1*max(Wt);
+vPk = vPk(selPk); 
+fPk = fPk(selPk); 
+wPk = wPk(selPk); 
+pPk = pPk(selPk); 
+
+% adjust/report out freq ranges 
+F = [fminmax(1).*[1 1 1]; 
+     fPk + [-1,0,1].*wPk;  
+     fminmax(2).*[1 1 1] ];
+for iPk = 2:height(F)-1
+    F(iPk,1) = max(F(iPk,1), F(iPk-1,3));
+    F(iPk,3) = min(F(iPk,3), F(iPk+1,1));
+end
+F = F(2:(end-1),:);
+
+end
+
+
 function [A, k1, c2] = pinkcorrect(A,f)
 % correct for noise that obeys Anoise = k1*f^c2
 % i.e. ln(Anoise) = c2*ln(f) + c2*ln(k1)
@@ -340,6 +352,7 @@ lnAnoise = F*c;
 lnA = lnA - lnAnoise; A = exp(lnA);
 A = [A0; A];
 end
+
 
 function [fk,qk] = getFQ(k, r, fc, fsine, ampsine, phsine)
 % for k > 0 only! 
