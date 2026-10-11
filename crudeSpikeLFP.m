@@ -1,4 +1,5 @@
 %% load raw data 
+minFreq = 0.3; % Hz
 load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzRT.mat')
 %Tbl = Tbl1; 
 Tbl = sortrows(Tbl, 'Time');
@@ -10,8 +11,8 @@ load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_Selecte
 spkTbl = depth_p0496_1; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
 %xx = spkTbl.CSPK_NP1___Posterior; 
-%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
-tsel = (t >= 5700) & (t <= 5800);
+tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+%tsel = (t >= 5700) & (t <= 5800);
 %tsel = (t >= 8059) & (t <= 8091);
 %tsel = (t >= 8077) & (t <= 8089);
 %tsel = (t >= 8064) & (t <= 8074);
@@ -59,6 +60,7 @@ end
 title('Spike signal detection');
 
 %% raster plot 
+
 figure; ax(1) = subplot(2,1,1);
 if length(ku) > 1
     plot(tSpk,zeros(size(tSpk)),'|', 'LineWidth',2, 'MarkerSize',10); hold on;
@@ -68,6 +70,13 @@ if length(ku) > 1
     end
     ylabel('Spike raster');
 end
+
+ax(2) = subplot(2,1,2);
+hpf = fir1(2048,minFreq/(Fs/2),"high");
+xh = filtfilt(hpf,1,x); xl = x-xh;
+plot(t, xh); grid on; 
+xlabel('time (s)'); ylabel('LFP');
+linkaxes(ax,'x');
 
 %% build spike train and get ISI
 
@@ -110,67 +119,91 @@ for ki = 1:length(ku)
 end
 
 %% report mod components 
-
-[F,W,fW,Wmean] = getModComponents(zww, Fs, [0.5 inf]);
-
 % Multi-panel spectrogram with linked marginal plots
+
+[F,W,fW,Wmean] = getModComponents(zww, Fs, OnOffThresh, [minFreq inf]);
 fPlot = fS(2:end);
 sPlot = SS(2:end,:);
 specMean = mean(sPlot, 2, 'omitnan');
+BPFc = fir1(1023, [1/Tl, Fu]/Fs); xc = filtfilt(BPFc,1,x); % carrier band
+
+% manually enforce a max component band width 
+F(:,3) = min(F(:,3), F(:,2)+10);
+F(:,1) = max(F(:,1), F(:,2)-10);
 
 figure;
-axMain = axes('Position',[0.25 0.30 0.70 0.65]);
+
+% main (top-right): time+frequency of LFP 
+axMain = axes('Position',[0.25 0.50 0.70 0.45]);
 imagesc(axMain, tS, fPlot, sPlot);
-axMain.YLim = [0 140];
+axMain.YLim = [0 100];
 axMain.YDir = 'normal';
 ylabel(axMain,'Frequency (Hz)');
-title(axMain,'LFP Adjusted spectrogram');
+title(axMain,'LFP Time-Freq. Analysis (adjusted spectrogram)');
 colormap(axMain, parula);
 %colorbar(axMain);
 
-axLeft = axes('Position',[0.06 0.30 0.14 0.65]);
-h1 = histogram(axLeft, zww, 'Orientation','horizontal');
+% left: frequency analysis of spike train 
+axLeft = axes('Position',[0.06 0.50 0.14 0.45]);
+h1 = histogram(axLeft, zww(zww>minFreq), 'Orientation','horizontal');
 hold(axLeft,'on'); grid(axLeft,'on');
-h2 = histogram(axLeft, zw,  'Orientation','horizontal');
+%h2 = histogram(axLeft, zw(zw>minFreq),   'Orientation','horizontal');
 axLeft_xmax = max(h1.Values(2:end));
-axLeft_xmax = max(axLeft_xmax, max(h2.Values(2:end)));
+%axLeft_xmax = max(axLeft_xmax, max(h2.Values(2:end)));
 Wmean = Wmean * axLeft_xmax / max(Wmean); % scale
 plot(axLeft,[0,axLeft_xmax],OnRate*[1,1], ...
     'LineWidth',3);
 plot(axLeft,Wmean,fW, ...
-    'LineWidth',3); 
-legend(axLeft, 'Inst Fire Rate', 'Avg Fire Rate', 'Carrier Rate', ...
-    'Fire Rate Mod. Spectrum', 'Location','best');
+    'LineWidth',2); 
+%{
+errorbar(axLeft, axLeft_xmax*ones(height(F),1), ...
+    F(:,2), F(:,1)-F(:,2), F(:,3)-F(:,2), [],[], ...
+    'LineWidth', 2);
+%}
+legend(axLeft, ...
+    'Inst Fire Rate', ...
+    ...'Avg Fire Rate', ...
+    'Avg ''On'' Fire Rate', ...
+    'Fire Rate Mod. Spectrum', ...
+    ...'Sel. Components', ...
+    'Location','best');
 axLeft.XDir = "reverse";
 axLeft.YDir = 'normal';
 axLeft.YLim = axMain.YLim;
 axLeft.XLim = [0, 1.1*axLeft_xmax];
 axLeft.YAxisLocation = 'right';
 xlabel(axLeft,'Power / count');
-title(axLeft, 'Spike Rate');
+title(axLeft, 'Spike Rate Freq. Analysis');
 axLeft.XTick = [];
 linkaxes([axLeft axMain],'y');
 
-axBottom = axes('Position',[0.25 0.08 0.70 0.14]);
-yyaxis left;
-amp2 = envelope(zww-zw);
-plot(axBottom, t, zw, 'b', 'LineWidth', 2);
-grid(axBottom,'on'); hold(axBottom,'on');
-patch(axBottom, [t; flipud(t)], [zw; flipud(zw)]+[amp2; -flipud(amp2)], 'b', ...
-    'FaceAlpha',0.5, 'EdgeColor','none');
-yyaxis right;
-plot(axBottom, t, x-mean(x));
+axBottom1 = axes('Position',[0.25 0.30 0.70 0.10]);
+plot(axBottom1, t-t(1), xh); 
+grid(axBottom1,'on'); hold(axBottom1,'on');
 for Fi = 1:height(F)
-    FiBPF = fir1(1023,F(Fi,[1,3])/(Fs/2));
-    Fx = filtfilt(FiBPF,1,x);
-    plot(axBottom, t, Fx);
+    BPF = fir1(1023, F(Fi,[1,3])/(Fs/2)); 
+    xFi = filtfilt(BPF,1,x);
+    plot(axBottom1, t-t(1), xFi);
 end
-plot(axBottom, t, z, 'k', 'LineWidth',1);
-xlabel(axBottom,'Time (s)');
-ylabel(axBottom,'Rate (Hz) / Amp (\muV)');
-xlim(axBottom, axMain.XLim);
-legend(["Avg Fire Rate"; "Fire Rate Mod Amp"; "LFP"; string(F(:,2))+" hz"]);
-linkaxes([axMain axBottom],'x');
+ylabel(axBottom1, 'LFP (\muV)');
+legend(axBottom1, ["full"; string(F(:,2))+" Hz"]);
+title(axBottom1, 'Time Domain Analysis');
+axBottom1.XLim = axMain.XLim; axBottom1.XTick = [];
+
+axBottom2 = axes('Position',[0.25 0.19 0.70 0.10]);
+amp2 = envelope(zww-zw);
+plot(axBottom2, t-t(1), zw, 'b', 'LineWidth', 2);
+grid(axBottom2,'on'); hold(axBottom2,'on');
+patch(axBottom2, [t-t(1); flipud(t-t(1))], [zw; flipud(zw)]+[amp2; -flipud(amp2)], 'b', ...
+    'FaceAlpha',0.5, 'EdgeColor','none');
+ylabel(axBottom2, 'Fire Rate');
+legend(axBottom2, 'Avg', 'Mod Amp');
+axBottom2.XLim = axMain.XLim; axBottom2.XTick = [];
+
+axBottom3 = axes('Position',[0.25 0.08 0.70 0.10]);
+xlabel(axBottom3, 'Time (s)');
+axBottom3.XLim = axMain.XLim; 
+linkaxes([axMain axBottom1 axBottom2 axBottom3],'x');
 
 %% report rolling rate offset, phase, and amp
 
@@ -355,15 +388,25 @@ spkOn = ~isOff(iSpk);
 % ISI periods 
 dt = diff(tSpk);
 dt = dt(spkOn(2:end) & spkOn(1:(end-1)));
-[~,~,Fu] = isoutlier(1./dt); % upper bound on carrier freq
-[~,~,Tl] = isoutlier(dt);    % 1/ lower bound on carrier freq
+[~,~,Fu] = isoutlier(1./dt, "ThresholdFactor",3); % upper bound on carrier freq
+[~,~,Tl] = isoutlier(dt,    "ThresholdFactor",1); % 1/ lower bound on carrier freq
 end
 
 
-function [F,W,fW,Wt] = getModComponents(zw2, Fs, fminmax)
+function [F,W,fW,Wt] = getModComponents(zw2, Fs, OnOffThresh, fminmax)
+if nargin < 4
+    fminmax = [];
+    if nargin < 3
+        OnOffThresh = 0;
+    end
+end
+if isempty(fminmax)
+    fminmax = [0 inf];
+end
 
 % cont wavelet transform pks = candidate components 
 [W,fW] = cwt(zw2,"amor",Fs);
+iOn = zw2 > OnOffThresh; W = W(:, iOn);
 Wt = mean(abs(W),2);
 [vPk,fPk,wPk,pPk] = findpeaks(flipud(Wt), flipud(fW), "WidthReference","halfheight");
 
@@ -383,7 +426,7 @@ pPk = pPk(selPk);
 
 % adjust/report out freq ranges 
 F = [fminmax(1).*[1 1 1]; 
-     fPk + [-1,0,1].*wPk;  
+     fPk + [-.5,0,.5].*wPk;  
      fminmax(2).*[1 1 1] ];
 for iPk = 2:height(F)-1
     F(iPk,1) = max(F(iPk,1), F(iPk-1,3));
