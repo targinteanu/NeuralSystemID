@@ -93,8 +93,8 @@ title('ISI histograms:')
 subtitle('all spikes + each cluster');
 xlabel('ISI (s)'); ylabel('count');
 % perform smoothing 
-zw  = smoothdata(z,1,'gaussian', ceil(Fs*4*Tl));
-zww = smoothdata(z,1,'gaussian', ceil(Fs*4/Fu));
+zw  = smoothdata(z,1,'gaussian', ceil(Fs*Tl));
+zww = smoothdata(z,1,'gaussian', ceil(Fs*2/Fu));
 
 zk = cell(size(ku)); Fuk = nan(size(ku)); Tlk = nan(size(ku));
 OnRates = nan(size(ku)); OnOffThreshs = nan(size(ku));
@@ -114,18 +114,18 @@ for ki = 1:length(ku)
     hs.SeriesIndex = ki+1;
     hh.SeriesIndex = ki+1;
     % perform smoothing
-    zkw{ki,1} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*4*Tlk(ki)));
-    zkw{ki,2} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*4/Fuk(ki)));
+    zkw{ki,1} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*Tlk(ki)));
+    zkw{ki,2} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*2/Fuk(ki)));
 end
 
 %% report mod components 
 % Multi-panel spectrogram with linked marginal plots
 
-[F,W,fW,Wmean] = getModComponents(zww, Fs, OnOffThresh, [minFreq inf]);
+[F,W,fW,Wmean] = getModComponents(zw, Fs, OnOffThresh, [minFreq inf]);
 fPlot = fS(2:end);
 sPlot = SS(2:end,:);
 specMean = mean(sPlot, 2, 'omitnan');
-BPFc = fir1(1023, [1/Tl, Fu]/(Fs/2)); xc = filtfilt(BPFc,1,x); % carrier band
+BPFc = fir1(1023, [1/Tl, Fu/2]/(Fs/2)); xc = filtfilt(BPFc,1,x); % carrier band
 zw2 = smoothdata(z,1,'gaussian', ceil(1*Fs));
 
 % manually enforce a max component band width 
@@ -146,7 +146,7 @@ colormap(axMain, parula);
 
 % left: frequency analysis of spike train 
 axLeft = axes('Position',[0.06 0.50 0.14 0.45]);
-h1 = histogram(axLeft, zww(zww>minFreq), 'Orientation','horizontal');
+h1 = histogram(axLeft, zw(zw>minFreq), 'Orientation','horizontal');
 hold(axLeft,'on'); grid(axLeft,'on');
 h2 = histogram(axLeft, zw2(zw2>OnOffThresh), 'Orientation','horizontal');
 %h2 = histogram(axLeft, zw(zw>minFreq),   'Orientation','horizontal');
@@ -163,7 +163,7 @@ errorbar(axLeft, axLeft_xmax*ones(height(F),1), ...
     'LineWidth', 2);
 %}
 legend(axLeft, ...
-    ['Inst Fire Rate ',num2str(4/Fu),'s'], ...
+    ['Inst Fire Rate ',num2str(Tl),'s'], ...
     'Avg Fire Rate 1s', ...
     'Min ''On'' Fire Rate', ...
     'Fire Rate Mod. Spectrum', ...
@@ -210,7 +210,7 @@ linkaxes([axMain axBottom1 axBottom2 axBottom3],'x');
 
 %% report rolling rate offset, phase, and amp
 
-Tf = 4*ceil(Tl);
+Tf = 2*ceil(Tl);
 zf = zerocrossrate(zww-zw, 'method','difference', ...
     'WindowLength',Tf, 'OverlapLength',Tf-1)*Fs/2;
 tf = t((Tf/2):(end-Tf/2));
@@ -230,7 +230,7 @@ linkaxes(ax2, 'x');
 xlim([t(1), t(end)]);
 
 for ki = 1:length(zk)
-Tf = 4*ceil(Tlk(ki));
+Tf = 2*ceil(Tlk(ki));
 zf = zerocrossrate(zkw{ki,2}-zkw{ki,1}, 'method','difference', ...
     'WindowLength',Tf, 'OverlapLength',Tf-1)*Fs/2;
 tf = t((Tf/2):(end-Tf/2));
@@ -391,8 +391,11 @@ spkOn = ~isOff(iSpk);
 % ISI periods 
 dt = diff(tSpk);
 dt = dt(spkOn(2:end) & spkOn(1:(end-1)));
-[~,~,Fu] = isoutlier(1./dt, "ThresholdFactor",3); % upper bound on carrier freq
-[~,~,Tl] = isoutlier(dt,    "ThresholdFactor",1); % 1/ lower bound on carrier freq
+%[~,~,Fu] = isoutlier(1./dt, "ThresholdFactor",3); % upper bound on carrier freq
+%[~,~,Tl] = isoutlier(dt,    "ThresholdFactor",1); % 1/ lower bound on carrier freq
+%[~,Tu,Tl] = isoutlier(dt, "quartiles", "ThresholdFactor",0.5); 
+[~,Tu,Tl] = isoutlier(dt, "percentiles", [1 80]); 
+Fu = 1/Tu;
 end
 
 
