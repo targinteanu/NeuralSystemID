@@ -125,11 +125,12 @@ end
 fPlot = fS(2:end);
 sPlot = SS(2:end,:);
 specMean = mean(sPlot, 2, 'omitnan');
-BPFc = fir1(1023, [1/Tl, Fu]/Fs); xc = filtfilt(BPFc,1,x); % carrier band
+BPFc = fir1(1023, [1/Tl, Fu]/(Fs/2)); xc = filtfilt(BPFc,1,x); % carrier band
+zw2 = smoothdata(z,1,'gaussian', ceil(1*Fs));
 
 % manually enforce a max component band width 
-F(:,3) = min(F(:,3), F(:,2)+10);
-F(:,1) = max(F(:,1), F(:,2)-10);
+F(:,3) = min(F(:,3), F(:,2)+5);
+F(:,1) = max(F(:,1), F(:,2)-5);
 
 figure;
 
@@ -147,9 +148,10 @@ colormap(axMain, parula);
 axLeft = axes('Position',[0.06 0.50 0.14 0.45]);
 h1 = histogram(axLeft, zww(zww>minFreq), 'Orientation','horizontal');
 hold(axLeft,'on'); grid(axLeft,'on');
+h2 = histogram(axLeft, zw2(zw2>OnOffThresh), 'Orientation','horizontal');
 %h2 = histogram(axLeft, zw(zw>minFreq),   'Orientation','horizontal');
 axLeft_xmax = max(h1.Values(2:end));
-%axLeft_xmax = max(axLeft_xmax, max(h2.Values(2:end)));
+axLeft_xmax = max(axLeft_xmax, max(h2.Values(2:end)));
 Wmean = Wmean * axLeft_xmax / max(Wmean); % scale
 plot(axLeft,[0,axLeft_xmax],OnRate*[1,1], ...
     'LineWidth',3);
@@ -161,9 +163,9 @@ errorbar(axLeft, axLeft_xmax*ones(height(F),1), ...
     'LineWidth', 2);
 %}
 legend(axLeft, ...
-    'Inst Fire Rate', ...
-    ...'Avg Fire Rate', ...
-    'Avg ''On'' Fire Rate', ...
+    ['Inst Fire Rate ',num2str(4/Fu),'s'], ...
+    'Avg Fire Rate 1s', ...
+    'Min ''On'' Fire Rate', ...
     'Fire Rate Mod. Spectrum', ...
     ...'Sel. Components', ...
     'Location','best');
@@ -178,27 +180,28 @@ axLeft.XTick = [];
 linkaxes([axLeft axMain],'y');
 
 axBottom1 = axes('Position',[0.25 0.30 0.70 0.10]);
-plot(axBottom1, t-t(1), xh); 
+plot(axBottom1, t-t(1), (x-mean(x))/std(x)); 
 grid(axBottom1,'on'); hold(axBottom1,'on');
 for Fi = 1:height(F)
-    BPF = fir1(1023, F(Fi,[1,3])/(Fs/2)); 
+    BPF = fir1(1023, F(Fi,[1,3])/(Fs/2)); % need larger order for lower freq
     xFi = filtfilt(BPF,1,x);
-    plot(axBottom1, t-t(1), xFi);
+    plot(axBottom1, t-t(1), (xFi-mean(xFi))/std(xFi));
 end
-ylabel(axBottom1, 'LFP (\muV)');
-legend(axBottom1, ["full"; string(F(:,2))+" Hz"]);
+plot(axBottom1, t-t(1), (xc-mean(xc))/std(xc)); 
+ylabel(axBottom1, 'LFP (norm.)');
+legend(axBottom1, ["full"; string(F(:,2))+" Hz"; "carrier"]);
 title(axBottom1, 'Time Domain Analysis');
-axBottom1.XLim = axMain.XLim; axBottom1.XTick = [];
+axBottom1.XLim = axMain.XLim; axBottom1.XTickLabel = {};
 
 axBottom2 = axes('Position',[0.25 0.19 0.70 0.10]);
-amp2 = envelope(zww-zw);
-plot(axBottom2, t-t(1), zw, 'b', 'LineWidth', 2);
+amp2 = envelope(zw-zw2);
+plot(axBottom2, t-t(1), zw2, 'b', 'LineWidth', 2);
 grid(axBottom2,'on'); hold(axBottom2,'on');
 patch(axBottom2, [t-t(1); flipud(t-t(1))], [zw; flipud(zw)]+[amp2; -flipud(amp2)], 'b', ...
     'FaceAlpha',0.5, 'EdgeColor','none');
 ylabel(axBottom2, 'Fire Rate');
 legend(axBottom2, 'Avg', 'Mod Amp');
-axBottom2.XLim = axMain.XLim; axBottom2.XTick = [];
+axBottom2.XLim = axMain.XLim; axBottom2.XTickLabel = {};
 
 axBottom3 = axes('Position',[0.25 0.08 0.70 0.10]);
 xlabel(axBottom3, 'Time (s)');
