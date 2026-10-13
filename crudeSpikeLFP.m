@@ -126,10 +126,14 @@ TimeFreqPlot(Fs, x, z,zw,zw2, Tl,Fu,OnOffThresh,OnRate, [minFreq, Inf], SS,fS,tS
 sgtitle('All Spikes');
 
 for ki = 1:length(ku)
+    try
     TimeFreqPlot(Fs,x, zk{ki},zkw{ki,1},zkw{ki,3}, ...
         Tlk(ki),Fuk(ki),OnOffThreshs(ki),OnRates(ki), ...
         [minFreq, Inf], SS,fS,tS);
     sgtitle(['Spike Cluster ',num2str(ki)]);
+    catch ME
+        warning(['Issue with cluster ',num2str(ki),': ',ME.message]);
+    end
 end
 
 %% report rolling rate offset, phase, and amp
@@ -640,8 +644,8 @@ t = 1:length(x); t = (t-1)/Fs; t = t';
 fPlot = fS(2:end);
 sPlot = SS(2:end,:);
 specMean = mean(sPlot, 2, 'omitnan');
-%BPFc = fir1(1023, [1/Tl, Fu/2]/(Fs/2)); 
-BPFc = fir1(1023, (OnRate+[-5,5])/(Fs/2)); 
+BPFc = fir1(1023, [1/Tl, Fu/2]/(Fs/2)); 
+%BPFc = fir1(1023, (OnRate+[-5,5])/(Fs/2)); 
 xc = filtfilt(BPFc,1,x); zc = filtfilt(BPFc,1,z); % carrier band
 
 % manually enforce a max component band width 
