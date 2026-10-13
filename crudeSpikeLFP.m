@@ -125,7 +125,8 @@ end
 fPlot = fS(2:end);
 sPlot = SS(2:end,:);
 specMean = mean(sPlot, 2, 'omitnan');
-BPFc = fir1(1023, [1/Tl, Fu/2]/(Fs/2)); xc = filtfilt(BPFc,1,x); % carrier band
+BPFc = fir1(1023, [1/Tl, Fu/2]/(Fs/2)); 
+xc = filtfilt(BPFc,1,x); zc = filtfilt(BPFc,1,z); % carrier band
 zw2 = smoothdata(z,1,'gaussian', ceil(1*Fs));
 
 % manually enforce a max component band width 
@@ -179,21 +180,21 @@ title(axLeft, 'Spike Rate Freq. Analysis');
 axLeft.XTick = [];
 linkaxes([axLeft axMain],'y');
 
-axBottom1 = axes('Position',[0.25 0.30 0.70 0.10]);
-plot(axBottom1, t-t(1), (x-mean(x))/std(x)); 
+axBottom1 = axes('Position',[0.25 0.33 0.70 0.13]);
+plot(axBottom1, t-t(1), (xc-mean(xc))/std(xc)); 
 grid(axBottom1,'on'); hold(axBottom1,'on');
+plot(axBottom1, t-t(1), (x-mean(x))/std(x)); 
 for Fi = 1:height(F)
-    BPF = fir1(1023, F(Fi,[1,3])/(Fs/2)); % need larger order for lower freq
+    BPF = buildFIRBPF(Fs,F(Fi,1),F(Fi,3),2,1023);
     xFi = filtfilt(BPF,1,x);
     plot(axBottom1, t-t(1), (xFi-mean(xFi))/std(xFi));
 end
-plot(axBottom1, t-t(1), (xc-mean(xc))/std(xc)); 
 ylabel(axBottom1, 'LFP (norm.)');
-legend(axBottom1, ["full"; string(F(:,2))+" Hz"; "carrier"]);
+legend(axBottom1, ["carrier"; "full"; string(F(:,2))+" Hz"]);
 title(axBottom1, 'Time Domain Analysis');
 axBottom1.XLim = axMain.XLim; axBottom1.XTickLabel = {};
 
-axBottom2 = axes('Position',[0.25 0.19 0.70 0.10]);
+axBottom2 = axes('Position',[0.25 0.19 0.70 0.13]);
 amp2 = envelope(zw-zw2);
 plot(axBottom2, t-t(1), zw2, 'b', 'LineWidth', 2);
 grid(axBottom2,'on'); hold(axBottom2,'on');
@@ -203,7 +204,21 @@ ylabel(axBottom2, 'Fire Rate');
 legend(axBottom2, 'Avg', 'Mod Amp');
 axBottom2.XLim = axMain.XLim; axBottom2.XTickLabel = {};
 
-axBottom3 = axes('Position',[0.25 0.08 0.70 0.10]);
+axBottom3 = axes('Position',[0.25 0.05 0.70 0.13]);
+grid(axBottom3,'on'); hold(axBottom3,'on');
+for Fi = 1:height(F)
+    BPF = buildFIRBPF(Fs,F(Fi,1),F(Fi,3),2,1023);
+    xFi = filtfilt(BPF,1,x); zFi = filtfilt(BPF,1,z);
+    [xPAC,txPAC] = calcPACwindowed(xFi,xc,10*Fs,5);
+    [zPAC,tzPAC] = calcPACwindowed(zFi,zc,10*Fs,5);
+    hx = plot(t(txPAC)-t(1), xPAC, 'LineWidth',1);
+    hx.SeriesIndex = Fi;
+    hz = plot(t(tzPAC)-t(1), zPAC, '--', 'LineWidth',1);
+    hz.SeriesIndex = Fi;
+end
+lgd = F(:,2)+" Hz "+["LFP", "SPK"]; lgd = lgd'; lgd = lgd(:);
+legend(axBottom3, lgd);
+ylabel(axBottom3, 'PAC (MI)');
 xlabel(axBottom3, 'Time (s)');
 axBottom3.XLim = axMain.XLim; 
 linkaxes([axMain axBottom1 axBottom2 axBottom3],'x');
