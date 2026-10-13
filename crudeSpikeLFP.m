@@ -11,8 +11,8 @@ load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_Selecte
 spkTbl = depth_p0496_1; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
 %xx = spkTbl.CSPK_NP1___Posterior; 
-tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
-%tsel = (t >= 5700) & (t <= 5800);
+%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+tsel = (t >= 5700) & (t <= 5800);
 %tsel = (t >= 8059) & (t <= 8091);
 %tsel = (t >= 8077) & (t <= 8089);
 %tsel = (t >= 8064) & (t <= 8074);
@@ -123,6 +123,14 @@ end
 %% report mod components 
 
 TimeFreqPlot(Fs, x, z,zw,zw2, Tl,Fu,OnOffThresh,OnRate, [minFreq, Inf], SS,fS,tS);
+sgtitle('All Spikes');
+
+for ki = 1:length(ku)
+    TimeFreqPlot(Fs,x, zk{ki},zkw{ki,1},zkw{ki,3}, ...
+        Tlk(ki),Fuk(ki),OnOffThreshs(ki),OnRates(ki), ...
+        [minFreq, Inf], SS,fS,tS);
+    sgtitle(['Spike Cluster ',num2str(ki)]);
+end
 
 %% report rolling rate offset, phase, and amp
 
