@@ -593,7 +593,8 @@ t = 1:length(x); t = (t-1)/Fs; t = t';
 fPlot = fS(2:end);
 sPlot = SS(2:end,:);
 specMean = mean(sPlot, 2, 'omitnan');
-BPFc = fir1(1023, [1/Tl, Fu/2]/(Fs/2)); 
+%BPFc = fir1(1023, [1/Tl, Fu/2]/(Fs/2)); 
+BPFc = fir1(1023, (OnRate+[-5,5])/(Fs/2)); 
 xc = filtfilt(BPFc,1,x); zc = filtfilt(BPFc,1,z); % carrier band
 
 % manually enforce a max component band width 
@@ -616,7 +617,7 @@ colormap(axMain, parula);
 axLeft = axes('Position',[0.06 0.50 0.14 0.45]);
 h1 = histogram(axLeft, zw(zw>MinMaxModFreq(1)), 'Orientation','horizontal');
 hold(axLeft,'on'); grid(axLeft,'on');
-h2 = histogram(axLeft, zw2(zw2>MinMaxModFreq(1)), 'Orientation','horizontal');
+h2 = histogram(axLeft, zw2(zw2>OnOffThresh), 'Orientation','horizontal');
 %h2 = histogram(axLeft, zw(zw>MinMaxModFreq(1)),   'Orientation','horizontal');
 axLeft_xmax = max(h1.Values(2:end));
 axLeft_xmax = max(axLeft_xmax, max(h2.Values(2:end)));
@@ -633,7 +634,7 @@ errorbar(axLeft, axLeft_xmax*ones(height(F),1), ...
 legend(axLeft, ...
     ['Inst Fire Rate ',num2str(Tl),'s'], ...
     'Avg Fire Rate 1s', ...
-    'Min ''On'' Fire Rate', ...
+    'Est ''On'' Fire Rate', ...
     'Fire Rate Mod. Spectrum', ...
     ...'Sel. Components', ...
     'Location','best');
@@ -651,13 +652,13 @@ axBottom1 = axes('Position',[0.25 0.33 0.70 0.13]);
 plot(axBottom1, t, (xc-mean(xc))/std(xc)); 
 grid(axBottom1,'on'); hold(axBottom1,'on');
 plot(axBottom1, t, (x-mean(x))/std(x)); 
-for Fi = 1:height(F)
+for Fi = fliplr(1:height(F))
     BPF = buildFIRBPF(Fs,F(Fi,1),F(Fi,3),2,1023);
     xFi = filtfilt(BPF,1,x);
     plot(axBottom1, t, (xFi-mean(xFi))/std(xFi));
 end
 ylabel(axBottom1, 'LFP (norm.)');
-legend(axBottom1, ["carrier"; "full"; string(F(:,2))+" Hz"]);
+legend(axBottom1, ["carrier"; "full"; string(flipud(F(:,2)))+" Hz"]);
 title(axBottom1, 'Time Domain Analysis');
 axBottom1.XLim = axMain.XLim; axBottom1.XTickLabel = {};
 
@@ -676,8 +677,8 @@ grid(axBottom3,'on'); hold(axBottom3,'on');
 for Fi = 1:height(F)
     BPF = buildFIRBPF(Fs,F(Fi,1),F(Fi,3),2,1023);
     xFi = filtfilt(BPF,1,x); zFi = filtfilt(BPF,1,z);
-    [xPAC,txPAC] = calcPACwindowed(xFi,xc,10*Fs,5);
-    [zPAC,tzPAC] = calcPACwindowed(zFi,zc,10*Fs,5);
+    [xPAC,txPAC] = calcPACwindowed(xFi,xc,10*Fs,10);
+    [zPAC,tzPAC] = calcPACwindowed(zFi,zc,10*Fs,10);
     hx = plot(t(txPAC), xPAC, 'LineWidth',1);
     hx.SeriesIndex = Fi;
     hz = plot(t(tzPAC), zPAC, '--', 'LineWidth',1);

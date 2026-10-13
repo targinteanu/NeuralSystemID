@@ -63,8 +63,7 @@ if ~isempty(hax_PhaseAmpPlot)
         if hax_PhaseAmpPlot
         % if 'true' was passed in, put the plot in a new figure
         fig1 = figure; polarplot([bcent, bcent(1)], [P, P(1)], 'LineWidth',1);
-        title('Phase-Amplitude Plot');
-        subtitle('Normalized amplitude distribution');
+        title({'Phase-Amplitude Plot'; 'Normalized amplitude distribution'});
         end
     end
 end
@@ -73,5 +72,10 @@ end
 H = -sum(P.*log(P)); % Shannon entropy 
 DKL = log(nbin) - H; % KL distance compared to uniform distribution
 MI = DKL / log(nbin); 
+if ~isempty(hax_PhaseAmpPlot)
+    if islogical(hax_PhaseAmpPlot) || isnumeric(hax_PhaseAmpPlot)
+        subtitle(['MI = ',num2str(MI)]);
+    end
+end
 
 end
