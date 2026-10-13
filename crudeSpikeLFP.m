@@ -95,6 +95,7 @@ xlabel('ISI (s)'); ylabel('count');
 % perform smoothing 
 zw  = smoothdata(z,1,'gaussian', ceil(Fs*Tl));
 zww = smoothdata(z,1,'gaussian', ceil(Fs*2/Fu));
+zw2 = smoothdata(z,1,'gaussian', ceil(1*Fs));
 
 zk = cell(size(ku)); Fuk = nan(size(ku)); Tlk = nan(size(ku));
 OnRates = nan(size(ku)); OnOffThreshs = nan(size(ku));
@@ -116,6 +117,7 @@ for ki = 1:length(ku)
     % perform smoothing
     zkw{ki,1} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*Tlk(ki)));
     zkw{ki,2} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*2/Fuk(ki)));
+    zkw{ki,3} = smoothdata(zk{ki},1,'gaussian', ceil(Fs*1));
 end
 
 %% report mod components 
@@ -127,7 +129,6 @@ sPlot = SS(2:end,:);
 specMean = mean(sPlot, 2, 'omitnan');
 BPFc = fir1(1023, [1/Tl, Fu/2]/(Fs/2)); 
 xc = filtfilt(BPFc,1,x); zc = filtfilt(BPFc,1,z); % carrier band
-zw2 = smoothdata(z,1,'gaussian', ceil(1*Fs));
 
 % manually enforce a max component band width 
 F(:,3) = min(F(:,3), F(:,2)+5);
@@ -226,15 +227,15 @@ linkaxes([axMain axBottom1 axBottom2 axBottom3],'x');
 %% report rolling rate offset, phase, and amp
 
 Tf = 2*ceil(Tl);
-zf = zerocrossrate(zww-zw, 'method','difference', ...
+zf = zerocrossrate(zw-zw2, 'method','difference', ...
     'WindowLength',Tf, 'OverlapLength',Tf-1)*Fs/2;
 tf = t((Tf/2):(end-Tf/2));
-amp2 = envelope(zww-zw);
+amp2 = envelope(zw-zw2);
 figure; sgtitle('All Spikes')
 ax2(1) = subplot(2,1,1); 
-patch([t; flipud(t)], [zw; flipud(zw)]+[amp2; -flipud(amp2)], 'b', ...
+patch([t; flipud(t)], [zw2; flipud(zw2)]+[amp2; -flipud(amp2)], 'b', ...
     'FaceAlpha',0.5, 'EdgeColor','none');
-hold on; grid on; plot(t, zw, 'b', 'LineWidth', 2);
+hold on; grid on; plot(t, zw2, 'b', 'LineWidth', 2);
 ylabel('rate (Hz)'); xlabel('t (s)');
 title('offset and amplitude');
 ax2(2) = subplot(2,1,2);
@@ -246,15 +247,15 @@ xlim([t(1), t(end)]);
 
 for ki = 1:length(zk)
 Tf = 2*ceil(Tlk(ki));
-zf = zerocrossrate(zkw{ki,2}-zkw{ki,1}, 'method','difference', ...
+zf = zerocrossrate(zkw{ki,2}-zkw{ki,3}, 'method','difference', ...
     'WindowLength',Tf, 'OverlapLength',Tf-1)*Fs/2;
 tf = t((Tf/2):(end-Tf/2));
-amp2 = envelope(zkw{ki,2} - zkw{ki,1});
+amp2 = envelope(zkw{ki,2} - zkw{ki,3});
 figure; sgtitle(['Spike Cluster ',num2str(ki)])
 ax2(1) = subplot(2,1,1); 
-patch([t; flipud(t)], [zkw{ki,1}; flipud(zkw{ki,1})]+[amp2; -flipud(amp2)], 'b', ...
+patch([t; flipud(t)], [zkw{ki,3}; flipud(zkw{ki,3})]+[amp2; -flipud(amp2)], 'b', ...
     'FaceAlpha',0.5, 'EdgeColor','none');
-hold on; grid on; plot(t, zkw{ki,1}, 'b', 'LineWidth', 2);
+hold on; grid on; plot(t, zkw{ki,3}, 'b', 'LineWidth', 2);
 ylabel('rate (Hz)'); xlabel('t (s)');
 title('offset and amplitude');
 ax2(2) = subplot(2,1,2);
