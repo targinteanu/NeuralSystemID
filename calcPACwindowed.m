@@ -45,15 +45,15 @@ end
 phi = angle(hilbert(xPhi));
 amp = abs(hilbert(xAmp));
 
-% focus on the central 80% of data to avoid edge effects
-t0 = floor(.1*L); tf = ceil(.9*L);
+% focus on the central 98% of data to avoid edge effects
+t0 = floor(.01*L); tf = ceil(.99*L);
 
 % determine window start/ends
 t1 = t0 + ceil(winlen/2); % define first center
 Inds = t1:winstride:tf; % centers 
 t2s = Inds + ceil(winlen/2);
 Inds = Inds(t2s <= tf); t2s = t2s(t2s <= tf);
-t1s = Inds - floor(winlen);
+t1s = t2s - floor(winlen);
 if isempty(Inds)
     error('signal is not long enough for window size.')
 end
