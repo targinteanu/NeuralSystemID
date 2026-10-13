@@ -74,7 +74,9 @@ DKL = log(nbin) - H; % KL distance compared to uniform distribution
 MI = DKL / log(nbin); 
 if ~isempty(hax_PhaseAmpPlot)
     if islogical(hax_PhaseAmpPlot) || isnumeric(hax_PhaseAmpPlot)
-        subtitle(['MI = ',num2str(MI)]);
+        if hax_PhaseAmpPlot
+            subtitle(['MI = ',num2str(MI)]);
+        end
     end
 end
 
