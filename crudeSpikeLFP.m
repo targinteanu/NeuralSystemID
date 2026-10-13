@@ -1,19 +1,19 @@
 %% load raw data 
 minFreq = 0.3; % Hz
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SavedTable1375HzRT.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/SavedTable1375HzLT.mat')
 %Tbl = Tbl1; 
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time); 
-xch = 5; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
+xch = 2; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
 %x = Tbl.CLFP_NP1___Posterior; xname = 'CLFP_NP1___Posterior';
 Fs = 1375; spkFs = 44000; % Hz
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/SPK_RT_SelectedTimes.mat')
-spkTbl = depth_p0496_1; spkTbl.Properties.VariableNames{xch}
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/SpkLT1sel.mat')
+spkTbl = TblB; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
 %xx = spkTbl.CSPK_NP1___Posterior; 
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
-tsel = (t >= 5700) & (t <= 5800);
-%tsel = (t >= 8059) & (t <= 8091);
+%tsel = (t >= 5700) & (t <= 5800);
+tsel = (t >= 8059) & (t <= 8091);
 %tsel = (t >= 8077) & (t <= 8089);
 %tsel = (t >= 8064) & (t <= 8074);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
@@ -37,7 +37,7 @@ title([xname,' adjusted spectrogram']);
 ylabel('Frequency (Hz)'); xlabel('time (s)');
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/Neuro Omega/times_waveclusdata_RTp0496_1_APTcent.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/times_LT1Bch2_waveclusdata(3).mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
@@ -178,9 +178,9 @@ end
 
 % normalize 
 xn = (x-mean(x))/std(x);
-%zkwn = cellfun(@(zi) (zi-mean(zi))/std(zi), zkw, 'UniformOutput',false);
-%zwn = (zw-mean(zw))/std(zw);
 zkwn = zkw(:,1); zwn = zw; 
+%zkwn = cellfun(@(zi) (zi-mean(zi))/std(zi), zkwn, 'UniformOutput',false);
+%zwn = (zwn-mean(zwn))/std(zwn);
 
 % evaluate 
 r = corr(xn, zwn); 
@@ -190,7 +190,7 @@ lgd = ["raw LFP"; lgd; "all spk: \rho="+string(r)];
 
 % time domain 
 figure; 
-plot(t, xn*mean(zw)); hold on; grid on;  
+plot(t, xn*std(zw) + mean(zwn)); hold on; grid on;  
 if length(ku) > 1
 for ki = 1:length(zkwn)
     plot(t, zkwn{ki}); % Plot each spike train for comparison
@@ -200,6 +200,44 @@ plot(t, zwn, 'w');
 title('Spike-LFP time domain comparison');
 xlabel('time (s)'); ylabel('normalized LFP/count');
 legend(lgd);
+
+%% see Time-Freq of both LFP and SPK
+
+figure; 
+ax3(1) = subplot(2,1,1); 
+[W,fW] = cwt(x,"amor",Fs); W = abs(W); fW = log10(fW);
+imagesc(t,fW,W); colorbar;
+ax3(1).YDir = 'normal';
+title('LFP scalogram');
+ylabel('log_{10}( freq [Hz] )');
+ax3(2) = subplot(2,1,2); 
+[W,fW] = cwt(zw,"amor",Fs); W = abs(W); fW = log10(fW);
+imagesc(t,fW,W); colorbar;
+ax3(2).YDir = 'normal';
+title('All Spikes Scalogram');
+ylabel('log_{10}( f [Hz] )');
+linkaxes(ax3, 'xy');
+ylim([-1, 2.3]);
+xlabel('time (s)')
+
+for ki = 1:length(zkwn)
+figure; 
+ax3(1) = subplot(2,1,1); 
+[W,fW] = cwt(x,"amor",Fs); W = abs(W); fW = log10(fW);
+imagesc(t,fW,W); colorbar;
+ax3(1).YDir = 'normal';
+title('LFP scalogram');
+ylabel('log_{10}( freq [Hz] )');
+ax3(2) = subplot(2,1,2); 
+[W,fW] = cwt(zkw{ki,1},"amor",Fs); W = abs(W); fW = log10(fW);
+imagesc(t,fW,W); colorbar;
+ax3(2).YDir = 'normal';
+title(['Cluster ',num2str(ki),'Spk Scalogram']);
+ylabel('log_{10}( f [Hz] )');
+linkaxes(ax3, 'xy');
+ylim([-1, 2.3]);
+xlabel('time (s)')
+end
 
 %% time domain v2 
 figure; 
@@ -213,6 +251,7 @@ end
 plot(tSpk(2:end), 1./diff(tSpk), 'w');
 title('Spike-LFP time domain comparison');
 xlabel('time (s)'); ylabel('normalized LFP/rate');
+lgd = ["raw LFP"; string(ku); "all spk"];
 legend(lgd);
 
 %% freq domain 
@@ -348,7 +387,7 @@ wPk = wPk(selPk);
 pPk = pPk(selPk); 
 
 % exclude small pks 
-selPk = pPk >= 0.1*max(Wt);
+selPk = (pPk >= max(Wt)/10) | ((pPk >= max(Wt)/200) & (vPk >= max(Wt)*.4));
 vPk = vPk(selPk); 
 fPk = fPk(selPk); 
 wPk = wPk(selPk); 
@@ -614,7 +653,7 @@ figure;
 % main (top-right): time+frequency of LFP 
 axMain = axes('Position',[0.25 0.50 0.70 0.45]);
 imagesc(axMain, tS, fPlot, sPlot);
-axMain.YLim = [0 100];
+axMain.YLim = [0 200];
 axMain.YDir = 'normal';
 ylabel(axMain,'Frequency (Hz)');
 title(axMain,'LFP Time-Freq. Analysis (adjusted spectrogram)');
