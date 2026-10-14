@@ -1,5 +1,6 @@
 %% load data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/LT1Bch2_waveclusdata.mat')
+loadfilename = '/Users/torenarginteanu/Desktop/Data_PD/PD26N007/LT spk selected times/waveclusdata_LTdn03009A_APTcent.mat';
+load(loadfilename)
 %x = TblD.CSPK_01;
 %t = seconds(TblD.Time);
 %{
@@ -227,6 +228,7 @@ end
 grid on;
 title('Cluster Waveforms');
 xlabel('time (s)'); ylabel('signal +- 1SD');
+legend(["all", "cluster " + (1:k)]);
 
 % timing
 figure; 
@@ -238,6 +240,7 @@ end
 plot([t(1), t(end)], [TH, TH], '--');
 grid on; 
 xlabel('time (s)'); 
+legend(["Signal", "cluster " + (1:k)]);
 
 % ISI histo
 figure; 
@@ -259,7 +262,7 @@ for ki = unique(kidx)'
         spkj = spkIdx(kidx == kj);
         if (numel(spki)>1) & (numel(spkj)>1)
         try
-        subplot(k,k,p);
+        subplot(length(unique(kidx)),length(unique(kidx)),p);
         [bincent, binvals] = corgm(spki, spkj, ceil(0.03*fs));
         bincent = bincent/fs; binvals = binvals*fs;
         bar(bincent, binvals);
@@ -272,6 +275,13 @@ for ki = unique(kidx)'
         p = p+1;
     end
 end
+
+%% save wave_clus-compatible output
+cluster_class = [kidx, 1000*spkIdx/fs];
+spikes = WF; tspikes = tWF;
+[fp,fn] = fileparts(loadfilename);
+savefilename = fullfile(fp,['times_',fn,'.mat']);
+save(savefilename, "cluster_class","spikes","tspikes");
 
 %% helpers 
 
@@ -320,6 +330,7 @@ if numel(allTimes) > 1
 else
     dt = (2*trng)/100;
 end
+dt = min(dt, (2*trng)/100);
 
 % create bin edges covering [-trng, trng]
 binedges = (dt/2):dt:trng; 

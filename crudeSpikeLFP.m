@@ -1,19 +1,19 @@
 %% load raw data 
 minFreq = 0.3; % Hz
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/SavedTable1375HzLT.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N007/SavedTable1375HzLT.mat')
 %Tbl = Tbl1; 
 Tbl = sortrows(Tbl, 'Time');
 t = seconds(Tbl.Time); 
-xch = 2; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
+xch = 5; x = Tbl{:,xch}; xname = Tbl.Properties.VariableNames{xch}
 %x = Tbl.CLFP_NP1___Posterior; xname = 'CLFP_NP1___Posterior';
 Fs = 1375; spkFs = 44000; % Hz
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/SpkLT1sel.mat')
-spkTbl = TblB; spkTbl.Properties.VariableNames{xch}
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N007/LT spk selected times/SpkLTsel.mat')
+spkTbl = dn03009A; spkTbl.Properties.VariableNames{xch}
 xx = spkTbl{:,xch};
 %xx = spkTbl.CSPK_NP1___Posterior; 
-%tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
+tsel = (t >= seconds(spkTbl.Time(1))) & (t <= seconds(spkTbl.Time(end)));
 %tsel = (t >= 5700) & (t <= 5800);
-tsel = (t >= 8059) & (t <= 8091);
+%tsel = (t >= 8059) & (t <= 8091);
 %tsel = (t >= 8077) & (t <= 8089);
 %tsel = (t >= 8064) & (t <= 8074);
 %tsel = (t >= seconds(spkTbl.Time(1))) & (t <= 8450);
@@ -37,7 +37,7 @@ title([xname,' adjusted spectrogram']);
 ylabel('Frequency (Hz)'); xlabel('time (s)');
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N007/Neuro Omega/times_LT1Bch2_waveclusdata(3).mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD26N007/LT spk selected times/times_waveclusdata_LTdn03009A_APTcent(2).mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
 ku = unique(kidx); 
@@ -58,6 +58,7 @@ for ki = 1:length(ku)
     plot(spkTbl.Time(iSpkKi), xx(iSpkKi), 'o');
 end
 title('Spike signal detection');
+legend(["Signal", "cluster " + (1:length(ku))]);
 
 %% raster plot 
 
@@ -236,7 +237,7 @@ ax3(2) = subplot(2,1,2);
 [W,fW] = cwt(zkw{ki,1},"amor",Fs); W = abs(W); fW = log10(fW);
 imagesc(t,fW,W); colorbar;
 ax3(2).YDir = 'normal';
-title(['Cluster ',num2str(ki),'Spk Scalogram']);
+title(['Cluster ',num2str(ki),' Spk Scalogram']);
 ylabel('log_{10}( f [Hz] )');
 linkaxes(ax3, 'xy');
 ylim([-1, 2.3]);
