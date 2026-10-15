@@ -232,6 +232,9 @@ pwr = movmean(pwr, ARwin);
 %pwrthresh = median(pwr);
 %pwrthresh = 1.3*pwrthresh; % make adjustable?
 [~,pwrthresh] = midcross(pwr); % consider replacing with gaussian mix mdl
+if std(pwr) < eps^.5
+    pwrthresh = 0;
+end
 
 % downsample, if applicable
 downsampledFreq = SamplingFreq; 
@@ -599,9 +602,9 @@ figure; sgtitle({channelName, ...
 subplot(2,2,1); polarhistogram(phAll(toStim), 18); 
 title('Actual Phase of Stim'); 
 subtitle(['RMSE ',num2str(rms(radfix(phAll(toStim)-PhaseOfInterest), 'omitnan'))])
-subplot(2,2,2); polarhistogram(phEst(toStim), 18);
+subplot(2,2,2); polarhistogram(phEst(toStim(~isnan(phEst))), 18);
 title('Online Est. Phase of Stim');
-subtitle(['RMSE ',num2str(rms(radfix(phEst(toStim)-PhaseOfInterest), 'omitnan'))])
+subtitle(['RMSE ',num2str(rms(radfix(phEst(toStim(~isnan(phEst)))-PhaseOfInterest), 'omitnan'))])
 subplot(2,2,3); polarhistogram(phAll(StimTrainRec), 18);
 title('Actual Phase of Recorded Stim');
 subtitle(['RMSE ',num2str(rms(radfix(phAll(StimTrainRec)-PhaseOfInterest), 'omitnan'))])
