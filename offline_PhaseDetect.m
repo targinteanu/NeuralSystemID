@@ -219,11 +219,9 @@ end
 % build filter and filtered baseline 
 filtwts = fir1(filtord, [loco, hico]./(SamplingFreq/2));
 dataBaseline = filtfilt(filtwts,1,dataBaseline);
-%[dataBaseline, filtwts] = Myeegfilt(dataBaseline,SamplingFreq,loco,hico);
 filtord = length(filtwts);
 filtinit = zeros(filtord-1,1); % FIR filter Initial Condition
 filtdelay = ceil(filtord/2); % delay (#samples) caused by FIR filter
-%filtdelay = filtord;
 dataBaseline1 = dataBaseline(baselineWin(1):baselineWin(2));
 
 % power measurements 
@@ -338,6 +336,7 @@ progTick = .05; prog = 0; % track progress
 for tind = packetLength:packetLength:length(dataOneChannel)
     tic
     tinds = (tind-packetLength+1):tind;
+    % tinds(1) := start index of current packet
 
     % track progress
     prog = prog + packetLength/length(dataOneChannel);
@@ -365,7 +364,8 @@ for tind = packetLength:packetLength:length(dataOneChannel)
 
     ind0 = tinds(1) - ARwin;
     if ind0 > 0
-        dataPast = dataOneChannelFilt(ind0:tind)';
+        dataPast = dataOneChannelFilt(ind0:(tind-1))'; 
+        dataCurr = dataOneChannelFilt(tind);
         %{
         dataPastOrig = dataPast;
         % downsample, if applicable 
@@ -387,9 +387,9 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             if (artDur <= 0) || ~isArt(tind)
                 if stbl
                     [w, r, rAmpArg, rAng] = updateWtsStbl(...
-                        w, r, rAmpArg, rAng, x, dataOneChannelFilt(tind));
+                        w, r, rAmpArg, rAng, x, dataCurr);
                 else
-                    w = updateWts(w, x, dataOneChannelFilt(tind));
+                    w = updateWts(w, x, dataCurr);
                     r = roots([1, -fliplr(w)]);
                 end
                 if max(abs(r)) < 1 % ensure stability
@@ -440,7 +440,7 @@ for tind = packetLength:packetLength:length(dataOneChannel)
         %}
         % smooth out the kink at past/future interface
         %[dataPast, filtinit2] = filter(filtB,filtA,dataPast, filtinit);
-        dataFuture = filter(filtB,filtA,dataFuture,filtinit);
+        %dataFuture = filter(filtB,filtA,dataFuture,filtinit); % does this impose additional delay?
 
         % Step 5: Phase and Frequency Estimation
         % Using the Hilbert transform, estimate the current instantaneous
@@ -450,28 +450,35 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             dataPast, dataFuture, SamplingFreq, PhaseOfInterest, ...
             filtdelay/SamplingFreq, ... FIR filter imposes this delay (s)
             loco, hico, PDSusefuture);
-        i2nextStim = i2nextStim - filtdelay; % in terms of current time
         if dodebug
             figure(fig1);
             hWin.XData = [t(tind), t(tinds(end)), t(tinds(end)), t(tind)];
             hFlt.YData = dataOneChannelFilt;
             delete(hFore);
             hFore = plot(tPast(tind + (1:length(dataFuture))), dataFuture, '--b');
-            hStimPlan.YData(tind+i2nextStim) = dataFuture(i2nextStim+filtdelay);
+            hStimPlan.YData(tind+i2nextStim-filtdelay) = dataFuture(i2nextStim);
         end
 
         % Step 6: Send a stimulus pulse when appropriate 
         i2nextStim_prev = i2nextStim_prev - packetLength; % one packet passed
-        if i2nextStim_prev < 0
+        i2nextStim_prev = min(i2nextStim_prev, i2nextStim);
+        if i2nextStim_prev <= filtdelay + packetLength
+            % at next update, i2nextStim_prev will no longer be in the
+            % actionable future. 
             if pwr > pwrthresh
-                toStim(tind+i2nextStim_prev) = true;
-                i2nextStim_prev = i2nextStim;
+                if i2nextStim_prev >= filtdelay
+                    % still actionable 
+                    iToStim = tind-1+i2nextStim_prev;
+                    if iToStim <= length(toStim)
+                        toStim(iToStim) = true;
+                    end
+                end
                 if dodebug
                     hStimPlan.YData = nan(size(hStimPlan.YData));
                     hStimDone.YData(toStim) = dataOneChannelFilt2(toStim);
                 end
             end
-        elseif i2nextStim_prev > 1
+        %elseif i2nextStim_prev > filtdelay
             % lock-in
         %end
             i2nextStim_prev = i2nextStim;
@@ -510,8 +517,8 @@ frEst = [frEst(filtdelay:end), nan(1,filtdelay-1)];
 W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
 R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 %filtdelay = ceil(filtdelay/2);
-%toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
-%dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
+toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
+dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
 
 %% Part C: Evaluate Real-Time results 
 % Compare simulated real-time output with offline-computed ground truth 
