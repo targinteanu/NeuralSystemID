@@ -48,7 +48,7 @@ T=1/f_inst;
 % examine the next full phase cycle
 imin = ceil(tmin*fs); 
 if usefuture
-if imin < M
+if imin > M
     warning('Not enough forecast data provided to satisfy minimum horizon.')
 end
 phi_future = phi_block((N+imin):end,:);
