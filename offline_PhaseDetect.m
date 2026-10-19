@@ -17,11 +17,11 @@
 % 
 % An overview of the phase detection algorithm is as follows: ...
 
-function [phAll, phEst, frAll, frEst, TtoStim, phStim, W, R, dur, ...
+function [phAll, phEst, frAll, frEst, TtoStim, phStim, W, dur, ...
     numCycle, numMissing, numExtra] = ...
     offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength, ...
-    stepsize, donorm, doresample, useIIR, showplots, dodebug, PDSusefuture)
+    stepsize, kstab, doresample, useIIR, showplots, dodebug, PDSusefuture)
 
 if height(dataOneChannel) > 1
     error('Data should be one channel only and horizontal.')
@@ -39,7 +39,8 @@ if nargin < 19
                 if nargin < 15
                     doresample = false;
                     if nargin < 14
-                        donorm = false;
+                        %donorm = false;
+                        kstab = 1;
                         if nargin < 13
                             stepsize = [];
                             if nargin < 12
@@ -137,13 +138,13 @@ for v = varnames
 end
 clear v varnames
 if isempty(stepsize)
-    if donorm
-        stepsize = 1e-3;
-    else
+    %if donorm
+    %    stepsize = 1e-3;
+    %else
         % use data autocorrelation to get step size
         stepsize = LearnrateEst(dataOneChannel,ARlen);
         stepsize = stepsize/1000; % for additional safety
-    end
+    %end
 end
 
 
@@ -230,9 +231,9 @@ pwr = movmean(pwr, ARwin);
 %pwrthresh = median(pwr);
 %pwrthresh = 1.3*pwrthresh; % make adjustable?
 [~,pwrthresh] = midcross(pwr); % consider replacing with gaussian mix mdl
-if std(pwr) < eps^.5
+%if std(pwr) < eps^.5
     pwrthresh = 0;
-end
+%end
 
 % downsample, if applicable
 downsampledFreq = SamplingFreq; 
@@ -305,9 +306,14 @@ if stbl
 else
     warning('Initial AR model estimate is not stable.')
 end
-R = nan(length(dataOneChannel), length(r));
+%R = nan(length(dataOneChannel), length(r));
 r0 = r;
-stbl = false;
+%stbl = false;
+
+% setup multipliers for model update 
+Kstab = exp(-kstab/SamplingFreq);
+Kstep = kstab*stepsize*(Kstab-1)/SamplingFreq;
+Eprev = -dataOneChannelFilt(1);
 
 % calculate "actual" ground truth data that will be compared afterwards
 %dataOneChannelFilt2 = Myeegfilt(dataOneChannel,SamplingFreq,loco,hico);
@@ -385,6 +391,9 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             w1 = w;
             x = dataPast((end-ARlen):(end-1));
             if (artDur <= 0) || ~isArt(tind)
+                dpred = w*x - Kstab * Eprev;
+                w = w + Kstep*(dpred-dataCurr)*x';
+                %{
                 if stbl
                     [w, r, rAmpArg, rAng] = updateWtsStbl(...
                         w, r, rAmpArg, rAng, x, dataCurr);
@@ -392,14 +401,15 @@ for tind = packetLength:packetLength:length(dataOneChannel)
                     w = updateWts(w, x, dataCurr);
                     r = roots([1, -fliplr(w)]);
                 end
-                if max(abs(r)) < 1 % ensure stability
+                %}
+                %if max(abs(r)) < 1 % ensure stability
                     ARmdl_filt_new = [norm(w)/norm(w0), -fliplr(w)];
                     if doresample
                         ARmdl_filt_new = upsamplemdl(ARmdl_filt_new);
                     end
-                else
-                    w = w1; r = r1;
-                end
+                %else
+                %    w = w1; r = r1;
+                %end
             end
         end
 
@@ -411,20 +421,21 @@ for tind = packetLength:packetLength:length(dataOneChannel)
             % prevent updated model from blowing up 
             if norm(dataFuture) <= 10*norm(dataPast) % set blowup threshold here
                 ARmdl_filt = ARmdl_filt_new;
+                Eprev = (dpred-dataCurr);
             else
                 % revert 
                 dataFuture = myFastForecastAR(ARmdl_filt, dataPast, predWin);
                 w = w1; r = r1;
                 if norm(dataFuture) > 100*norm(dataPast)
                     dataFuture = myFastForecastAR(ARmdl_filt_orig, dataPast, predWin);
-                    w = w0; r = r0;
+                    w = w0; r = r0; Eprev = -dataOneChannelFilt(1);
                     if norm(dataFuture) > norm(dataPast)
                         %keyboard
                     end
                 end
             end
         end
-        W(tind,:) = w; R(tind,:) = r;
+        W(tind,:) = w; %R(tind,:) = r;
         %{
         % upsample, if applicable 
         if doresample
@@ -515,7 +526,7 @@ end
 phEst = [phEst(filtdelay:end), nan(1,filtdelay-1)]; 
 frEst = [frEst(filtdelay:end), nan(1,filtdelay-1)]; 
 W = [W(filtdelay:end,:); nan(filtdelay-1,length(w))];
-R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
+%R = [R(filtdelay:end,:); nan(filtdelay-1,length(r))];
 %filtdelay = ceil(filtdelay/2);
 toStim = [toStim(filtdelay:end), false(1,filtdelay-1)];
 dataOneChannelFilt = [dataOneChannelFilt(filtdelay:end), zeros(1,filtdelay-1)];
@@ -533,7 +544,7 @@ for var = [...
         "dataOneChannelFilt", "phEst", "frEst", "toStim"]
     eval(var+" = "+var+"(t1:t2);");
 end
-W = W(t1:t2,:); R = R(t1:t2,:);
+W = W(t1:t2,:); %R = R(t1:t2,:);
 
 % evaluate missing/extra stim 
 phCycleStart = radfix(PhaseOfInterest+pi); % put PHoI in middle of cycle
@@ -625,16 +636,20 @@ title('Num. Stimulations by Cycle')
 % show AR mdl changes
 W = W(~isnan(phEst),:);
 W = [w0; W];
-R = R(~isnan(phEst),:);
-R = [r0; R];
+%R = R(~isnan(phEst),:);
+%R = [r0; R];
 if stepsize > 0
     figure; sgtitle(channelName);
-    subplot(1,2,1); imagesc(W); colorbar; 
+    %subplot(1,2,1); 
+    imagesc(diff(W)); colorbar; 
     title('Dynamic AR model update');
     xlabel('tap'); ylabel('iteration');
-    subplot(1,2,2); imagesc(abs(R)); colorbar;
+    %{
+    subplot(1,2,2); 
+    imagesc(abs(R)); colorbar;
     title('System Pole Magnitudes');
     xlabel('pole'); ylabel('iteration');
+    %}
 end
 
 end
