@@ -650,7 +650,7 @@ TtoStim = t(toStim);
 
     function mdl = upsamplemdl(mdl)
         % upsample AR mdl
-        mdl = [mdl; zeros(samplerat-1, width(mdl))];
+        mdl = [zeros(samplerat-1, width(mdl)); mdl];
         mdl = mdl(:)';
     end
 
