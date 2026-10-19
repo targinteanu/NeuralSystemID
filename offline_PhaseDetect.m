@@ -609,7 +609,7 @@ figure; sgtitle({channelName, ...
 subplot(2,2,1); polarhistogram(phAll(toStim), 18); 
 title('Actual Phase of Stim'); 
 subtitle(['RMSE ',num2str(rms(radfix(phAll(toStim)-PhaseOfInterest), 'omitnan'))])
-subplot(2,2,2); polarhistogram(phEst(toStim(~isnan(phEst))), 18);
+subplot(2,2,2); polarhistogram(phEst(logical(toStim.*(~isnan(phEst)))), 18);
 title('Online Est. Phase of Stim');
 subtitle(['RMSE ',num2str(rms(radfix(phEst(toStim(~isnan(phEst)))-PhaseOfInterest), 'omitnan'))])
 subplot(2,2,3); polarhistogram(phAll(StimTrainRec), 18);
