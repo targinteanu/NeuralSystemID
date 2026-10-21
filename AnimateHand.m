@@ -1,4 +1,4 @@
-function [FF, t, Tthetaphi] = AnimateHand(deviceData)
+function [FF, t, Tthetaphi, Fl] = AnimateHand(deviceData)
 %% translate struct to matrix of raw finger pos
 
 t = deviceData.time; dt = [0,diff(t)];
@@ -100,7 +100,7 @@ for j = 2:size(Fd,1)
 end
 Ftheta(2,1,:) = nan; % thumb lacks final joint 
 Ftheta(1,:,:) = nan; % no real movement m wrt wrist 
-Ftheta(end,2:end,:) = nan; % final joint not independent
+%Ftheta(end,2:end,:) = nan; % final joint not independent
 
 % wrist flexion/extension, pron/supination, deviation
 Pd = [Fd(2,3,:,:); FF(3,2,:,:)-FF(3,3,:,:)]; % middle mcp and index-middle knuckle disp
