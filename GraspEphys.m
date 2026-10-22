@@ -92,18 +92,7 @@ Y = Th(:, ...
     (contains(fnames, 'd2') | contains(fnames, 'd3')));
 
 % compute output sigmoid nonlinearity 
-%Y = tan(Y-median(Y));
-tol = 0.1; % state-level tolerance 
-Ybnd = zeros(2,width(Y));
-for f = 1:width(Y)
-    ybnd = statelevels(Y(:,f));
-    ybnd = ybnd + tol*[-1,1]*diff(ybnd);
-    Ybnd(:,f) = ybnd';
-    %Y(:,f) = 2*(Y(:,f)-mean(ybnd))/diff(ybnd);
-    Y(:,f) = max(Y(:,f), ybnd(1)+eps);
-    Y(:,f) = min(Y(:,f), ybnd(2)-eps);
-    Y(:,f) = log((Y(:,f)-ybnd(1))./(ybnd(2)-Y(:,f)));
-end
+Y = tan(Y-median(Y));
 
 % complete decoding 
 X_aug = [X, ones(height(X),1)];
