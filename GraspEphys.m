@@ -102,6 +102,11 @@ b = X1\Y1;
 Y1e = X1*b; Y2e = X2*b;
 figure; plot(Y(:,2)); hold on; grid on; plot([Y1e(:,2);Y2e(:,2)]); plot(Y1e(:,2));
 
+disp('Train Acc:')
+disp(diag(corr(Y1, Y1e)))
+disp('Testing Acc:')
+disp(diag(corr(Y2, Y2e)))
+
 %% ID state space system 
 
 Xa = X(1:(end-1),:); Xb = X(2:end,:);
@@ -155,3 +160,8 @@ Y2be = W2b + L*X2b'; Y2be = Y2be';
 
 figure; plot(Yb(:,2)); hold on; grid on; 
 plot([Y1be(:,2);Y2be(:,2)]); plot(Y1be(:,2));
+
+disp('Train Acc:')
+disp(diag(corr(Y1b, Y1be)))
+disp('Testing Acc:')
+disp(diag(corr(Y2b, Y2be)))
