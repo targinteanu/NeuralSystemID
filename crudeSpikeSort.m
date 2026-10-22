@@ -1,5 +1,5 @@
 %% load data 
-loadfilename = '/Users/torenarginteanu/Desktop/Data_PD/PD26N007/LT spk selected times/waveclusdata_LTdn03009A_APTcent.mat';
+loadfilename = '/Users/torenarginteanu/Desktop/Data_PD/PD26N007/LT spk selected times/waveclusdata_LTdp04497_NP1med.mat';
 load(loadfilename)
 %x = TblD.CSPK_01;
 %t = seconds(TblD.Time);
@@ -105,6 +105,7 @@ WF = WF(~inan,:);
 tWF = (-WFlen:WFlen)/fs;
 
 %% reduce dimension 
+%{
 maxPC = 200; % max # components to consider 
 thrE = 80; % cumulative %var explained target 
 [C,WFS,L,T,E,M] = pca(WF);
@@ -121,6 +122,8 @@ xlabel('# PCs'); ylabel('Cumulative % var explained');
 title('PCA dim reduction');
 nPC = min(nPC, size(WF,2));
 WFS = WFS(:,1:nPC);
+%}
+WFS = tsne(WF, "NumDimensions",3); % 3D TSNE
 
 %% cluster waveforms 
 
