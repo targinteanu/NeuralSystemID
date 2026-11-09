@@ -149,7 +149,7 @@ while ~sortdone
     sortdone = strcmpi(sortdone, 'y');
 
     if sortdone
-        labels = labelsNew;
+        labels = labelsNew; lines = linesNew;
     else
         for l = 1:height(labelsPlots)
             for lp = 1:width(labelsPlots)
@@ -266,8 +266,8 @@ lblcount_perm = lblcount(bestPerm);
 %}
 
 % may be sufficient to just sort both 
-[lblcount, lblidx] = sort(lblcount);
-[chucount, chuidx] = sort(chucount);
+[lblcount, lblidx] = sort(lblcount, 'descend');
+[chucount, chuidx] = sort(chucount, 'descend');
 chnamesu = chnamesu(chuidx);
 lines = lines(lblidx,:,:);
 labels = arrayfun(@(lbl) find(lblidx==lbl), labels);
@@ -275,6 +275,8 @@ labels = arrayfun(@(lbl) find(lblidx==lbl), labels);
 plotNewLabels(XYZ, K, labels, lines);
 
 %% manually reassign named labels (2)
+
+chnamesu = [chnamesu, "None"];
 
 assigndone = false;
 while ~assigndone
