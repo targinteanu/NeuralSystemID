@@ -209,7 +209,7 @@ figure; plot(krange, dd);
 [kidx,kc,kd] = kgmm(WFS, k);
 
 % scatter 
-figure;
+figScatter = figure;
 plot3(0,0,0,'*','Color',[.5,.5,.5]); hold on;
 for ki = unique(kidx)'
     WFi = WFS(kidx == ki, 1:3);
@@ -220,7 +220,7 @@ title('Cluster scatterplot in PC space');
 xlabel('PC1'); ylabel('PC2'); zlabel('PC3');
 
 % waveform 
-figure; 
+figWaveform = figure; 
 errorbar(tWF, mean(WF), std(WF), 'Color',[.5 .5 .5]); hold on;
 for ki = unique(kidx)'
     WFi = WF(kidx == ki, :);
@@ -236,7 +236,7 @@ xlabel('time (s)'); ylabel('signal +- 1SD');
 legend(["all", "cluster " + (1:k)]);
 
 % timing
-figure; 
+figSpktime = figure; 
 plot(t, x); hold on; 
 for ki = unique(kidx)'
     spki = spkIdx(kidx == ki);
@@ -248,7 +248,7 @@ xlabel('time (s)');
 legend(["Signal", "cluster " + (1:k)]);
 
 % ISI histo
-figure; 
+figISI = figure; 
 histogram(diff(spkIdx)/fs, 0:.001:0.1, 'FaceColor',[.5 .5 .5]); hold on;
 for ki = unique(kidx)'
     spki = spkIdx(kidx == ki);
@@ -259,7 +259,7 @@ title('Inter-Spike Interval');
 xlabel('duration (s)'); ylabel('count');
 
 %% auto/cross corr
-figure; 
+figCorr = figure; 
 p = 1;
 for ki = unique(kidx)'
     spki = spkIdx(kidx == ki);
@@ -289,8 +289,16 @@ end
 cluster_class = [kidx, 1000*spkIdx/fs];
 spikes = WF; tspikes = tWF;
 [fp,fn] = fileparts(loadfilename);
+ff = ['crudeSpikeSort_',datestr(now, 'yyyy-mm-dd_HH-MM-SS')];
+mkdir(fp, ff);
+fp = fullfile(fp,ff);
 savefilename = fullfile(fp,['times_',fn,'.mat']);
 save(savefilename, "cluster_class","spikes","tspikes");
+saveas(figScatter, fullfile(fp,'FeatScatter'), 'fig');
+saveas(figWaveform, fullfile(fp,'WaveForm'), 'fig');
+saveas(figSpktime, fullfile(fp,'SpikeTime'), 'fig');
+saveas(figISI, fullfile(fp,'ISIhisto'), 'fig');
+saveas(figCorr, fullfile(fp,'AXcorr'), 'fig');
 
 %% helpers 
 
