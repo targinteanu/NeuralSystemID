@@ -1,5 +1,5 @@
 %% load data 
-loadfilename = '/Users/torenarginteanu/Desktop/Data_PD/PD26N007/LT spk selected times/waveclusdata_LTdp04497_NP1med.mat';
+loadfilename = '/Users/torenarginteanu/Desktop/Data_PD/PD24N009/Neuro Omega/mat/LT/Saved To Table/Table Data 2026-09-04 16.02.54 d0a6723833db66/waveclusdata_LT1A_2.mat';
 load(loadfilename)
 %x = TblD.CSPK_01;
 %t = seconds(TblD.Time);
@@ -29,6 +29,7 @@ BPFn = conv(BPFn, notchNum); BPFd = conv(BPFd, notchDen);
 xf = filtfilt(BPFn,BPFd,x);
 
 %% identify threshold(s) 
+noiseabsTH = sqrt(5*std(x.^2)); % above this is noise
 % alternatively do this based on mean/SD
 [OL, lTH, uTH, mid] = isoutlier(xf, 'median', 'ThresholdFactor',5); 
 OL = find(OL);
@@ -75,8 +76,9 @@ end
 % use findpeaks 
 % alternatively, look for positive thresh crossings 
 [spkVal, spkIdx, spkWid, spkPrm] = findpeaks(xf); 
+%spkVal = x(spkIdx);
 % consider adding minPeakProminence/Distance related to WFlen
-spkSel = spkVal > TH;
+spkSel = (spkVal > TH) & (spkVal < noiseabsTH);
 spkIdx = spkIdx(spkSel); % Select indices of detected spikes
 spkVal = spkVal(spkSel); % Select values of detected spikes
 spkWid = spkWid(spkSel);
@@ -247,10 +249,10 @@ legend(["Signal", "cluster " + (1:k)]);
 
 % ISI histo
 figure; 
-histogram(diff(spkIdx)/fs, 'BinWidth',0.0005, 'FaceColor',[.5 .5 .5]); hold on;
+histogram(diff(spkIdx)/fs, 0:.001:0.1, 'FaceColor',[.5 .5 .5]); hold on;
 for ki = unique(kidx)'
     spki = spkIdx(kidx == ki);
-    histogram(diff(spki)/fs, 'BinWidth',0.0005);
+    histogram(diff(spki)/fs, 0:.001:0.1);
 end
 grid on;
 title('Inter-Spike Interval');
@@ -269,6 +271,10 @@ for ki = unique(kidx)'
         [bincent, binvals] = corgm(spki, spkj, ceil(0.03*fs));
         bincent = bincent/fs; binvals = binvals*fs;
         bar(bincent, binvals);
+        if ki == kj
+            yl = binvals(bincent~=0);
+            ylim([0, 1.1*max(yl)]);
+        end
         xlabel('delay (s)'); ylabel('avg # per s');
         title([num2str(kj),' given ',num2str(ki)]);
         catch ME
