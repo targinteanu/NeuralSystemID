@@ -37,10 +37,10 @@ title([xname,' adjusted spectrogram']);
 ylabel('Frequency (Hz)'); xlabel('time (s)');
 
 %% load spike-sorted data 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD24N009/Neuro Omega/mat/LT/Saved To Table/Table Data 2026-09-04 16.02.54 d0a6723833db66/times_waveclusdata_LT1A_2.mat')
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N009/Neuro Omega/mat/LT/Saved To Table/Table Data 2026-09-04 16.02.54 d0a6723833db66/crudeSpikeSort3/times_waveclusdata_LT1A_2.mat')
 tSpk = cluster_class(:,2)/1000 + seconds(spkTbl.Time(1));
 kidx = cluster_class(:,1);
-ku = unique(kidx); 
+ku = unique(kidx);
 ku = ku(ku > 0); % exclude noise
 tSpkK = cell(size(ku));
 for ki = 1:length(ku)
