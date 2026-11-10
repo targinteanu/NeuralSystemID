@@ -1,11 +1,11 @@
-root = '/Users/torenarginteanu/Documents/Anderson Lab/XTRA/Detailed Heat Map Plots/2026-10 surrogate/PD25N009';
-subjects = {'LS52', 'LS53', 'LS54'};
+root = '/Users/torenarginteanu/Documents/Anderson Lab/XTRA/Detailed Heat Map Plots/2026-10 surrogate/PD25N013';
+subjects = {'LS49', 'LS50'};
 groups = {'Baseline no Notch', 'NBack no Notch'};
 allData = cell(2, 3);
 
 % Extract CData from each figure
-for g = 1:2
-    for s = 1:3
+for g = 1:length(groups)
+    for s = 1:length(subjects)
         figPath = fullfile(root, ...
             [subjects{s} ' Figures'], ...
             groups{g}, ...
@@ -28,18 +28,18 @@ end
 
 %% Average each group, checking matrix sizes
 avg = cell(1, 2);
-for g = 1:2
+for g = 1:length(groups)
     referenceSize = size(allData{g, 1});
 
-    for s = 2:3
+    for s = 2:length(subjects)
         if ~isequal(size(allData{g, s}), referenceSize)
             error('Matrix sizes differ within group %s', groups{g});
         end
     end
 
     avg{1,g} = (double(allData{g, 1}) + ...
-              double(allData{g, 2}) + ...
-              double(allData{g, 3})) / 3;
+              ...double(allData{g, 2}) + ...
+              double(allData{g, 2})) / 3;
 end
 
 if ~isequal(size(avg{1,1}), size(avg{1,2}))
@@ -59,7 +59,7 @@ writematrix(avg{2}, fullfile(root, 'PAC_zMI_nback_average.csv'));
 colorLimits = [min([avg{1,1}(:); avg{1,2}(:)]), ...
                max([avg{1,1}(:); avg{1,2}(:)])];
 %%
-for g = 1:2
+for g = 1:length(groups)
     fig = figure;%('Visible', 'off', 'Color', 'w');
 
     img = imagesc(f_ph, f_Amp, avg{1,g});
