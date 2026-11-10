@@ -1,11 +1,16 @@
 %% load files 
-load('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/baseline_1.mat', 'deviceData1');
-NS = openNSx('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/NSdata/ECoG PDS/datafile002.ns2','uV');
-NEV = openNEV('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/NSdata/ECoG PDS/datafile002.nev');
-NS = ns2timetable(NS); NEV = nev2table(NEV);
-t0 = NS.Time(350000); % avoid stim
-NS = NS(NS.Time > t0,:); NEV = NEV(NEV.Time > t0,:);
-dt = 0.001; % 1/Fs
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N001/lmc_data/Grasping1_115306.mat', 'deviceData1');
+%NS = openNSx('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/NSdata/ECoG PDS/datafile002.ns2','uV');
+%NEV = openNEV('/Users/torenarginteanu/Desktop/Data_PD/PD26N003/NSdata/ECoG PDS/datafile002.nev');
+%NS = ns2timetable(NS); NEV = nev2table(NEV);
+%t0 = NS.Time(350000); % avoid stim
+%NS = NS(NS.Time > t0,:); NEV = NEV(NEV.Time > t0,:);
+%dt = 0.001; % 1/Fs
+load('/Users/torenarginteanu/Desktop/Data_PD/PD24N001/PD24N001_SegmentData_b4f0600f3c9d69/PD24N001_SegmentData_b4f0600f3c9d69.mat', ...
+    'SampleRates', 'tblsSrl', 'tblsBaseline');
+NS = tblsSrl{2,1}; NEV = NS.Properties.Events;
+dt = 1/SampleRates(1);
+t0 = NS.Time(1);
 
 %% process hand grasping 
 [FF, t1, Tthetaphi, Fl] = AnimateHand(deviceData1);
@@ -24,6 +29,13 @@ tNEV = tNEV(1):dt:tNEV(end);
 
 %% align grasp/Ephys 
 
+dL = length(zNEV)-length(z1);
+if dL > 0
+    z1 = [z1, nan(1,dL)];
+elseif dL < 0
+    zNEV = [zNEV, nan(1,-dL)];
+end
+
 [R,L] = xcorr(z1, zNEV);
 [r,l] = max(R); l = L(l);
 if l>0
@@ -35,19 +47,50 @@ elseif l<0
     t = tNEV((1-l):end);
 end
 
+z1 = z1(~isnan(z1)); zNEV = zNEV(~isnan(zNEV));
+
+figure; plot(t, z1); hold on; grid on; plot(t, zNEV, '--');
+title('hand data alignment');
+xlabel('time (s)'); ylabel('hand pos'); legend('saved', 'blackrock');
+
 dur = min(height(Th), length(zNEV));
 Th = Th(1:dur, :);
 t = t(1:dur);
 
 X = NS.Variables;
 X = interp1(seconds(NS.Time - t0), X, t, "linear","extrap");
-X = X(:,1:63);
+%X = X(:,1:63);
 
 %% select relevant channels 
+%{
 % should be based on anatomy instead of signal! 
 B = X\Th; b = rms(B,2);
 bthresh = quantile(b, .75);
 X = X(:, b>bthresh);
+%}
+chdesc = NS.Properties.VariableDescriptions;
+chsel = contains(chdesc, 'PrG') & contains(lower(chdesc), 'upper limb region');
+X = X(:,chsel); 
+
+%% spectrogram 
+SS = [];
+for ch = 1:width(X)
+    [S,fS,tS] = spectrogram(X(:,ch),1/dt,[],[],1/dt,"yaxis","power");
+    [~,k1,c2] = pinkcorrect(mean(abs(S),2),fS);
+    Anoise = k1*fS.^c2; Anoise(1)=eps;
+    S = abs(S)./Anoise;
+    SS = cat(3,SS,S);
+end
+SSavg = mean(SS,3); SSstd = std(SS,[],3);
+figure; 
+subplot(2,1,1); img = imagesc(tS, fS(2:end), (SSavg(2:end,:))); 
+img.Parent.YDir = 'normal';
+title('avg adjusted spectrogram');
+ylabel('Frequency (Hz)'); xlabel('time (s)');
+subplot(2,1,2); img = imagesc(tS, fS(2:end), (SSstd(2:end,:))); 
+img.Parent.YDir = 'normal';
+title('std adjusted spectrogram');
+ylabel('Frequency (Hz)'); xlabel('time (s)');
 
 %% inspect features 
 
@@ -78,9 +121,10 @@ ylabel('freq (hz)'); xlabel('power'); title('power spectrum');
 legend('Movement On', 'Movement Off')
 
 %% process features 
-BPF1 = fir1(1023,[2,12]*2*dt);
-BPF2 = fir1(1023,[15,25]*2*dt);
-X = [filtfilt(BPF1,1,X), filtfilt(BPF2,1,X)];
+BPF1 = fir1(1023,[5,18]*2*dt);
+BPF2 = fir1(1023,[18,33]*2*dt);
+BPF3 = fir1(1023,[50,70]*2*dt);
+X = [filtfilt(BPF1,1,X), filtfilt(BPF2,1,X), envelope(filtfilt(BPF3,1,X))];
 
 %% decoding (standard)
 trn = ceil(height(X)/2);
