@@ -198,6 +198,7 @@ ax(1) = nexttile; ax(2) = nexttile([2,1]);
 
 % graph coeff vals with direction of change
 for curax = ax
+axis(curax, 'tight');
 stem(curax, w1, 'k', 'LineWidth',2); 
 hold(curax, 'on'); quiver(curax, 1:length(w1),w1, zeros(size(w2)), warrow, 'off', ...
     'r', 'LineWidth',2, 'ShowArrowHead','off');
@@ -234,6 +235,61 @@ ylim(ycent + [-.5,.5]*yscl);
 yticks(round(w1(end), 2));
 ax(1).Box = false;
 ax(1).XAxis.Visible = false;
+
+%% plot sys poles before/after 
+
+% compute roots 
+p1 = roots([1, -fliplr(w1)]); p2 = roots([1, -fliplr(w2)]);
+parrow = (p2-p1); 
+
+% configure inset showing greatest change
+parrowlen = diag(parrow*parrow');
+psel = parrowlen > 1e-4;
+psel = [p1(psel); p2(psel)];
+bselbox = [min(real(psel)), max(real(psel)); 
+           min(imag(psel)), max(imag(psel))];
+bselbox = bselbox + .25*[-1,1].*diff(bselbox,[],2);
+
+% prepare figure
+figure('Position',[100 100 875 375], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+tiledlayout('horizontal', 'TileSpacing','compact'); 
+ax2(1) = nexttile; ax2(2) = nexttile;
+
+% make plot
+for curax = ax2
+axes(curax); axis(curax, 'tight');
+viscircles(curax, [0,0],1, 'Color',.5*[1,1,1], 'LineStyle','--', 'LineWidth',3);
+hold on; grid on;
+plot(p1, 'ok', 'LineWidth',2); 
+%plot(p2, 'or', 'LineWidth',1.5);
+quiver(real(p1),imag(p1), real(parrow),imag(parrow), "off", ...
+    'r', 'LineWidth',2, 'ShowArrowHead','on', 'MaxHeadSize',.5);
+curax.Box = false;
+curax.XAxisLocation = "origin";
+curax.YAxisLocation = "origin";
+rectangle(curax, 'Position',[bselbox(:,1); diff(bselbox,[],2)]', ...
+    'EdgeColor','b', 'LineWidth',2)
+curax.FontSize = 14;
+xlabel('Re.', 'FontSize',14, 'FontWeight','bold', ...
+    'HorizontalAlignment','left', 'VerticalAlignment','top', ...
+    'Position',[0.1,0,-1]);
+ylabel('Im.', 'FontSize',14, 'FontWeight','bold', ...
+    'HorizontalAlignment','left', 'VerticalAlignment','bottom', ...
+    'Position',[0,0.1,-1], 'Rotation',90);
+end
+
+% make inset plot
+axes(ax2(2));
+xlim(bselbox(1,:)); ylim(bselbox(2,:));
+ax2(2).YAxisLocation = "right";
+title(ax2(2),'Dynamic Poles', 'FontSize',16)
+
+% annotate main plot
+title(ax2(1),'All Model Poles', 'FontSize',16)
+lgd = legend(ax2(1), 't_1 Value', 't_2 Change', ...
+    'FontSize',14, 'location','westoutside');
+lgd.Layout.Tile = 'west';
 
 %% helper(s)
 
