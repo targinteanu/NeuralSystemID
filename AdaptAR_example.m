@@ -183,9 +183,12 @@ figure('Position',[1 1 1200 375], 'WindowStyle','normal', ...
     'Theme','light', 'Color','w'); 
 
 w1 = W(1,:); w2 = W(end,:); % 't1' and 't2' on the graph 
+warrow = 100*(w2-w1);
 
 ax(1) = subplot(1,2,1);
 stem(w1, 'k', 'LineWidth',2); 
+hold on; quiver(1:length(w1),w1, zeros(size(w2)), warrow, 'off', ...
+    'r', 'LineWidth',2, 'ShowArrowHead','on', 'MaxHeadSize',.5);
 ax(1).FontSize = 14;
 xlabel('Tap #', 'FontSize',16);
 ylabel('Coeff. Value', 'FontSize',16);
@@ -196,7 +199,7 @@ stem(w2-w1, 'k', 'LineWidth',2);
 ax(2).FontSize = 14;
 xlabel('Tap #', 'FontSize',16);
 ylabel('Coeff. Diff.', 'FontSize',16);
-title('Model Coefficient Difference, t_2 - t_1', 'FontSize',16)
+title('Coefficient Difference, t_2 - t_1', 'FontSize',16)
 
 %linkaxes(ax, 'y');
 
