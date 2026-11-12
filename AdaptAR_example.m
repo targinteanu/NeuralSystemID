@@ -6,18 +6,18 @@ ARord = 50; % # coefficients
 donorm = false;
 
 % time points (sample) 
-t1 = 451000; % start AR train 
+t1 = 10500; % start AR train 
 t2 = t1+1000; % end AR train 
 t3 = t2+ARord+1; % start eval AR (1)
-t4 = t1+1900; % start eval AR (2)
-T = 250; % AR eval dur
+t4 = t2+577; % start eval AR (2)
+T = 100; % AR eval dur
 
 %% file selection 
-[fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Segmented Data File');
-SegmentedDataFullfile = fullfile(fp,fn);
-%fn = '/Users/torenarginteanu/Documents/MATLAB/NeuralSystemID/AdaptAR/PD22N009_SegmentData_7e8979e58123db.mat';
+%[fn,fp] = uigetfile('*SegmentData*.mat', 'Choose Segmented Data File');
+%SegmentedDataFullfile = fullfile(fp,fn);
+SegmentedDataFullfile = '/Users/torenarginteanu/Documents/MATLAB/NeuralSystemID/AdaptAR/PD22N009_SegmentData_7e8979e58123db.mat';
 load(SegmentedDataFullfile);
-[~,fn,fe] = fileparts(fn);
+[fp,fn,fe] = fileparts(SegmentedDataFullfile);
 subjname = upper(fn(1:8));
 isEMU = contains(subjname, 'PY');
 
@@ -65,9 +65,10 @@ end
 %% subselect channels 
 
 chsel1 = listdlg("PromptString","select channel", "SelectionMode","single", ...
-    "ListString",chselName);
+    "ListString",chselName, ...
+    "InitialValue", find(strcmp(chselName,channelNameRec)));
 x = dtaBL{:,chsel1};
-t = ((1:length(x))-1)/Fs; t = t-t(t1);
+t = ((1:length(x))-1)/Fs; %t = t-t(t1);
 
 chselname = dtaBL.Properties.VariableNames{chsel1}
 chseldesc = dtaBL.Properties.VariableDescriptions{chsel1}
@@ -111,10 +112,16 @@ end
 w4 = w; mdl4 = [norm(w4)/norm(w1), -fliplr(w4)];
 x4a = myFastForecastAR(mdl4, x(t2:t4), T);
 
-figure; imagesc(diff(W,2)); colorbar; title('AR coeff change');
-xlabel('coef index'); ylabel('sample');
+figure; 
+subplot(2,1,1);
+imagesc(diff(W,2)'); %colorbar; 
+title('AR coeff change');
+ylabel('coef index'); xlabel('sample');
+subplot(2,1,2);
+plot(rms(diff(W,2),2));
+ylabel('mag diff');
 
-%% plot
+%% plot time
 
 clr = {[0.0660    0.4430    0.7450], ... blue 
        [0.8660    0.3290         0], ... red 
@@ -136,29 +143,60 @@ FaceAlpha = 0.6;
 figure('Position',[1 1 1200 375], 'WindowStyle','normal', ...
     'Theme','light', 'Color','w'); 
 plot(t, x, 'k', 'LineWidth',2); hold on; % grid on; 
-plot(t(t3+(1:T)), x3c,       'color',clr{1}, 'LineWidth',1.5);
-plot(t(t3+(1:T)), x3a, '--', 'color',clr{2}, 'LineWidth',1.5);
-plot(t(t4+(1:T)), x4c,       'color',clr{1}, 'LineWidth',1.5);
-plot(t(t4+(1:T)), x4a, '--', 'color',clr{2}, 'LineWidth',1.5);
+plot(t(t3+(1:T)), x3c,      'color',clr{1}, 'LineWidth',3);
+plot(t(t3+(1:T)), x3a, ':', 'color',clr{2}, 'LineWidth',3);
+plot(t(t4+(1:T)), x4c,      'color',clr{1}, 'LineWidth',3);
+plot(t(t4+(1:T)), x4a, ':', 'color',clr{2}, 'LineWidth',3);
 
 xlim(t([t2-.5*T, t4+1.5*T]));
 ax5 = gca(); ax5.FontSize = 14;
-legend('Actual', 'Constant Model', 'Adaptive Model', ...
-    'FontSize',16, 'location','southoutside', 'Orientation','horizontal');
-xlabel(' time (s)', 'FontSize',16, ...
+xlabel(' time', 'FontSize',16, ...
     'Units','Normalized', 'Position',[1,0.5], ...
     'HorizontalAlignment','left', 'VerticalAlignment','middle'); 
+xticks(t([t3 t4])); xticklabels({'t_1', 't_2'});
 ylabel('Signal (\muV)', 'FontSize',16);
 title('Model-Forecast Signal Example', 'FontSize',16);
 subtitle(['Subject ',subjname], 'FontSize',16);
 ax5.Box = false;
 ax5.XAxisLocation = 'origin';
 ax5.XAxis.TickLength = [.1 .025];
-ax5.XTick = unique(round(ax5.XTick)); % round to nearest second
+%ax5.XTick = unique(round(ax5.XTick)); % round to nearest second
 %ax5.XTickLabels = {'1','2'};
 ax5.XAxis.TickDirection = 'both';
-ax5.YTick = [-20 0 20];
+ax5.YTick = [-50 0 50];
 ax5.YAxis.TickDirection = 'both';
+
+% time bar
+yl = ylim; xl = xlim;
+xbar = xl(1) + 0.01*diff(xl); xbar = xbar + [0 .25];
+errorbar(mean(xbar), yl(2), 0,0, diff(xbar)/2, diff(xbar)/2, ...
+    'k', 'LineWidth',2, 'CapSize',10);
+text(mean(xbar), yl(2), '0.25 s', 'FontSize',14, ...
+    'HorizontalAlignment','center', 'VerticalAlignment','top');
+
+legend('Actual', 'Constant Model', 'Adaptive Model', ...
+    'FontSize',16, 'location','southoutside', 'Orientation','horizontal');
+
+%% plot coeffs before-after 
+
+figure('Position',[1 1 1200 375], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+
+ax(1) = subplot(1,2,1);
+stem(W(1,:), 'k', 'LineWidth',2); 
+ax(1).FontSize = 14;
+xlabel('Tap #', 'FontSize',16);
+ylabel('Coeff. Value', 'FontSize',16);
+title('Model Coefficients, t_1', 'FontSize',16)
+
+ax(2) = subplot(1,2,2);
+stem(W(end,:) - W(1,:), 'k', 'LineWidth',2); 
+ax(2).FontSize = 14;
+xlabel('Tap #', 'FontSize',16);
+ylabel('Coeff. Diff.', 'FontSize',16);
+title('Model Coefficient Difference, t_2 - t_1', 'FontSize',16)
+
+%linkaxes(ax, 'y');
 
 %% helper(s)
 
