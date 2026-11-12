@@ -21,63 +21,67 @@ function [phAll, phEst, frAll, frEst, TtoStim, phStim, W, R, dur, ...
     numCycle, numMissing, numExtra] = ...
     offline_PhaseDetect(dataOneChannel, SamplingFreq, StimTrainRec, t, channelName, ...
     PhaseOfInterest, FreqRange, ARwin, ARlen, predWin, artDur, packetLength, ...
-    stepsize, donorm, doresample, useIIR, showplots, dodebug, PDSusefuture)
+    stepsize, donorm, doresample, useIIR, showplots, dodebug, PDSusefuture, ...
+    noiselevel)
 
 if height(dataOneChannel) > 1
     error('Data should be one channel only and horizontal.')
 end
 
 % signal to use default values if any arguments are not passed in
+if nargin < 20
+noiselevel = 0;
 if nargin < 19
-    PDSusefuture = true;
-    if nargin < 18
-        dodebug = false;
-        if nargin < 17
-            showplots = false;
-            if nargin < 16
-                useIIR = false;
-                if nargin < 15
-                    doresample = false;
-                    if nargin < 14
-                        donorm = false;
-                        if nargin < 13
-                            stepsize = [];
-                            if nargin < 12
-                                packetLength = [];
-                                if nargin < 11
-                                    artDur = [];
-                                    if nargin < 10
-                                        predWin = [];
-                                        if nargin < 9
-                                            ARlen = [];
-                                            if nargin < 8
-                                                ARwin = [];
-                                                if nargin < 7
-                                                    FreqRange = [];
-                                                    if nargin < 6
-                                                        PhaseOfInterest = [];
-                                                        if nargin < 5
-                                                            channelName = '';
-                                                            if nargin < 4
-                                                                t = [];
-                                                                if nargin < 3
-                                                                    StimTrainRec = [];
-                                                                end
-                                                            end
-                                                        end
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
+PDSusefuture = true;
+if nargin < 18
+dodebug = false;
+if nargin < 17
+showplots = false;
+if nargin < 16
+useIIR = false;
+if nargin < 15
+doresample = false;
+if nargin < 14
+donorm = false;
+if nargin < 13
+stepsize = [];
+if nargin < 12
+packetLength = [];
+if nargin < 11
+artDur = [];
+if nargin < 10
+predWin = [];
+if nargin < 9
+ARlen = [];
+if nargin < 8
+ARwin = [];
+if nargin < 7
+FreqRange = [];
+if nargin < 6
+PhaseOfInterest = [];
+if nargin < 5
+channelName = '';
+if nargin < 4
+t = [];
+if nargin < 3
+StimTrainRec = [];
+end
+end
+end
+end
+end
+end
+end
+end
+end
+end
+end
+end
+end
+end
+end
+end
+end
 end
 
 ARmdlProvided = isa(ARlen, 'cell');
@@ -328,6 +332,13 @@ if dodebug
     hWin = patch([t(1),t(1),t(1),t(1)], ...
         [max(dataOneChannelFilt2), max(dataOneChannelFilt2), min(dataOneChannelFilt2), min(dataOneChannelFilt2)], ...
         'k', 'FaceAlpha',0, 'EdgeColor','k');
+end
+
+% add random noise for testing 
+if noiselevel
+    noise = randn(size(dataOneChannel));
+    noise = noise*noiselevel*std(dataOneChannel);
+    dataOneChannel = dataOneChannel + noise;
 end
 
 progTick = .05; prog = 0; % track progress
