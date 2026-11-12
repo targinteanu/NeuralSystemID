@@ -185,10 +185,18 @@ figure('Position',[1 1 1200 375], 'WindowStyle','normal', ...
 w1 = W(1,:); w2 = W(end,:); % 't1' and 't2' on the graph 
 warrow = 100*(w2-w1);
 
+% draw vertical arrowheads explicitly 
+warrowpos = warrow; warrowneg = warrow;
+warrowpos(warrowpos<0) = nan; 
+warrowneg(warrowneg>0) = nan;
+warrowpos = warrowpos + w1; warrowneg = warrowneg + w1;
+
 ax(1) = subplot(1,2,1);
 stem(w1, 'k', 'LineWidth',2); 
 hold on; quiver(1:length(w1),w1, zeros(size(w2)), warrow, 'off', ...
-    'r', 'LineWidth',2, 'ShowArrowHead','on', 'MaxHeadSize',.5);
+    'r', 'LineWidth',2, 'ShowArrowHead','off');
+plot(warrowpos, '^r', 'LineWidth',2, 'MarkerSize',2, 'MarkerFaceColor','auto'); 
+plot(warrowneg, 'vr', 'LineWidth',2, 'MarkerSize',2, 'MarkerFaceColor','auto');
 ax(1).FontSize = 14;
 xlabel('Tap #', 'FontSize',16);
 ylabel('Coeff. Value', 'FontSize',16);
