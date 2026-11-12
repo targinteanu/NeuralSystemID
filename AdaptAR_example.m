@@ -179,11 +179,8 @@ legend('Actual', 'Constant Model', 'Adaptive Model', ...
 
 %% plot coeffs before-after 
 
-figure('Position',[1 1 1200 375], 'WindowStyle','normal', ...
-    'Theme','light', 'Color','w'); 
-
 w1 = W(1,:); w2 = W(end,:); % 't1' and 't2' on the graph 
-warrow = 100*(w2-w1);
+warrow = 10*(w2-w1);
 
 % draw vertical arrowheads explicitly 
 warrowpos = warrow; warrowneg = warrow;
@@ -191,25 +188,52 @@ warrowpos(warrowpos<0) = nan;
 warrowneg(warrowneg>0) = nan;
 warrowpos = warrowpos + w1; warrowneg = warrowneg + w1;
 
-ax(1) = subplot(1,2,1);
-stem(w1, 'k', 'LineWidth',2); 
-hold on; quiver(1:length(w1),w1, zeros(size(w2)), warrow, 'off', ...
+% prepare figure 
+figure('Position',[1 1 800 375], 'WindowStyle','normal', ...
+    'Theme','light', 'Color','w'); 
+tiledlayout('vertical', 'TileSpacing','tight'); % or none
+
+% make small top accessory plot and bottom main plot
+ax(1) = nexttile; ax(2) = nexttile([2,1]);
+
+% graph coeff vals with direction of change
+for curax = ax
+stem(curax, w1, 'k', 'LineWidth',2); 
+hold(curax, 'on'); quiver(curax, 1:length(w1),w1, zeros(size(w2)), warrow, 'off', ...
     'r', 'LineWidth',2, 'ShowArrowHead','off');
-plot(warrowpos, '^r', 'LineWidth',2, 'MarkerSize',2, 'MarkerFaceColor','auto'); 
-plot(warrowneg, 'vr', 'LineWidth',2, 'MarkerSize',2, 'MarkerFaceColor','auto');
-ax(1).FontSize = 14;
-xlabel('Tap #', 'FontSize',16);
+plot(curax, warrowpos, '^r', 'LineWidth',2, 'MarkerSize',2, 'MarkerFaceColor','auto'); 
+plot(curax, warrowneg, 'vr', 'LineWidth',2, 'MarkerSize',2, 'MarkerFaceColor','auto');
+curax.FontSize = 14;
+end
+linkaxes(ax, 'x');
+
+% label/scale bottom main plot
+axes(ax(2));
+xlbl = xlabel('Tap #', 'FontSize',16);
 ylabel('Coeff. Value', 'FontSize',16);
-title('Model Coefficients, t_1', 'FontSize',16)
+legend('t_1 value', 't_2 change (×10 scale)', 'Location','best', ...
+    'FontSize',14);
+yl = ylim; 
+ybrk = max(w1(1:end-1)+warrow(1:end-1)); 
+ybrk = ybrk + min(w1(1:end-1)+warrow(1:end-1)) - yl(1); 
+ylim([yl(1), ybrk]);
+xticks(length(w1))
+xlblpos = xlbl.Position; ax(2).XAxisLocation = 'origin'; 
+xlbl.Position = xlblpos; xlbl.Position(2) = yl(1);
+ax(2).Box = false;
+ax(2).XAxis.TickDirection = 'in';
+ax(2).XRuler.TickLabelGapOffset = -30;
 
-ax(2) = subplot(1,2,2);
-stem(w2-w1, 'k', 'LineWidth',2); 
-ax(2).FontSize = 14;
-xlabel('Tap #', 'FontSize',16);
-ylabel('Coeff. Diff.', 'FontSize',16);
-title('Coefficient Difference, t_2 - t_1', 'FontSize',16)
-
-%linkaxes(ax, 'y');
+% label/scale top accessory plot
+axes(ax(1));
+title('Model Coefficient Update', 'FontSize',16)
+ysz1 = ax(1).Position(4); ysz2 = ax(2).Position(4);
+yscl = diff(ax(2).YLim)*ysz1/ysz2;
+ycent = w1(end)+warrow(end)/2;
+ylim(ycent + [-.5,.5]*yscl); 
+yticks(round(w1(end), 2));
+ax(1).Box = false;
+ax(1).XAxis.Visible = false;
 
 %% helper(s)
 
