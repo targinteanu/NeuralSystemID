@@ -494,6 +494,35 @@ lgd.Layout.Tile = 'east';
 
 %% pie by cycle of extra/missing 
 
+% statistical significance 
+NUMc = NUM(:,:,1,:); NUMd = NUM(:,:,2,:); 
+NUMc = NUMc(:,:,:,3)./sum(NUMc,4); NUMd = NUMd(:,:,:,3)./sum(NUMd,4); % frac correct
+NUMc = NUMc(:); NUMd = NUMd(:); 
+[~,pNUM] = ttest2(NUMc, NUMd, "Tail","both", "Vartype","unequal");
+figure; subplot(1,3,1);
+histogram(NUMc); hold on; grid on; histogram(NUMd);
+title('Fraction Correct # stim: both bands');
+xlabel('frac correct'); ylabel('count (all subj, chan, tgt, cond)');
+subtitle("p = "+pNUM);
+legend(...
+    "const: "+mean(NUMc)+" | "+std(NUMc), ...
+    "adapt: "+mean(NUMd)+" | "+std(NUMd));
+% beta/theta band
+for b = 1:length(bndnames)
+subplot(1,3,b+1)
+NUMc = NUM(:,selBnd{b},1,:); NUMd = NUM(:,selBnd{b},2,:); 
+NUMc = NUMc(:,:,:,3)./sum(NUMc,4); NUMd = NUMd(:,:,:,3)./sum(NUMd,4); % frac correct
+NUMc = NUMc(:); NUMd = NUMd(:); 
+[~,pNUM] = ttest2(NUMc, NUMd, "Tail","both", "Vartype","unequal");
+histogram(NUMc); hold on; grid on; histogram(NUMd);
+title(['Fraction Correct # stim: band ',bndnames{b}]);
+xlabel('frac correct'); ylabel('count (all subj, chan, tgt, cond)');
+subtitle("p = "+pNUM);
+legend(...
+    "const: "+mean(NUMc)+"|"+std(NUMc), ...
+    "adapt: "+mean(NUMd)+"|"+std(NUMd));
+end
+
 figure('Position',[1 1 875 625], 'WindowStyle','normal', ...
     'Theme','light', 'Color','w'); 
 tiledlayout(length(mdlnames),length(bndnames)+1,'TileSpacing','compact');
